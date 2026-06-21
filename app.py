@@ -904,9 +904,51 @@ def import_zip():
     try:
         imported = extract_from_zip(zip_path, sel_cars, sel_tracks)
         zip_path.unlink(missing_ok=True)
+
+        # Auto-add track params for new tracks
+        for track in sel_tracks:
+            _auto_add_track_params(track)
+
+        # Auto-add new cars to server_cfg.ini
+        if sel_cars:
+            cfg = read_server_cfg()
+            existing = [c for c in cfg.get("CARS", "").split(";") if c]
+            new_cars = [c for c in sel_cars if c not in existing]
+            if new_cars:
+                all_cars = existing + new_cars
+                update_server_cfg({"CARS": ";".join(all_cars)})
+                _regen_entry_list(all_cars, 2)
+
         return jsonify({"ok": True, "imported": imported})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+def _auto_add_track_params(track):
+    section = f"[{track.lower()}]"
+    existing = TRACK_PARAMS_FILE.read_text() if TRACK_PARAMS_FILE.exists() else ""
+    if section in existing:
+        return
+    # Try to get coordinates from ui_track.json if available
+    lat, lon, tz = 0.0, 0.0, "UTC"
+    ui_path = TRACKS_DIR / track / "ui" / "ui_track.json"
+    if not ui_path.exists():
+        for d in (TRACKS_DIR / track).iterdir() if (TRACKS_DIR / track).exists() else []:
+            candidate = TRACKS_DIR / track / d.name / "ui" / "ui_track.json"
+            if candidate.exists():
+                ui_path = candidate
+                break
+    if ui_path.exists():
+        try:
+            d = json.loads(ui_path.read_text(encoding="utf-8", errors="replace"))
+            city = d.get("city", track)
+        except Exception:
+            city = track
+    else:
+        city = track
+    entry = f"\n{section}\nCITY={city}\nLATITUDE={lat}\nLONGITUDE={lon}\nTIMEZONE={tz}\n"
+    with open(TRACK_PARAMS_FILE, "a") as f:
+        f.write(entry)
 
 
 if __name__ == "__main__":

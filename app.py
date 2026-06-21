@@ -858,8 +858,14 @@ def upload_zip():
     f.save(save_path)
     items, err = analyze_zip(save_path)
     if err: return jsonify({"ok": False, "msg": f"ZIP error: {err}"}), 400
+    try:
+        with zipfile.ZipFile(save_path) as zf:
+            sample = zf.namelist()[:40]
+    except Exception:
+        sample = []
     return jsonify({"ok": True, "filename": filename,
-                    "cars": items["cars"], "tracks": items["tracks"]})
+                    "cars": items["cars"], "tracks": items["tracks"],
+                    "_zip_sample": sample})
 
 @app.route("/import_zip", methods=["POST"])
 @auth.login_required

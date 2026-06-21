@@ -757,7 +757,7 @@ def add_track_params():
     tz    = data.get("tz", 0)
     if not track:
         return jsonify({"ok": False, "msg": "track required"}), 400
-    section = f"[{track.upper()}]"
+    section = f"[{track.lower()}]"
     entry = f"\n{section}\nCITY={city}\nLATITUDE={lat}\nLONGITUDE={lon}\nTIMEZONE={tz}\n"
     existing = TRACK_PARAMS_FILE.read_text() if TRACK_PARAMS_FILE.exists() else ""
     if section in existing:

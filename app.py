@@ -410,37 +410,68 @@ def analyze_zip(zip_path):
     items = {"cars": [], "tracks": []}
     try:
         with zipfile.ZipFile(zip_path) as zf:
-            for n in zf.namelist():
+            names = zf.namelist()
+            for n in names:
                 m = re.search(r"(?:^|/)cars/([^/]+)/", n)
                 if m and m.group(1) not in items["cars"]:
                     items["cars"].append(m.group(1))
                 m = re.search(r"(?:^|/)tracks/([^/]+)/", n)
                 if m and m.group(1) not in items["tracks"]:
                     items["tracks"].append(m.group(1))
+            # Flat ZIPs: root folder is the car/track itself (no cars/ or tracks/ prefix)
+            if not items["cars"] and not items["tracks"]:
+                roots = set()
+                for n in names:
+                    parts = n.split("/")
+                    if len(parts) > 1 and parts[0]:
+                        roots.add(parts[0])
+                for r in roots:
+                    has_data  = any(n.startswith(f"{r}/data/") for n in names)
+                    has_kn5   = any(n.startswith(f"{r}/") and n.endswith(".kn5") for n in names)
+                    has_skins = any(n.startswith(f"{r}/skins/") for n in names)
+                    if has_skins or (has_kn5 and not has_data):
+                        items["cars"].append(r)
+                    elif has_data or has_kn5:
+                        items["tracks"].append(r)
     except Exception as e:
         return None, str(e)
     return items, None
 
+def _zip_rel(name, prefix):
+    """Return the relative path after 'prefix/name/' in a zip entry, or None."""
+    m = re.search(rf"(?:^|/){re.escape(prefix)}/(.+)", name)
+    if m:
+        return m.group(1)
+    return None
+
 def extract_from_zip(zip_path, sel_cars, sel_tracks):
     imported = []
     with zipfile.ZipFile(zip_path) as zf:
-        for name in zf.namelist():
+        names = zf.namelist()
+        # Detect if this is a flat ZIP (no cars/ or tracks/ prefix)
+        has_prefix_cars   = any(re.search(r"(?:^|/)cars/",   n) for n in names)
+        has_prefix_tracks = any(re.search(r"(?:^|/)tracks/", n) for n in names)
+
+        for name in names:
             for car in sel_cars:
-                m = re.search(rf"(?:^|/)cars/{re.escape(car)}/(.+)", name)
-                if m:
-                    rel = m.group(1)
-                    if not rel or rel.endswith("/"): continue
+                if has_prefix_cars:
+                    rel = _zip_rel(name, f"cars/{car}")
+                else:
+                    rel = _zip_rel(name, car)
+                if rel and not rel.endswith("/"):
                     tgt = CARS_DIR / car / rel
                     tgt.parent.mkdir(parents=True, exist_ok=True)
                     with zf.open(name) as src, open(tgt, "wb") as dst:
                         shutil.copyfileobj(src, dst)
                     key = f"cars/{car}"
                     if key not in imported: imported.append(key)
+
             for track in sel_tracks:
-                m = re.search(rf"(?:^|/)tracks/{re.escape(track)}/(.+)", name)
-                if m:
-                    rel = m.group(1)
-                    if not rel or rel.endswith("/"): continue
+                if has_prefix_tracks:
+                    rel = _zip_rel(name, f"tracks/{track}")
+                else:
+                    rel = _zip_rel(name, track)
+                if rel and not rel.endswith("/"):
                     tgt = TRACKS_DIR / track / rel
                     tgt.parent.mkdir(parents=True, exist_ok=True)
                     with zf.open(name) as src, open(tgt, "wb") as dst:

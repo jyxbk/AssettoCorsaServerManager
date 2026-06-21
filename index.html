@@ -179,7 +179,7 @@ tr:hover td{background:var(--bg3)}
 
 /* DROP ZONE */
 .dropzone{border:2px dashed var(--border);border-radius:10px;padding:48px 20px;text-align:center;cursor:pointer;transition:border-color .2s}
-.dropzone:hover{border-color:var(--red)}
+.dropzone:hover,.dropzone.dz-over{border-color:var(--red);background:rgba(232,21,12,.04)}
 
 /* LOG */
 .logbox{background:#080808;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'Cascadia Code','Courier New',monospace;font-size:11px;line-height:1.7;max-height:560px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
@@ -577,14 +577,21 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 <div class="panel" id="p-content">
   <div class="card" style="max-width:660px">
     <div class="card-ttl" data-t="upload_content"></div>
-    <div class="dropzone" onclick="document.getElementById('zip-inp').click()" id="dz">
+    <div class="dropzone" onclick="document.getElementById('zip-inp').click()" id="dz"
+         ondragover="event.preventDefault();this.classList.add('dz-over')"
+         ondragleave="this.classList.remove('dz-over')"
+         ondrop="event.preventDefault();this.classList.remove('dz-over');handleDrop(event)">
       <div style="font-size:40px;margin-bottom:10px">📦</div>
       <div style="font-size:15px;font-weight:700;margin-bottom:4px" data-t="select_zip"></div>
       <div style="font-size:12px;color:var(--muted)" data-t="zip_hint"></div>
-      <input type="file" id="zip-inp" accept=".zip" style="display:none" onchange="uploadZip()">
+      <input type="file" id="zip-inp" accept=".zip" style="display:none" onchange="uploadZip(this.files[0])">
     </div>
-    <div id="up-prog" style="display:none;margin-top:12px">
-      <div style="font-size:13px;color:var(--muted)" id="up-msg">Uploading...</div>
+    <div id="up-prog" style="display:none;margin-top:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:12px;color:var(--muted)" id="up-msg">Uploading...</span>
+        <span style="font-size:12px;font-weight:700" id="up-pct">0%</span>
+      </div>
+      <div class="bar"><div class="bar-fill bar-cpu" id="up-bar" style="width:0%"></div></div>
     </div>
   </div>
 </div>
@@ -1169,14 +1176,43 @@ function loadLogs() {
 // ═══════════════════════════════════════════════════════════════════
 //  UPLOAD
 // ═══════════════════════════════════════════════════════════════════
-function uploadZip() {
-  const file = document.getElementById("zip-inp").files[0];
+function handleDrop(event) {
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".zip")) { toast("✗ ZIP files only","err"); return; }
+  uploadZip(file);
+}
+
+function uploadZip(file) {
+  if (!file) file = document.getElementById("zip-inp").files[0];
   if (!file) return;
   const fd = new FormData(); fd.append("file", file);
-  document.getElementById("up-prog").style.display = "block";
-  document.getElementById("up-msg").textContent = "Uploading: " + file.name + "...";
-  apiFetch("/upload",{method:"POST",headers:_H,body:fd}).then(r=>r.json()).then(d => {
-    document.getElementById("up-prog").style.display = "none";
+
+  const prog = document.getElementById("up-prog");
+  const msg  = document.getElementById("up-msg");
+  const pct  = document.getElementById("up-pct");
+  const bar  = document.getElementById("up-bar");
+  prog.style.display = "block";
+  msg.textContent = file.name;
+  bar.style.width = "0%";
+  pct.textContent = "0%";
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/upload");
+  Object.entries(_H).forEach(([k,v]) => xhr.setRequestHeader(k, v));
+
+  xhr.upload.onprogress = function(e) {
+    if (!e.lengthComputable) return;
+    const p = Math.round(e.loaded / e.total * 100);
+    bar.style.width = p + "%";
+    pct.textContent = p + "%";
+  };
+
+  xhr.onload = function() {
+    prog.style.display = "none";
+    bar.style.width = "0%";
+    let d;
+    try { d = JSON.parse(xhr.responseText); } catch(e) { toast("✗ Server error","err"); return; }
     if (!d.ok) { toast("✗ "+d.msg,"err"); return; }
     currentZip = d.filename;
     document.getElementById("zip-name").textContent = d.filename;
@@ -1184,22 +1220,31 @@ function uploadZip() {
       ? d.cars.map(c=>`<div class="ci"><input type="checkbox" value="${esc(c)}"><img class="ci-img" src="/car_img/${esc(c)}" onerror="this.style.display='none'" alt=""><div class="ci-info"><span class="ci-name">${esc(c)}</span></div></div>`).join("")
       : `<div style="padding:8px;color:var(--muted)">${t("no_data")}</div>`;
     document.getElementById("z-tracks").innerHTML = d.tracks.length
-      ? d.tracks.map(t=>`<div class="ci"><input type="checkbox" value="${esc(t)}"><div class="ci-info"><span class="ci-name">${esc(t)}</span></div></div>`).join("")
+      ? d.tracks.map(tr=>`<div class="ci"><input type="checkbox" value="${esc(tr)}"><div class="ci-info"><span class="ci-name">${esc(tr)}</span></div></div>`).join("")
       : `<div style="padding:8px;color:var(--muted)">${t("no_data")}</div>`;
     document.getElementById("up-modal").classList.add("show");
-  });
+    document.getElementById("zip-inp").value = "";
+  };
+
+  xhr.onerror = function() { prog.style.display = "none"; toast("✗ Upload failed","err"); };
+  xhr.send(fd);
 }
 
 function doImport() {
   const cars   = [...document.querySelectorAll("#z-cars input:checked")].map(i=>i.value);
   const tracks = [...document.querySelectorAll("#z-tracks input:checked")].map(i=>i.value);
   if (!cars.length && !tracks.length) { toast(t("no_data"),"err"); return; }
-  toast(t("loading"),"info");
+  toast("⏳ Importing...","info");
   apiFetch("/import_zip",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},
     body:JSON.stringify({filename:currentZip,cars,tracks})})
     .then(r=>r.json()).then(d=>{
-      if (d.ok) { toast("✓ Imported: "+d.imported.join(", ")); closeModal(); setTimeout(()=>location.reload(),1800); }
-      else toast("✗ "+d.msg,"err");
+      if (d.ok) {
+        toast("✓ Imported: "+d.imported.join(", "));
+        closeModal();
+        setTimeout(()=>location.reload(), 3000);
+      } else {
+        toast("✗ "+d.msg,"err");
+      }
     });
 }
 

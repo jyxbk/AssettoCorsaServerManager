@@ -744,7 +744,7 @@ def save_dynamic_track():
 
 
 # ── Track params ─────────────────────────────────────────────────────────────
-TRACK_PARAMS_FILE = CFG_DIR / "data_track_params.ini"
+TRACK_PARAMS_FILE = SERVER_DIR / "data" / "data_track_params.ini"
 
 @app.route("/api/add_track_params", methods=["POST"])
 @auth.login_required

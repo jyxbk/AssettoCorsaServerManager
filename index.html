@@ -1217,10 +1217,10 @@ function uploadZip(file) {
     currentZip = d.filename;
     document.getElementById("zip-name").textContent = d.filename;
     document.getElementById("z-cars").innerHTML  = d.cars.length
-      ? d.cars.map(c=>`<div class="ci"><input type="checkbox" value="${esc(c)}"><img class="ci-img" src="/car_img/${esc(c)}" onerror="this.style.display='none'" alt=""><div class="ci-info"><span class="ci-name">${esc(c)}</span></div></div>`).join("")
+      ? d.cars.map(c=>`<div class="ci"><input type="checkbox" value="${esc(c)}" checked><img class="ci-img" src="/car_img/${esc(c)}" onerror="this.style.display='none'" alt=""><div class="ci-info"><span class="ci-name">${esc(c)}</span></div></div>`).join("")
       : `<div style="padding:8px;color:var(--muted)">${t("no_data")}</div>`;
     document.getElementById("z-tracks").innerHTML = d.tracks.length
-      ? d.tracks.map(tr=>`<div class="ci"><input type="checkbox" value="${esc(tr)}"><div class="ci-info"><span class="ci-name">${esc(tr)}</span></div></div>`).join("")
+      ? d.tracks.map(tr=>`<div class="ci"><input type="checkbox" value="${esc(tr)}" checked><div class="ci-info"><span class="ci-name">${esc(tr)}</span></div></div>`).join("")
       : `<div style="padding:8px;color:var(--muted)">${t("no_data")}</div>`;
     document.getElementById("up-modal").classList.add("show");
     document.getElementById("zip-inp").value = "";
@@ -1239,9 +1239,13 @@ function doImport() {
     body:JSON.stringify({filename:currentZip,cars,tracks})})
     .then(r=>r.json()).then(d=>{
       if (d.ok) {
-        toast("✓ Imported: "+d.imported.join(", "));
-        closeModal();
-        setTimeout(()=>location.reload(), 3000);
+        if (d.imported && d.imported.length > 0) {
+          toast("✓ Imported: "+d.imported.join(", "));
+          closeModal();
+          setTimeout(()=>location.reload(), 3000);
+        } else {
+          toast("✗ ZIP structure not recognized — no files extracted","err");
+        }
       } else {
         toast("✗ "+d.msg,"err");
       }

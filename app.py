@@ -867,6 +867,41 @@ def ban_player():
     return jsonify({"ok": True, "msg": f"{name} banned"})
 
 
+# ── Folder upload ─────────────────────────────────────────────────────────────
+def secure_filename_path(rel):
+    parts = Path(rel.replace("\\", "/")).parts
+    safe  = [secure_filename(p) for p in parts if p and p not in (".", "..")]
+    return Path(*safe) if safe else Path("file")
+
+@app.route("/upload_folder", methods=["POST"])
+@auth.login_required
+def upload_folder():
+    content_type = request.form.get("type", "").strip()
+    root_name    = request.form.get("root_name", "").strip()
+    files        = request.files.getlist("files")
+    if content_type not in ("car", "track"):
+        return jsonify({"ok": False, "msg": "type must be car or track"}), 400
+    if not root_name:
+        return jsonify({"ok": False, "msg": "root_name required"}), 400
+    base_dir = CARS_DIR / root_name if content_type == "car" else TRACKS_DIR / root_name
+    written = 0
+    for f in files:
+        rel = secure_filename_path(f.filename)
+        tgt = base_dir / rel
+        tgt.parent.mkdir(parents=True, exist_ok=True)
+        f.save(str(tgt))
+        written += 1
+    if content_type == "track":
+        _auto_add_track_params(root_name)
+    else:
+        cfg = read_server_cfg()
+        existing = [c for c in cfg.get("CARS", "").split(";") if c]
+        if root_name not in existing:
+            all_cars = existing + [root_name]
+            update_server_cfg({"CARS": ";".join(all_cars)})
+            _regen_entry_list(all_cars, 2)
+    return jsonify({"ok": True, "name": root_name, "files": written})
+
 # ── Content upload ────────────────────────────────────────────────────────────
 @app.route("/upload", methods=["POST"])
 @auth.login_required

@@ -56,6 +56,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .bar-cpu{background:var(--blue)}
 .bar-ram{background:var(--yellow)}
 .bar-hot{background:var(--red)!important}
+.bar-green{background:var(--green)}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;transition:filter .15s;white-space:nowrap}
@@ -576,6 +577,27 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 <!-- ══ CONTENT ═══════════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-content">
   <div class="card" style="max-width:660px">
+
+    <!-- Folder Upload -->
+    <div class="card-ttl">Ordner hochladen</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <button class="btn btn-gray" id="type-car-btn" onclick="setFolderType('car')" style="flex:1;font-size:13px">🚗 Auto</button>
+      <button class="btn btn-gray" id="type-track-btn" onclick="setFolderType('track')" style="flex:1;font-size:13px">🏁 Strecke</button>
+    </div>
+    <div class="dropzone" id="folder-dz" onclick="document.getElementById('folder-inp').click()"
+         ondragover="event.preventDefault();this.classList.add('dz-over')"
+         ondragleave="this.classList.remove('dz-over')"
+         ondrop="event.preventDefault();this.classList.remove('dz-over');handleFolderDrop(event)"
+         style="opacity:0.4;pointer-events:none">
+      <div style="font-size:36px;margin-bottom:8px">📁</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px" id="folder-dz-hint">Zuerst Auto oder Strecke wählen</div>
+      <div style="font-size:12px;color:var(--muted)">Ordner auswählen oder hierher ziehen</div>
+      <input type="file" id="folder-inp" webkitdirectory multiple style="display:none" onchange="analyzeFolder(this.files)">
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:20px 0"></div>
+
+    <!-- ZIP Upload (bestehendes System) -->
     <div class="card-ttl" data-t="upload_content"></div>
     <div class="dropzone" onclick="document.getElementById('zip-inp').click()" id="dz"
          ondragover="event.preventDefault();this.classList.add('dz-over')"
@@ -627,6 +649,32 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-green" onclick="doImport()">✓ <span data-t="import"></span></button>
       <button class="btn btn-gray" onclick="closeModal()" data-t="cancel"></button>
+    </div>
+  </div>
+</div>
+
+<!-- FOLDER ANALYSE MODAL -->
+<div class="modal" id="folder-modal">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-ttl">📁 <span id="fm-type-label">Auto</span> erkannt</div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">ZIEL-PFAD</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text)" id="fm-target-path">/content/cars/name/</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px">STAMMORDNER (editierbar)</div>
+    <input class="inp" id="fm-root-name" style="margin-bottom:14px;font-weight:700" oninput="updateFolderTarget()">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">INHALT</div>
+    <div id="fm-tree" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;max-height:220px;overflow-y:auto;font-size:12px;font-family:monospace;margin-bottom:16px"></div>
+    <div id="fm-upload-prog" style="display:none;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:12px;color:var(--muted)" id="fm-up-msg">Uploading...</span>
+        <span style="font-size:12px;font-weight:700" id="fm-up-pct">0%</span>
+      </div>
+      <div class="bar"><div class="bar-fill bar-green" id="fm-up-bar" style="width:0%"></div></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-green" id="fm-confirm-btn" onclick="uploadFolder()">✓ Hochladen bestätigen</button>
+      <button class="btn btn-gray" onclick="closeFolderModal()">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -1253,6 +1301,150 @@ function doImport() {
 }
 
 function closeModal() { document.getElementById("up-modal").classList.remove("show"); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  FOLDER UPLOAD
+// ═══════════════════════════════════════════════════════════════════
+let _folderType = null;
+let _folderFiles = null;
+
+function setFolderType(type) {
+  _folderType = type;
+  document.getElementById("type-car-btn").classList.toggle("btn-red", type === "car");
+  document.getElementById("type-car-btn").classList.toggle("btn-gray", type !== "car");
+  document.getElementById("type-track-btn").classList.toggle("btn-red", type === "track");
+  document.getElementById("type-track-btn").classList.toggle("btn-gray", type !== "track");
+  const dz = document.getElementById("folder-dz");
+  dz.style.opacity = "1";
+  dz.style.pointerEvents = "auto";
+  document.getElementById("folder-dz-hint").textContent =
+    type === "car" ? "Auto-Ordner auswählen oder hierher ziehen"
+                   : "Strecken-Ordner auswählen oder hierher ziehen";
+}
+
+function handleFolderDrop(event) {
+  if (!_folderType) { toast("Zuerst Auto oder Strecke wählen","err"); return; }
+  const items = event.dataTransfer.items;
+  if (!items) return;
+  const allFiles = [];
+  let pending = 0;
+  function traverse(entry, path) {
+    if (entry.isFile) {
+      pending++;
+      entry.file(f => {
+        Object.defineProperty(f, "webkitRelativePath", { value: path + f.name });
+        allFiles.push(f);
+        if (--pending === 0) showFolderModal(allFiles);
+      });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      pending++;
+      reader.readEntries(entries => {
+        pending--;
+        entries.forEach(e => traverse(e, path + entry.name + "/"));
+        if (pending === 0) showFolderModal(allFiles);
+      });
+    }
+  }
+  for (let i = 0; i < items.length; i++) {
+    const entry = items[i].webkitGetAsEntry();
+    if (entry) traverse(entry, "");
+  }
+}
+
+function analyzeFolder(files) {
+  if (!_folderType) { toast("Zuerst Auto oder Strecke wählen","err"); return; }
+  showFolderModal(Array.from(files));
+}
+
+function showFolderModal(files) {
+  if (!files.length) return;
+  _folderFiles = files;
+
+  // Root-Ordner-Name aus erstem Pfad ermitteln
+  const firstPath = files[0].webkitRelativePath || files[0].name;
+  const rootName = firstPath.split("/")[0] || "content";
+
+  document.getElementById("fm-type-label").textContent = _folderType === "car" ? "Auto" : "Strecke";
+  document.getElementById("fm-root-name").value = rootName;
+  updateFolderTarget();
+
+  // Struktur-Baum aufbauen
+  const dirs = {};
+  let rootFiles = 0;
+  files.forEach(f => {
+    const rel = (f.webkitRelativePath || f.name).split("/").slice(1).join("/");
+    const parts = rel.split("/");
+    if (parts.length === 1) { rootFiles++; return; }
+    const dir = parts[0];
+    dirs[dir] = (dirs[dir] || 0) + 1;
+  });
+
+  let html = "";
+  if (rootFiles > 0) html += `<div style="color:var(--muted)">📄 ${rootFiles} Datei(en) im Stammordner</div>`;
+  Object.entries(dirs).sort().forEach(([d, n]) => {
+    html += `<div>📁 ${esc(d)}/ <span style="color:var(--muted)">(${n} Datei${n>1?"en":""})</span></div>`;
+  });
+  document.getElementById("fm-tree").innerHTML = html || "<div style='color:var(--muted)'>Keine Dateien gefunden</div>";
+  document.getElementById("fm-upload-prog").style.display = "none";
+  document.getElementById("fm-confirm-btn").disabled = false;
+  document.getElementById("folder-modal").classList.add("show");
+}
+
+function updateFolderTarget() {
+  const name = document.getElementById("fm-root-name").value || "name";
+  const base = _folderType === "car" ? "/content/cars/" : "/content/tracks/";
+  document.getElementById("fm-target-path").textContent = base + name + "/";
+}
+
+function closeFolderModal() {
+  document.getElementById("folder-modal").classList.remove("show");
+  document.getElementById("folder-inp").value = "";
+}
+
+function uploadFolder() {
+  const rootName = document.getElementById("fm-root-name").value.trim();
+  if (!rootName || !_folderFiles) return;
+
+  const fd = new FormData();
+  fd.append("type", _folderType);
+  fd.append("root_name", rootName);
+  _folderFiles.forEach(f => {
+    const rel = (f.webkitRelativePath || f.name).split("/").slice(1).join("/") || f.name;
+    fd.append("files", f, rel);
+  });
+
+  const prog = document.getElementById("fm-upload-prog");
+  const msg  = document.getElementById("fm-up-msg");
+  const pct  = document.getElementById("fm-up-pct");
+  const bar  = document.getElementById("fm-up-bar");
+  prog.style.display = "block";
+  document.getElementById("fm-confirm-btn").disabled = true;
+  msg.textContent = `${_folderFiles.length} Dateien werden hochgeladen...`;
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/upload_folder");
+  Object.entries(_H).forEach(([k,v]) => xhr.setRequestHeader(k, v));
+  xhr.upload.onprogress = e => {
+    if (!e.lengthComputable) return;
+    const p = Math.round(e.loaded / e.total * 100);
+    bar.style.width = p + "%"; pct.textContent = p + "%";
+  };
+  xhr.onload = function() {
+    prog.style.display = "none";
+    let d; try { d = JSON.parse(xhr.responseText); } catch(e) { toast("✗ Server error","err"); return; }
+    if (d.ok) {
+      toast(`✓ ${esc(d.name)} importiert (${d.files} Dateien)`);
+      closeFolderModal();
+      setTimeout(() => location.reload(), 2500);
+    } else {
+      toast("✗ " + d.msg, "err");
+      document.getElementById("fm-confirm-btn").disabled = false;
+    }
+  };
+  xhr.onerror = () => { prog.style.display = "none"; toast("✗ Upload fehlgeschlagen","err"); };
+  xhr.send(fd);
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  UTILS

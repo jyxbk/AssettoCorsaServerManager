@@ -743,6 +743,29 @@ def save_dynamic_track():
     return jsonify({"ok": ok, "msg": msg})
 
 
+# ── Track params ─────────────────────────────────────────────────────────────
+TRACK_PARAMS_FILE = CFG_DIR / "data_track_params.ini"
+
+@app.route("/api/add_track_params", methods=["POST"])
+@auth.login_required
+def add_track_params():
+    data = request.json or {}
+    track = data.get("track", "").strip()
+    city  = data.get("city", "Unknown").strip()
+    lat   = data.get("lat", 0)
+    lon   = data.get("lon", 0)
+    tz    = data.get("tz", 0)
+    if not track:
+        return jsonify({"ok": False, "msg": "track required"}), 400
+    section = f"[{track.upper()}]"
+    entry = f"\n{section}\nCITY={city}\nLATITUDE={lat}\nLONGITUDE={lon}\nTIMEZONE={tz}\n"
+    existing = TRACK_PARAMS_FILE.read_text() if TRACK_PARAMS_FILE.exists() else ""
+    if section in existing:
+        return jsonify({"ok": True, "msg": "already exists"})
+    with open(TRACK_PARAMS_FILE, "a") as f:
+        f.write(entry)
+    return jsonify({"ok": True, "msg": f"Added params for {track}"})
+
 # ── Server control ────────────────────────────────────────────────────────────
 @app.route("/control/<action>", methods=["POST"])
 @auth.login_required

@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AC Server Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#e8150c;--red-dark:#a00e09;
+  --bg:#0d0d0d;--bg2:#141414;--bg3:#1c1c1c;--bg4:#242424;
+  --border:#2a2a2a;--text:#e4e4e4;--muted:#777;
+  --green:#27ae60;--yellow:#f39c12;--blue:#2980b9;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* HEADER */
+.hdr{background:var(--bg2);border-bottom:2px solid var(--red);padding:0 20px;display:flex;align-items:center;gap:12px;height:52px;position:sticky;top:0;z-index:200}
+.hdr-logo{color:var(--red);font-size:18px;font-weight:800;letter-spacing:3px;text-transform:uppercase;white-space:nowrap}
+.hdr-sep{width:1px;height:20px;background:var(--border)}
+.hdr-stat{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.hdr-stat strong{color:var(--text)}
+.dot{width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.fail{background:var(--red);box-shadow:0 0 6px var(--red)}
+.dot.pulse{animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hdr-btns{margin-left:auto;display:flex;gap:6px;align-items:center}
+.lang-btn{background:var(--bg4);border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px}
+.lang-btn:hover{color:var(--text)}
+
+/* TABS */
+.tabs{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;padding:0 20px;gap:2px;overflow-x:auto}
+.tab{padding:13px 16px;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--red);border-bottom-color:var(--red)}
+
+/* LAYOUT */
+.page{padding:20px;max-width:1440px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:900px){.g4{grid-template-columns:1fr 1fr}.g2,.g3{grid-template-columns:1fr}}
+.gap{margin-bottom:16px}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px}
+.card-ttl{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+
+/* STATS */
+.stat-val{font-size:30px;font-weight:800;line-height:1;margin-bottom:4px}
+.stat-sub{font-size:11px;color:var(--muted)}
+.bar{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-top:10px}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.bar-cpu{background:var(--blue)}
+.bar-ram{background:var(--yellow)}
+.bar-hot{background:var(--red)!important}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;transition:filter .15s;white-space:nowrap}
+.btn:hover{filter:brightness(1.15)}
+.btn-red{background:var(--red);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-gray{background:var(--bg4);color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:#6b0000;color:#fff}
+.btn-warn{background:#7a4500;color:#fff}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* INPUTS */
+.inp,.sel{background:var(--bg);color:var(--text);border:1px solid var(--border);padding:8px 10px;border-radius:6px;font-size:13px;width:100%}
+.inp:focus,.sel:focus{outline:none;border-color:var(--red)}
+.lbl{font-size:11px;color:var(--muted);margin-bottom:5px;display:block;font-weight:600}
+.fg{margin-bottom:12px}
+
+/* INFO TABLE */
+.itbl{width:100%;border-collapse:collapse}
+.itbl td{padding:5px 0;font-size:13px;vertical-align:top}
+.itbl td:first-child{color:var(--muted);width:140px;padding-right:12px}
+.itbl td:last-child{font-weight:600}
+
+/* DRIVER CARDS */
+.dg{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.dc{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;transition:border-color .2s}
+.dc:hover{border-color:var(--red)}
+.dc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.dc-name{font-weight:800;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.dc-car{font-size:11px;color:var(--muted);margin-top:2px}
+.dc-laps{font-size:11px;color:var(--muted);background:var(--bg4);padding:2px 7px;border-radius:10px}
+.sp-bar{height:3px;background:var(--bg4);border-radius:2px;margin-bottom:4px;overflow:hidden}
+.sp-fill{height:100%;background:var(--red);border-radius:2px}
+.sp-txt{font-size:10px;color:var(--muted);margin-bottom:10px}
+.dc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.dc-st{background:var(--bg4);border-radius:5px;padding:7px;text-align:center}
+.dc-stv{font-size:13px;font-weight:700}
+.dc-stl{font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase}
+.dc-acts{display:flex;gap:6px}
+.best-t{color:#2ecc71}
+
+/* MAP */
+.map-wrap{position:relative;background:var(--bg3);border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+#map-canvas{display:block;width:100%;border-radius:8px}
+.map-hint{font-size:10px;color:var(--muted);text-align:center;padding:6px 0}
+
+/* LAP TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+th{text-align:left;padding:9px 12px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid #1a1a1a}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg3)}
+.pos-1{color:var(--yellow);font-weight:800}
+.pos-2{color:#aaa;font-weight:800}
+.pos-3{color:#cd7f32;font-weight:800}
+
+/* TOGGLES */
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.tog-row:last-child{border-bottom:none}
+.tog-lbl{font-size:13px;font-weight:600}
+.tog-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.tog{position:relative;width:38px;height:20px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;cursor:pointer;inset:0;background:var(--bg4);border-radius:20px;border:1px solid var(--border);transition:.2s}
+.tog-sl::before{content:'';position:absolute;height:12px;width:12px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.2s}
+.tog input:checked+.tog-sl{background:var(--red);border-color:var(--red)}
+.tog input:checked+.tog-sl::before{transform:translateX(18px);background:#fff}
+
+/* NUM ROWS */
+.num-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.num-row:last-child{border-bottom:none}
+.num-inp{width:80px;text-align:center}
+
+/* BADGES */
+.bdg{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700}
+.bdg-on{background:rgba(39,174,96,.15);color:var(--green);border:1px solid rgba(39,174,96,.3)}
+.bdg-off{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border)}
+.bdg-err{background:rgba(232,21,12,.15);color:var(--red);border:1px solid rgba(232,21,12,.3)}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:700;display:none;z-index:9999;animation:tin .2s}
+@keyframes tin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.toast.ok{background:var(--green);color:#fff}
+.toast.err{background:var(--red);color:#fff}
+.toast.info{background:var(--bg4);color:var(--text);border:1px solid var(--border)}
+
+/* MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center}
+.modal.show{display:flex}
+.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:22px;max-width:580px;width:90%;max-height:80vh;overflow-y:auto}
+.modal-ttl{font-size:15px;font-weight:800;margin-bottom:14px}
+
+/* SECTION HEADER */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sh-t{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.8px}
+
+/* CAR LIST WITH IMAGES */
+.clist{max-height:320px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px}
+.ci{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:5px;cursor:pointer;font-size:13px;transition:background .15s}
+.ci:hover{background:var(--bg3)}
+.ci input{accent-color:var(--red);flex-shrink:0}
+.ci-img{width:36px;height:36px;border-radius:4px;object-fit:cover;background:var(--bg4);flex-shrink:0}
+.ci-info{display:flex;flex-direction:column;min-width:0}
+.ci-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci-brand{font-size:10px;color:var(--muted)}
+
+/* TRACK SELECTOR WITH PREVIEW */
+.track-sel-wrap{position:relative}
+.track-preview{width:100%;height:120px;object-fit:cover;border-radius:6px;margin-top:8px;display:none;border:1px solid var(--border)}
+.track-info-bar{display:none;flex-direction:row;gap:16px;margin-top:6px;font-size:11px;color:var(--muted)}
+.track-info-bar span{display:flex;align-items:center;gap:4px}
+
+/* PRESETS */
+.preset-list{display:flex;flex-direction:column;gap:8px}
+.preset-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.preset-item:hover{border-color:var(--red)}
+.preset-name{font-weight:700;font-size:14px}
+.preset-info{font-size:11px;color:var(--muted);margin-top:2px}
+.preset-acts{display:flex;gap:6px;flex-shrink:0}
+
+/* DROP ZONE */
+.dropzone{border:2px dashed var(--border);border-radius:10px;padding:48px 20px;text-align:center;cursor:pointer;transition:border-color .2s}
+.dropzone:hover{border-color:var(--red)}
+
+/* LOG */
+.logbox{background:#080808;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'Cascadia Code','Courier New',monospace;font-size:11px;line-height:1.7;max-height:560px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+
+/* IP ROW */
+.ip-row{display:flex;align-items:center;gap:8px}
+.ip-val{font-family:monospace;font-size:14px;font-weight:700}
+.cp-btn{font-size:11px;cursor:pointer;color:var(--muted);background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:2px 7px}
+.cp-btn:hover{color:var(--text)}
+
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-ico{font-size:44px;margin-bottom:10px}
+
+/* SLIDER */
+input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
+.slider-row{display:flex;align-items:center;gap:12px}
+.slider-val{font-weight:700;min-width:40px;text-align:right;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-logo">⚡ AC Server</div>
+  <div class="hdr-sep"></div>
+  <div class="hdr-stat">
+    <div class="dot" id="h-dot"></div>
+    <span id="h-status">{{ status }}</span>
+  </div>
+  <div class="hdr-sep"></div>
+  <div class="hdr-stat"><strong id="h-players">0</strong>&nbsp;/ <strong id="h-maxp">{{ cfg.get('MAX_CLIENTS','?') }}</strong>&nbsp;<span data-t="drivers"></span></div>
+  <div class="hdr-sep"></div>
+  <div class="hdr-stat" id="h-track" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ cfg.get('TRACK','—') }}</div>
+  <div class="hdr-btns">
+    <button class="btn btn-green btn-sm" onclick="ctrl('start')" data-t="start"></button>
+    <button class="btn btn-gray btn-sm" onclick="ctrl('stop')" data-t="stop"></button>
+    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')" data-t="restart"></button>
+    <button class="lang-btn" id="lang-toggle" onclick="toggleLang()">DE</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" data-tab="dash" data-t="tab_dash"></div>
+  <div class="tab" data-tab="drivers" data-t="tab_drivers"></div>
+  <div class="tab" data-tab="laps" data-t="tab_laps"></div>
+  <div class="tab" data-tab="settings" data-t="tab_settings"></div>
+  <div class="tab" data-tab="content" data-t="tab_content"></div>
+  <div class="tab" data-tab="logs" data-t="tab_logs"></div>
+</div>
+
+<div class="page">
+
+<!-- ══ DASHBOARD ══════════════════════════════════════════════════════════ -->
+<div class="panel active" id="p-dash">
+  <div class="g4 gap">
+    <div class="card">
+      <div class="card-ttl" data-t="status"></div>
+      <div class="stat-val"><span id="d-badge" class="bdg">—</span></div>
+      <div class="stat-sub" id="d-up" style="margin-top:8px">—</div>
+    </div>
+    <div class="card">
+      <div class="card-ttl" data-t="players_online"></div>
+      <div class="stat-val"><span id="d-cl">0</span><span style="font-size:16px;color:var(--muted)"> / <span id="d-mcl">{{ cfg.get('MAX_CLIENTS','8') }}</span></span></div>
+      <div class="stat-sub" data-t="active_connections"></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">CPU</div>
+      <div class="stat-val"><span id="d-cpu">0</span><span style="font-size:16px">%</span></div>
+      <div class="bar"><div class="bar-fill bar-cpu" id="cpu-bar" style="width:0%"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">RAM</div>
+      <div class="stat-val"><span id="d-ram">0</span><span style="font-size:16px">%</span></div>
+      <div class="bar"><div class="bar-fill bar-ram" id="ram-bar" style="width:0%"></div></div>
+      <div class="stat-sub"><span id="d-ram-det"></span></div>
+    </div>
+  </div>
+
+  <div class="g2 gap">
+    <div class="card">
+      <div class="card-ttl" data-t="server_info"></div>
+      <table class="itbl">
+        <tr><td data-t="name"></td><td id="i-name">{{ info.name if info else '—' }}</td></tr>
+        <tr><td data-t="track"></td><td id="i-track">{{ info.track if info else cfg.get('TRACK','—') }}</td></tr>
+        <tr><td data-t="layout"></td><td id="i-layout">{{ cfg.get('TRACK_LAYOUT','—') or '—' }}</td></tr>
+        <tr><td data-t="session"></td><td id="i-sess">Practice</td></tr>
+        <tr><td data-t="password"></td><td>{{ '🔒 Yes' if cfg.get('PASSWORD') else '🔓 None' }}</td></tr>
+        <tr><td data-t="max_clients"></td><td>{{ cfg.get('MAX_CLIENTS','—') }}</td></tr>
+        <tr><td data-t="game_port"></td><td>{{ cfg.get('TCP_PORT','9600') }}</td></tr>
+        <tr><td data-t="http_port"></td><td>{{ cfg.get('HTTP_PORT','8081') }}</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-ttl" data-t="network"></div>
+      <table class="itbl">
+        <tr>
+          <td data-t="local_ip"></td>
+          <td><div class="ip-row">
+            <span class="ip-val">{{ local_ip }}</span>
+            <span class="cp-btn" onclick="copy('{{ local_ip }}:9600')">📋</span>
+          </div></td>
+        </tr>
+        <tr>
+          <td data-t="public_ip"></td>
+          <td><div class="ip-row">
+            <span class="ip-val" id="pub-ip">{{ info.ip if info else '—' }}</span>
+            <span class="cp-btn" onclick="copyPub()">📋</span>
+          </div></td>
+        </tr>
+        <tr><td data-t="invite_link"></td><td><a id="inv-link" href="#" style="color:var(--red);font-size:12px" target="_blank" data-t="open_cm"></a></td></tr>
+        <tr><td data-t="lobby"></td><td>{{ 'Public' if cfg.get('REGISTER_TO_LOBBY')=='1' else 'Private (LAN)' }}</td></tr>
+        <tr><td>ABS</td><td>{{ 'Allowed' if cfg.get('ABS_ALLOWED','1')=='1' else 'Disabled' }}</td></tr>
+        <tr><td data-t="damage_rate"></td><td>{{ cfg.get('DAMAGE_MULTIPLIER','100') }}%</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="g2 gap">
+    <div class="card">
+      <div class="sh"><div class="sh-t" data-t="active_drivers"></div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
+      <div class="dg" id="d-drivers"><div class="empty"><div class="empty-ico">🏁</div><div data-t="no_drivers"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="sh"><div class="sh-t">💬 <span data-t="chat"></span></div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
+      <div id="dash-chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:220px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px">
+        <div style="color:var(--muted)" data-t="waiting_chat"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESETS -->
+  <div class="card">
+    <div class="sh">
+      <div class="sh-t" data-t="presets"></div>
+      <button class="btn btn-gray btn-sm" onclick="loadPresetList()">↻</button>
+    </div>
+    <div class="preset-list" id="preset-list"><div style="color:var(--muted);font-size:13px" data-t="loading"></div></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <input class="inp" id="preset-name" data-t-placeholder="preset_name_ph" style="flex:1">
+      <button class="btn btn-red" onclick="savePreset()">💾 <span data-t="save_current"></span></button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px" data-t="preset_hint"></div>
+  </div>
+</div>
+
+<!-- ══ DRIVERS ══════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-drivers">
+  <div class="g2 gap">
+    <div class="card">
+      <div class="sh"><div class="sh-t" data-t="live_drivers"></div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
+      <div class="dg" id="f-drivers"><div class="empty"><div class="empty-ico">🏎️</div><div data-t="waiting_drivers"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="sh-t" style="margin-bottom:12px" data-t="track_positions"></div>
+      <div class="map-wrap"><canvas id="map-canvas" width="560" height="380"></canvas></div>
+      <div class="map-hint" id="map-hint" data-t="loading_map"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="sh"><div class="sh-t">💬 <span data-t="chat"></span></div></div>
+    <div id="chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;max-height:260px;overflow-y:auto;font-size:13px;display:flex;flex-direction:column;gap:4px">
+      <div style="color:var(--muted)" data-t="waiting_chat"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LAPS ═════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-laps">
+  <div class="card">
+    <div class="sh">
+      <div class="sh-t" data-t="lap_times"></div>
+      <button class="btn btn-gray btn-sm" onclick="refreshLive()">↻</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th data-t="pos"></th><th data-t="driver"></th><th data-t="vehicle"></th>
+          <th data-t="laps"></th><th data-t="best_time"></th><th data-t="last_time"></th><th data-t="current_time"></th>
+        </tr></thead>
+        <tbody id="lap-tbody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:48px" data-t="no_data"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS ═════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-settings">
+  <div class="g2 gap">
+
+    <!-- LEFT COLUMN -->
+    <div>
+      <!-- Server General -->
+      <div class="card gap">
+        <div class="card-ttl" data-t="server_general"></div>
+        <div class="fg">
+          <label class="lbl" data-t="server_name"></label>
+          <input class="inp" id="sv-name" value="{{ cfg.get('NAME','') }}">
+        </div>
+        <div class="fg">
+          <label class="lbl" data-t="server_password"></label>
+          <input class="inp" id="sv-pass" type="password" placeholder="({{ 'set' if cfg.get('PASSWORD') else 'none' }})" value="">
+        </div>
+        <div class="fg">
+          <label class="lbl" data-t="admin_password"></label>
+          <input class="inp" id="sv-adminpass" type="password" placeholder="({{ 'set' if cfg.get('ADMIN_PASSWORD') else 'none' }})" value="">
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-t="public_lobby"></div><div class="tog-desc" data-t="public_lobby_desc"></div></div>
+          <label class="tog"><input type="checkbox" id="sv-lobby" {% if cfg.get('REGISTER_TO_LOBBY')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div class="fg" style="margin-top:10px">
+          <label class="lbl">Time of Day (Sun Angle: <span id="sun-val">{{ cfg.get('SUN_ANGLE','48') }}</span>°)</label>
+          <div class="slider-row">
+            <span style="font-size:11px;color:var(--muted)">🌅</span>
+            <input type="range" id="sv-sun" min="0" max="360" value="{{ cfg.get('SUN_ANGLE','48') }}"
+                   oninput="document.getElementById('sun-val').textContent=this.value">
+            <span style="font-size:11px;color:var(--muted)">🌙</span>
+          </div>
+        </div>
+        <button class="btn btn-red" onclick="saveServerSettings()">💾 <span data-t="save"></span></button>
+      </div>
+
+      <!-- Track & Cars -->
+      <div class="card gap">
+        <div class="card-ttl" data-t="track_and_cars"></div>
+        <div class="fg">
+          <label class="lbl" data-t="track"></label>
+          <select class="sel" id="s-track" onchange="updateLayouts();loadTrackPreview()">
+            {% for t in tracks %}
+            <option value="{{ t.name }}" data-layouts='{{ t.layouts|tojson }}'
+              {% if t.name == cfg.get('TRACK') %}selected{% endif %}>
+              {{ track_ui.get(t.name, {}).get('name', t.name) }}</option>
+            {% endfor %}
+          </select>
+          <img id="track-preview" class="track-preview" src="" alt="">
+          <div class="track-info-bar" id="track-info-bar">
+            <span>📏 <span id="ti-length"></span></span>
+            <span>🅿️ <span id="ti-pits"></span></span>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="lbl" data-t="layout"></label>
+          <select class="sel" id="s-layout" onchange="loadTrackPreview()"></select>
+        </div>
+        <div class="fg">
+          <label class="lbl" data-t="cars"></label>
+          <input class="inp" id="car-search" data-t-placeholder="search_ph" oninput="filterCars()" style="margin-bottom:6px">
+          <div class="clist" id="car-list">
+            {% for c in cars %}
+            <div class="ci" onclick="this.querySelector('input').click();event.stopPropagation()">
+              <input type="checkbox" value="{{ c }}" {% if c in selected_cars %}checked{% endif %} onclick="event.stopPropagation()">
+              <img class="ci-img" src="/car_img/{{ c }}" onerror="this.style.display='none'" alt="">
+              <div class="ci-info">
+                <span class="ci-name">{{ car_ui.get(c, {}).get('name', c) }}</span>
+                <span class="ci-brand">{{ car_ui.get(c, {}).get('brand', '') }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="fg">
+          <label class="lbl" data-t="slots_per_car"></label>
+          <input class="inp num-inp" type="number" id="slots-per-car" min="1" max="5" value="2">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-red" onclick="saveTrackCars()">💾 <span data-t="save_track_cars"></span></button>
+          <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ <span data-t="restart"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <!-- Driving Assists -->
+      <div class="card gap">
+        <div class="card-ttl" data-t="driving_assists"></div>
+        <div class="tog-row">
+          <div><div class="tog-lbl">ABS</div><div class="tog-desc" data-t="abs_desc"></div></div>
+          <label class="tog"><input type="checkbox" id="a-abs" {% if cfg.get('ABS_ALLOWED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-t="traction_control"></div><div class="tog-desc" data-t="tc_desc"></div></div>
+          <label class="tog"><input type="checkbox" id="a-tc" {% if cfg.get('TC_ALLOWED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-t="stability"></div><div class="tog-desc" data-t="stab_desc"></div></div>
+          <label class="tog"><input type="checkbox" id="a-stab" {% if cfg.get('STABILITY_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-t="auto_clutch"></div></div>
+          <label class="tog"><input type="checkbox" id="a-clutch" {% if cfg.get('AUTOCLUTCH_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-t="tyre_blankets"></div></div>
+          <label class="tog"><input type="checkbox" id="a-blanket" {% if cfg.get('TYRE_BLANKETS_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-t="force_mirror"></div></div>
+          <label class="tog"><input type="checkbox" id="a-mirror" {% if cfg.get('FORCE_VIRTUAL_MIRROR','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+      </div>
+
+      <!-- Damage & Wear -->
+      <div class="card gap">
+        <div class="card-ttl" data-t="damage_wear"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="fuel_rate"></span><input class="inp num-inp" type="number" id="v-fuel" min="0" max="200" value="{{ cfg.get('FUEL_RATE','100') }}"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="damage_rate"></span><input class="inp num-inp" type="number" id="v-dmg" min="0" max="200" value="{{ cfg.get('DAMAGE_MULTIPLIER','100') }}"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="tyre_wear"></span><input class="inp num-inp" type="number" id="v-tyre" min="0" max="200" value="{{ cfg.get('TYRE_WEAR_RATE','100') }}"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="max_clients"></span><input class="inp num-inp" type="number" id="v-maxcl" min="1" max="100" value="{{ cfg.get('MAX_CLIENTS','8') }}"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-red" onclick="saveAssists()">💾 <span data-t="save_assists"></span></button>
+        <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ <span data-t="restart"></span></button>
+      </div>
+
+      <!-- Sessions -->
+      <div class="card gap">
+        <div class="card-ttl" data-t="sessions"></div>
+        {% set practice = full_cfg.get('PRACTICE', {}) %}
+        {% set qualify  = full_cfg.get('QUALIFY',  {}) %}
+        {% set race     = full_cfg.get('RACE',     {}) %}
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Practice</div>
+        <div class="num-row"><span class="tog-lbl" data-t="duration_min"></span><input class="inp num-inp" type="number" id="prc-time" value="{{ practice.get('TIME','9999') }}"></div>
+        <div class="tog-row">
+          <div class="tog-lbl" data-t="open_session"></div>
+          <label class="tog"><input type="checkbox" id="prc-open" {% if practice.get('IS_OPEN','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Qualify</div>
+        <div class="num-row"><span class="tog-lbl" data-t="duration_min"></span><input class="inp num-inp" type="number" id="qlf-time" value="{{ qualify.get('TIME','0') }}"></div>
+        <div class="tog-row">
+          <div class="tog-lbl" data-t="open_session"></div>
+          <label class="tog"><input type="checkbox" id="qlf-open" {% if qualify.get('IS_OPEN','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Race</div>
+        <div class="num-row"><span class="tog-lbl" data-t="laps"></span><input class="inp num-inp" type="number" id="race-laps" value="{{ race.get('LAPS','0') }}"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="wait_time_sec"></span><input class="inp num-inp" type="number" id="race-wait" value="{{ race.get('WAIT_TIME','0') }}"></div>
+        <div style="margin-top:10px">
+          <button class="btn btn-red" onclick="saveSessions()">💾 <span data-t="save"></span></button>
+        </div>
+      </div>
+
+      <!-- Weather -->
+      <div class="card gap">
+        <div class="card-ttl" data-t="weather"></div>
+        {% set w0 = full_cfg.get('WEATHER_0', {}) %}
+        {% set w1 = full_cfg.get('WEATHER_1', {}) %}
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Weather Slot 1</div>
+        <div class="fg">
+          <label class="lbl" data-t="graphics_preset"></label>
+          <select class="sel" id="w0-graphics">
+            {% for wp in weather_presets %}
+            <option value="{{ wp }}" {% if w0.get('GRAPHICS','3_clear')==wp %}selected{% endif %}>{{ wp }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label class="lbl" data-t="ambient_temp"></label><input class="inp" type="number" id="w0-amb" value="{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}"></div>
+          <div><label class="lbl" data-t="road_temp"></label><input class="inp" type="number" id="w0-road" value="{{ w0.get('BASE_TEMPERATURE_ROAD','8') }}"></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Weather Slot 2</div>
+        <div class="fg">
+          <label class="lbl" data-t="graphics_preset"></label>
+          <select class="sel" id="w1-graphics">
+            {% for wp in weather_presets %}
+            <option value="{{ wp }}" {% if w1.get('GRAPHICS','7_heavy_clouds')==wp %}selected{% endif %}>{{ wp }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label class="lbl" data-t="ambient_temp"></label><input class="inp" type="number" id="w1-amb" value="{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}"></div>
+          <div><label class="lbl" data-t="road_temp"></label><input class="inp" type="number" id="w1-road" value="{{ w1.get('BASE_TEMPERATURE_ROAD','-1') }}"></div>
+        </div>
+        <button class="btn btn-red" onclick="saveWeather()" style="margin-top:10px">💾 <span data-t="save"></span></button>
+      </div>
+
+      <!-- Dynamic Track -->
+      {% set dt = full_cfg.get('DYNAMIC_TRACK', {}) %}
+      <div class="card">
+        <div class="card-ttl" data-t="dynamic_track"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="session_start_grip"></span><input class="inp num-inp" type="number" id="dt-start" min="0" max="100" value="{{ dt.get('SESSION_START','95') }}"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="randomness"></span><input class="inp num-inp" type="number" id="dt-rand" min="0" max="10" value="{{ dt.get('RANDOMNESS','1') }}"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="session_transfer"></span><input class="inp num-inp" type="number" id="dt-transfer" min="0" max="100" value="{{ dt.get('SESSION_TRANSFER','80') }}"></div>
+        <div class="num-row"><span class="tog-lbl" data-t="lap_gain"></span><input class="inp num-inp" type="number" id="dt-lap" min="0" max="500" value="{{ dt.get('LAP_GAIN','132') }}"></div>
+        <button class="btn btn-red" onclick="saveDynamicTrack()" style="margin-top:12px">💾 <span data-t="save"></span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONTENT ═══════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-content">
+  <div class="card" style="max-width:660px">
+    <div class="card-ttl" data-t="upload_content"></div>
+    <div class="dropzone" onclick="document.getElementById('zip-inp').click()" id="dz">
+      <div style="font-size:40px;margin-bottom:10px">📦</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px" data-t="select_zip"></div>
+      <div style="font-size:12px;color:var(--muted)" data-t="zip_hint"></div>
+      <input type="file" id="zip-inp" accept=".zip" style="display:none" onchange="uploadZip()">
+    </div>
+    <div id="up-prog" style="display:none;margin-top:12px">
+      <div style="font-size:13px;color:var(--muted)" id="up-msg">Uploading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOGS ═══════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-logs">
+  <div class="card">
+    <div class="sh">
+      <div class="sh-t" data-t="server_logs"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--muted)">
+          <input type="checkbox" id="log-auto" checked style="accent-color:var(--red)"> <span data-t="auto_refresh"></span>
+        </label>
+        <button class="btn btn-gray btn-sm" onclick="loadLogs()">↻</button>
+      </div>
+    </div>
+    <div class="logbox" id="logbox" data-t-placeholder="click_load"></div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<!-- UPLOAD MODAL -->
+<div class="modal" id="up-modal">
+  <div class="modal-box">
+    <div class="modal-ttl" data-t="import_label">Import: <span id="zip-name" style="color:var(--muted);font-weight:400"></span></div>
+    <div class="card-ttl" data-t="cars_in_zip" style="margin-bottom:6px"></div>
+    <input class="inp" id="zc-search" data-t-placeholder="search_ph" oninput="filterZip('z-cars','zc-search')" style="margin-bottom:6px">
+    <div class="clist gap" id="z-cars"></div>
+    <div class="card-ttl" data-t="tracks_in_zip" style="margin-bottom:6px"></div>
+    <input class="inp" id="zt-search" data-t-placeholder="search_ph" oninput="filterZip('z-tracks','zt-search')" style="margin-bottom:6px">
+    <div class="clist gap" id="z-tracks"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-green" onclick="doImport()">✓ <span data-t="import"></span></button>
+      <button class="btn btn-gray" onclick="closeModal()" data-t="cancel"></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  LANGUAGE SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+const LANG = {
+  en: {
+    tab_dash:"Dashboard", tab_drivers:"Drivers", tab_laps:"Lap Times",
+    tab_settings:"Settings", tab_content:"Content", tab_logs:"Logs",
+    start:"▶ Start", stop:"■ Stop", restart:"↻ Restart",
+    status:"Status", players_online:"Players Online", active_connections:"Active connections",
+    server_info:"Server Info", name:"Name", track:"Track", layout:"Layout",
+    session:"Session", password:"Password", max_clients:"Max Clients",
+    game_port:"TCP/UDP Port", http_port:"HTTP Port",
+    network:"Network", local_ip:"Local IP", public_ip:"Public IP",
+    invite_link:"Invite Link", open_cm:"Open in CM ↗", lobby:"Lobby",
+    damage_rate:"Damage Rate", active_drivers:"Active Drivers",
+    no_drivers:"No drivers connected", chat:"Server Chat",
+    waiting_chat:"Waiting for chat...", waiting_drivers:"Waiting for drivers...",
+    presets:"Track Presets", loading:"Loading...", save_current:"Save Current",
+    preset_name_ph:"Preset name (e.g. Nordschleife Tourist)",
+    preset_hint:"Saves current active track + cars as a preset",
+    live_drivers:"Live Drivers", track_positions:"Track Positions",
+    loading_map:"Loading track overview...",
+    lap_times:"Lap Times", pos:"Pos.", driver:"Driver", vehicle:"Vehicle",
+    laps:"Laps", best_time:"Best", last_time:"Last", current_time:"Current",
+    no_data:"No data — waiting for drivers",
+    server_general:"Server General", server_name:"Server Name",
+    server_password:"Server Password", admin_password:"Admin Password",
+    public_lobby:"Public Lobby", public_lobby_desc:"Register on Kunos lobby (visible worldwide)",
+    track_and_cars:"Track & Cars", cars:"Cars", slots_per_car:"Slots per car",
+    save_track_cars:"Save Track & Cars",
+    driving_assists:"Driving Assists", abs_desc:"Anti-lock Braking System",
+    traction_control:"Traction Control (TC)", tc_desc:"Slip control",
+    stability:"Stability Control (ESP)", stab_desc:"Electronic Stability Program",
+    auto_clutch:"Auto Clutch", tyre_blankets:"Tyre Blankets", force_mirror:"Force Virtual Mirror",
+    damage_wear:"Damage & Wear", fuel_rate:"Fuel Rate", tyre_wear:"Tyre Wear",
+    save_assists:"Save Assists", save:"Save",
+    sessions:"Sessions", duration_min:"Duration (min)", open_session:"Open",
+    wait_time_sec:"Wait Time (s)", weather:"Weather",
+    graphics_preset:"Graphics Preset", ambient_temp:"Ambient °C", road_temp:"Road °C",
+    dynamic_track:"Dynamic Track", session_start_grip:"Start Grip %",
+    randomness:"Randomness", session_transfer:"Session Transfer %", lap_gain:"Lap Gain",
+    upload_content:"Upload Content (ZIP)", select_zip:"Select ZIP or drag here",
+    zip_hint:"Cars and/or tracks as ZIP · Max 2 GB",
+    server_logs:"Server Logs (last 200 lines)", auto_refresh:"Auto Refresh (3s)",
+    click_load:"Click Reload or wait for auto-refresh...",
+    import_label:"Import: ", cars_in_zip:"Cars in ZIP", tracks_in_zip:"Tracks in ZIP",
+    import:"Import", cancel:"Cancel", search_ph:"Search...",
+  },
+  de: {
+    tab_dash:"Dashboard", tab_drivers:"Fahrer", tab_laps:"Rundenzeiten",
+    tab_settings:"Einstellungen", tab_content:"Content", tab_logs:"Logs",
+    start:"▶ Start", stop:"■ Stop", restart:"↻ Neustart",
+    status:"Status", players_online:"Spieler Online", active_connections:"Aktive Verbindungen",
+    server_info:"Server Informationen", name:"Name", track:"Strecke", layout:"Layout",
+    session:"Session", password:"Passwort", max_clients:"Max. Spieler",
+    game_port:"TCP/UDP Port", http_port:"HTTP Port",
+    network:"Netzwerk", local_ip:"Lokale IP", public_ip:"Öffentliche IP",
+    invite_link:"Invite Link", open_cm:"In CM öffnen ↗", lobby:"Lobby",
+    damage_rate:"Schadensrate", active_drivers:"Aktive Fahrer",
+    no_drivers:"Keine Fahrer verbunden", chat:"Server Chat",
+    waiting_chat:"Warte auf Chat...", waiting_drivers:"Warte auf Fahrer...",
+    presets:"Strecken-Presets", loading:"Lade...", save_current:"Aktuell speichern",
+    preset_name_ph:"Preset-Name (z.B. Nordschleife Tourist)",
+    preset_hint:"Speichert aktuelle Strecke + Autos als Preset",
+    live_drivers:"Live Fahrer", track_positions:"Track Positionen",
+    loading_map:"Lade Strecken-Übersicht...",
+    lap_times:"Rundenzeiten", pos:"Pos.", driver:"Fahrer", vehicle:"Fahrzeug",
+    laps:"Runden", best_time:"Beste", last_time:"Letzte", current_time:"Aktuell",
+    no_data:"Keine Daten – warte auf Fahrer",
+    server_general:"Server Allgemein", server_name:"Server Name",
+    server_password:"Server Passwort", admin_password:"Admin Passwort",
+    public_lobby:"Öffentliche Lobby", public_lobby_desc:"Im Kunos-Lobby registrieren (weltweit sichtbar)",
+    track_and_cars:"Strecke & Autos", cars:"Fahrzeuge", slots_per_car:"Slots pro Auto",
+    save_track_cars:"Strecke & Autos speichern",
+    driving_assists:"Fahrhilfen", abs_desc:"Anti-Blockier-System",
+    traction_control:"Traktionskontrolle (TC)", tc_desc:"Schlupfregelung",
+    stability:"Stabilitätskontrolle (ESP)", stab_desc:"Elektronisches Stabilitätsprogramm",
+    auto_clutch:"Auto-Kupplung", tyre_blankets:"Reifenwärmer", force_mirror:"Virtueller Spiegel (erzwingen)",
+    damage_wear:"Schadensmodell & Verschleiß", fuel_rate:"Kraftstoffverbrauch", tyre_wear:"Reifenverschleiß",
+    save_assists:"Fahrhilfen speichern", save:"Speichern",
+    sessions:"Sessions", duration_min:"Dauer (min)", open_session:"Offen",
+    wait_time_sec:"Wartezeit (s)", weather:"Wetter",
+    graphics_preset:"Grafik-Preset", ambient_temp:"Ambient °C", road_temp:"Straße °C",
+    dynamic_track:"Dynamische Strecke", session_start_grip:"Start Grip %",
+    randomness:"Zufälligkeit", session_transfer:"Session Transfer %", lap_gain:"Runden-Gewinn",
+    upload_content:"Content hochladen (ZIP)", select_zip:"ZIP-Datei auswählen oder hierher ziehen",
+    zip_hint:"Autos und/oder Strecken als ZIP · Max 2 GB",
+    server_logs:"Server Logs (letzte 200 Zeilen)", auto_refresh:"Auto-Refresh (3s)",
+    click_load:"Klicke Neu laden oder warte auf Auto-Refresh...",
+    import_label:"Import: ", cars_in_zip:"Autos im ZIP", tracks_in_zip:"Strecken im ZIP",
+    import:"Importieren", cancel:"Abbrechen", search_ph:"Suchen...",
+  }
+};
+
+let curLang = localStorage.getItem("acLang") || "en";
+
+function t(key) { return (LANG[curLang] || LANG.en)[key] || key; }
+
+function applyLang() {
+  document.querySelectorAll("[data-t]").forEach(el => {
+    el.textContent = t(el.dataset.t);
+  });
+  document.querySelectorAll("[data-t-placeholder]").forEach(el => {
+    el.placeholder = t(el.dataset.tPlaceholder || el.getAttribute("data-t-placeholder"));
+  });
+  document.getElementById("lang-toggle").textContent = curLang === "en" ? "DE" : "EN";
+  document.documentElement.lang = curLang;
+}
+
+function toggleLang() {
+  curLang = curLang === "en" ? "de" : "en";
+  localStorage.setItem("acLang", curLang);
+  applyLang();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════
+let live = null, spPts = [], currentZip = null, liveTimer = null;
+let mapImg = null, _mapLoading = false;
+const COLORS = ['#e8150c','#3498db','#27ae60','#f39c12','#9b59b6','#e67e22','#1abc9c','#e91e63'];
+const _H = {'Authorization': 'Basic ' + btoa('admin:acserver')};
+
+function apiFetch(url, opts) {
+  return fetch(url, Object.assign({headers: _H}, opts || {}));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════════
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("p-" + tab.dataset.tab).classList.add("active");
+    if (tab.dataset.tab === "logs") loadLogs();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════════════════
+function toast(msg, type="ok") {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.className = "toast " + type;
+  el.style.display = "block";
+  clearTimeout(el._t); el._t = setTimeout(() => el.style.display = "none", 3500);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SERVER CONTROL
+// ═══════════════════════════════════════════════════════════════════
+function ctrl(action) {
+  apiFetch("/control/" + action, {method:"POST"})
+    .then(r=>r.json())
+    .then(d => { toast(d.ok ? "✓ "+action : "✗ "+d.msg, d.ok?"ok":"err"); setTimeout(refreshLive,1500); });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LIVE DATA
+// ═══════════════════════════════════════════════════════════════════
+function refreshLive() {
+  apiFetch("/api/live")
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(d => {
+      live = d;
+      if (d.spline_points?.length > 10) spPts = d.spline_points;
+      updateHeader(d); updateDash(d); updateDrivers(d); updateLaps(d);
+      _renderChat(d.chat||[], "dash-chat-box");
+      _renderChat(d.chat||[], "chat-box");
+      drawMap(d);
+    }).catch(e => console.warn("refreshLive:", e));
+}
+
+function updateHeader(d) {
+  const active = d.status === "active";
+  document.getElementById("h-dot").className = "dot " + (active?"on":d.status==="failed"?"fail":"");
+  document.getElementById("h-status").textContent = d.status;
+  const cl = d.info?.clients ?? d.drivers.length;
+  document.getElementById("h-players").textContent = cl;
+  if (d.info) {
+    document.getElementById("h-maxp").textContent = d.info.maxclients || "?";
+    document.getElementById("h-track").textContent = d.info.track || "";
+  }
+}
+
+function updateDash(d) {
+  const active = d.status === "active";
+  const badge = document.getElementById("d-badge");
+  badge.textContent = active ? "Online" : d.status;
+  badge.className = "bdg " + (active?"bdg-on":d.status==="failed"?"bdg-err":"bdg-off");
+  document.getElementById("d-up").textContent = active ? "Server running" : "Server offline";
+  const cl = d.info?.clients ?? d.drivers.length;
+  document.getElementById("d-cl").textContent = cl;
+  document.getElementById("d-mcl").textContent = d.info?.maxclients || "?";
+
+  const cpu = d.system?.cpu ?? 0, ram = d.system?.mem_percent ?? 0;
+  document.getElementById("d-cpu").textContent = cpu.toFixed(1);
+  document.getElementById("cpu-bar").style.width = cpu + "%";
+  document.getElementById("cpu-bar").className = "bar-fill bar-cpu" + (cpu>80?" bar-hot":"");
+  document.getElementById("d-ram").textContent = ram.toFixed(1);
+  document.getElementById("ram-bar").style.width = ram + "%";
+  const used = d.system?.mem_used_mb??0, total = d.system?.mem_total_mb??0;
+  document.getElementById("d-ram-det").textContent = total ? used+" / "+total+" MB" : "";
+
+  if (d.info) {
+    const raw = d.info.name || "";
+    document.getElementById("i-name").textContent = raw.replace(/\s*ℹ\d+$/, "") || "—";
+    document.getElementById("i-track").textContent = d.info.track || "—";
+    document.getElementById("i-layout").textContent = d.info.trackconfig || "—";
+    const ip = d.info.ip || "";
+    document.getElementById("pub-ip").textContent = ip || "—";
+    const hp = d.info.cport || d.info.httpPort || 8081;
+    const inv = document.getElementById("inv-link");
+    if (ip) inv.href = `https://acstuff.ru/s/q:race/online/join?ip=${ip}&httpPort=${hp}`;
+    document.getElementById("i-sess").textContent = (["Practice","Qualify","Race"])[d.info.session] || "Practice";
+  }
+  renderCards("d-drivers", d.drivers, false);
+}
+
+function updateDrivers(d) { renderCards("f-drivers", d.drivers, true); }
+
+function renderCards(id, drivers, showAct) {
+  const el = document.getElementById(id);
+  if (!drivers?.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-ico">🏁</div><div>${t("no_drivers")}</div></div>`;
+    return;
+  }
+  el.innerHTML = drivers.map((d,i) => `
+    <div class="dc">
+      <div class="dc-head">
+        <div>
+          <div class="dc-name" title="${esc(d.name)}">${esc(d.name)}</div>
+          <div class="dc-car">${esc(d.model)}${d.nation?" · "+esc(d.nation):""} · #${d.id}</div>
+        </div>
+        <div class="dc-laps">${t("laps")} ${d.lapCount||0}</div>
+      </div>
+      <div class="sp-bar"><div class="sp-fill" style="width:${((d.spLine||0)*100).toFixed(1)}%"></div></div>
+      <div class="sp-txt">${((d.spLine||0)*100).toFixed(1)}% ${t("track")}</div>
+      <div class="dc-stats">
+        <div class="dc-st"><div class="dc-stv best-t">${fmt(d.bestLap)}</div><div class="dc-stl">${t("best_time")}</div></div>
+        <div class="dc-st"><div class="dc-stv">${fmt(d.lastLap)}</div><div class="dc-stl">${t("last_time")}</div></div>
+        <div class="dc-st"><div class="dc-stv">${fmt(d.lapTime)}</div><div class="dc-stl">${t("current_time")}</div></div>
+      </div>
+      ${showAct ? `<div class="dc-acts">
+        <button class="btn btn-danger btn-sm" onclick="kick(${d.id},'${esc(d.name)}')">⊘ Kick</button>
+        <button class="btn btn-warn btn-sm" onclick="ban(${d.id},'${esc(d.guid)}','${esc(d.name)}')">⛔ Ban</button>
+      </div>` : ""}
+    </div>`).join("");
+}
+
+function updateLaps(d) {
+  const tb = document.getElementById("lap-tbody");
+  if (!d.drivers?.length) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:48px">${t("no_data")}</td></tr>`;
+    return;
+  }
+  const sorted = [...d.drivers].sort((a,b) => {
+    if (a.bestLap && b.bestLap) return a.bestLap - b.bestLap;
+    return a.bestLap ? -1 : b.bestLap ? 1 : b.lapCount - a.lapCount;
+  });
+  tb.innerHTML = sorted.map((r,i) => {
+    const pc = ["pos-1","pos-2","pos-3"][i] || "";
+    const medal = ["🥇","🥈","🥉"][i] || `P${i+1}`;
+    return `<tr>
+      <td class="${pc}">${medal}</td>
+      <td><strong>${esc(r.name)}</strong></td>
+      <td style="color:var(--muted)">${esc(r.model)}</td>
+      <td>${r.lapCount||0}</td>
+      <td class="${i===0&&r.bestLap?"best-t":""}">${fmt(r.bestLap)}</td>
+      <td>${fmt(r.lastLap)}</td>
+      <td style="color:var(--muted)">${fmt(r.lapTime)}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CHAT
+// ═══════════════════════════════════════════════════════════════════
+function _renderChat(msgs, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box || !msgs.length) return;
+  const atBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 30;
+  box.innerHTML = msgs.map(m => {
+    const text = esc(m.text||""), ts = esc(m.time||"");
+    const match = text.match(/^(.+?)\s*\((\d+)\):\s*(.*)$/);
+    if (match) return `<div style="display:flex;gap:6px;align-items:baseline">
+      <span style="color:var(--muted);font-size:10px;flex-shrink:0">${ts}</span>
+      <span style="color:var(--red);font-weight:700;flex-shrink:0">${esc(match[1])}</span>
+      <span>${esc(match[3])}</span></div>`;
+    return `<div style="color:var(--muted);font-size:11px">${ts} ${text}</div>`;
+  }).join("");
+  if (atBottom) box.scrollTop = box.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  MAP
+// ═══════════════════════════════════════════════════════════════════
+function loadMapImage() {
+  if (mapImg || _mapLoading) return;
+  _mapLoading = true;
+  const img = new Image();
+  img.onload = () => { mapImg = img; _mapLoading = false; drawMap(live); };
+  img.onerror = () => { _mapLoading = false; };
+  img.src = "/map";
+}
+
+function drawMap(data) {
+  const c = document.getElementById("map-canvas");
+  if (!c) return;
+  const ctx = c.getContext("2d"), W = c.width, H = c.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle = "#0d0d0d"; ctx.fillRect(0,0,W,H);
+  const drivers = data?.drivers || [];
+  if (!mapImg) {
+    ctx.fillStyle="#444"; ctx.font="13px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(t("loading_map"), W/2, H/2);
+    document.getElementById("map-hint").textContent = t("loading_map");
+    loadMapImage(); return;
+  }
+  const pad=20, scale=Math.min((W-pad*2)/mapImg.width,(H-pad*2)/mapImg.height);
+  const iw=mapImg.width*scale, ih=mapImg.height*scale;
+  const ix=(W-iw)/2, iy=(H-ih)/2;
+  ctx.fillStyle="#111"; ctx.fillRect(ix-4,iy-4,iw+8,ih+8);
+  ctx.globalAlpha=0.6; ctx.drawImage(mapImg,ix,iy,iw,ih); ctx.globalAlpha=1;
+  if (!drivers.length) {
+    document.getElementById("map-hint").textContent = "Map loaded · No drivers on track"; return;
+  }
+  const perim = 2*(iw+ih);
+  drivers.forEach((d,i) => {
+    const sp = d.spLine||0, col = COLORS[i%COLORS.length];
+    const dist = sp * perim;
+    let x,y;
+    if (dist<=iw)             { x=ix+dist;             y=iy; }
+    else if (dist<=iw+ih)     { x=ix+iw;               y=iy+(dist-iw); }
+    else if (dist<=2*iw+ih)   { x=ix+iw-(dist-iw-ih); y=iy+ih; }
+    else                      { x=ix;                   y=iy+ih-(dist-2*iw-ih); }
+    const g=ctx.createRadialGradient(x,y,0,x,y,15);
+    g.addColorStop(0,col+"90"); g.addColorStop(1,"transparent");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,15,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2);
+    ctx.fillStyle=col; ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke();
+    ctx.font="bold 10px system-ui"; ctx.textAlign="center";
+    ctx.fillStyle="rgba(0,0,0,.7)"; ctx.fillText(d.name.slice(0,12),x+1,y-12);
+    ctx.fillStyle="#fff"; ctx.fillText(d.name.slice(0,12),x,y-13);
+    ctx.font="9px system-ui"; ctx.fillStyle=col; ctx.fillText((sp*100).toFixed(0)+"%",x,y+20);
+  });
+  document.getElementById("map-hint").textContent = `${drivers.length} drivers · Position = spLine%`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  TRACK PREVIEW
+// ═══════════════════════════════════════════════════════════════════
+function loadTrackPreview() {
+  const track  = document.getElementById("s-track").value;
+  const layout = document.getElementById("s-layout").value;
+  const img    = document.getElementById("track-preview");
+  const bar    = document.getElementById("track-info-bar");
+  const url    = layout ? `/track_img/${track}/${layout}` : `/track_img/${track}`;
+  img.src = url;
+  img.style.display = "block";
+  img.onerror = () => { img.style.display = "none"; };
+  // Fetch track info
+  const infoUrl = layout ? `/api/track_info/${track}/${layout}` : `/api/track_info/${track}`;
+  apiFetch(infoUrl).then(r=>r.json()).then(d => {
+    document.getElementById("ti-length").textContent = d.length ? d.length+"m" : "";
+    document.getElementById("ti-pits").textContent   = d.pitboxes ? d.pitboxes+" pits" : "";
+    bar.style.display = (d.length || d.pitboxes) ? "flex" : "none";
+  }).catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  KICK / BAN
+// ═══════════════════════════════════════════════════════════════════
+function kick(id, name) {
+  if (!confirm(`Kick ${name}?`)) return;
+  apiFetch("/api/kick",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},body:JSON.stringify({car_id:id})})
+    .then(r=>r.json()).then(d=>toast(d.ok?"✓ "+name+" kicked":"✗ "+d.msg,d.ok?"ok":"err"));
+}
+function ban(id, guid, name) {
+  if (!confirm(`Ban ${name}? GUID: ${guid}`)) return;
+  apiFetch("/api/ban",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},body:JSON.stringify({car_id:id,guid,name})})
+    .then(r=>r.json()).then(d=>toast(d.ok?"✓ "+name+" banned":"✗ "+d.msg,d.ok?"ok":"err"));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════════════════
+function updateLayouts() {
+  const sel = document.getElementById("s-track");
+  const opt = sel.options[sel.selectedIndex];
+  const layouts = JSON.parse(opt.dataset.layouts||"[]");
+  const lSel = document.getElementById("s-layout");
+  lSel.innerHTML = '<option value="">(none)</option>';
+  layouts.forEach(l => { const o=new Option(l,l); lSel.appendChild(o); });
+  const cur = "{{ cfg.get('TRACK_LAYOUT','') }}";
+  if (cur && [...lSel.options].some(o=>o.value===cur)) lSel.value=cur;
+}
+
+function saveServerSettings() {
+  const data = {
+    NAME: document.getElementById("sv-name").value,
+    REGISTER_TO_LOBBY: document.getElementById("sv-lobby").checked?"1":"0",
+    SUN_ANGLE: document.getElementById("sv-sun").value,
+  };
+  const pass = document.getElementById("sv-pass").value;
+  if (pass) data.PASSWORD = pass;
+  const adminpass = document.getElementById("sv-adminpass").value;
+  if (adminpass) data.ADMIN_PASSWORD = adminpass;
+  apiFetch("/save_server_settings",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>toast(d.ok?"✓ "+t("save")+" — Restart needed":"✗ "+d.msg,d.ok?"ok":"err"));
+}
+
+function saveTrackCars() {
+  const cars = [...document.querySelectorAll("#car-list input:checked")].map(i=>i.value);
+  if (!cars.length) { toast(t("cars")+" required","err"); return; }
+  const spc = parseInt(document.getElementById("slots-per-car").value)||2;
+  apiFetch("/save_config",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},
+    body:JSON.stringify({track:document.getElementById("s-track").value,
+                         layout:document.getElementById("s-layout").value,
+                         cars, slots_per_car:spc})})
+    .then(r=>r.json()).then(d=>toast(d.ok?"✓ Saved — Restart needed":"✗ "+d.msg,d.ok?"ok":"err"));
+}
+
+function saveAssists() {
+  apiFetch("/save_assists",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},body:JSON.stringify({
+    ABS_ALLOWED:  document.getElementById("a-abs").checked?"1":"0",
+    TC_ALLOWED:   document.getElementById("a-tc").checked?"1":"0",
+    STABILITY_ALLOWED: document.getElementById("a-stab").checked?"1":"0",
+    AUTOCLUTCH_ALLOWED: document.getElementById("a-clutch").checked?"1":"0",
+    TYRE_BLANKETS_ALLOWED: document.getElementById("a-blanket").checked?"1":"0",
+    FORCE_VIRTUAL_MIRROR: document.getElementById("a-mirror").checked?"1":"0",
+    FUEL_RATE: document.getElementById("v-fuel").value,
+    DAMAGE_MULTIPLIER: document.getElementById("v-dmg").value,
+    TYRE_WEAR_RATE: document.getElementById("v-tyre").value,
+    MAX_CLIENTS: document.getElementById("v-maxcl").value,
+  })}).then(r=>r.json()).then(d=>toast(d.ok?"✓ Saved — Restart needed":"✗ "+d.msg,d.ok?"ok":"err"));
+}
+
+function saveSessions() {
+  const data = {
+    practice_time: document.getElementById("prc-time").value,
+    practice_open: document.getElementById("prc-open").checked,
+    qualify_time:  document.getElementById("qlf-time").value,
+    qualify_open:  document.getElementById("qlf-open").checked,
+    race_laps:     document.getElementById("race-laps").value,
+    race_wait:     document.getElementById("race-wait").value,
+  };
+  apiFetch("/save_session",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>toast(d.ok?"✓ Saved — Restart needed":"✗ "+d.msg,d.ok?"ok":"err"));
+}
+
+function saveWeather() {
+  const data = {
+    weather_0_graphics: document.getElementById("w0-graphics").value,
+    weather_0_ambient:  document.getElementById("w0-amb").value,
+    weather_0_road:     document.getElementById("w0-road").value,
+    weather_1_graphics: document.getElementById("w1-graphics").value,
+    weather_1_ambient:  document.getElementById("w1-amb").value,
+    weather_1_road:     document.getElementById("w1-road").value,
+  };
+  apiFetch("/save_weather",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>toast(d.ok?"✓ Saved — Restart needed":"✗ "+d.msg,d.ok?"ok":"err"));
+}
+
+function saveDynamicTrack() {
+  apiFetch("/save_dynamic_track",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},body:JSON.stringify({
+    SESSION_START: document.getElementById("dt-start").value,
+    RANDOMNESS:    document.getElementById("dt-rand").value,
+    SESSION_TRANSFER: document.getElementById("dt-transfer").value,
+    LAP_GAIN:      document.getElementById("dt-lap").value,
+  })}).then(r=>r.json()).then(d=>toast(d.ok?"✓ Saved — Restart needed":"✗ "+d.msg,d.ok?"ok":"err"));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  PRESETS
+// ═══════════════════════════════════════════════════════════════════
+function loadPresetList() {
+  apiFetch("/api/presets").then(r=>r.json()).then(presets => {
+    const el = document.getElementById("preset-list");
+    const keys = Object.keys(presets);
+    if (!keys.length) { el.innerHTML = `<div style="color:var(--muted);font-size:13px">${t("no_data")}</div>`; return; }
+    el.innerHTML = keys.map(name => {
+      const p = presets[name];
+      return `<div class="preset-item">
+        <div>
+          <div class="preset-name">${esc(name)}</div>
+          <div class="preset-info">${esc(p.track||"")}${p.layout?" / "+esc(p.layout):""} · ${esc(p.saved||"")}</div>
+        </div>
+        <div class="preset-acts">
+          <button class="btn btn-green btn-sm" onclick="applyPreset('${esc(name)}')">▶ Load</button>
+          <button class="btn btn-danger btn-sm" onclick="removePreset('${esc(name)}')">✕</button>
+        </div>
+      </div>`;
+    }).join("");
+  });
+}
+
+function savePreset() {
+  const name = document.getElementById("preset-name").value.trim();
+  if (!name) { toast(t("preset_name_ph"),"err"); return; }
+  apiFetch("/api/presets",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},body:JSON.stringify({name})})
+    .then(r=>r.json()).then(d => {
+      toast(d.ok?"✓ "+d.msg:"✗ "+d.msg, d.ok?"ok":"err");
+      if (d.ok) { document.getElementById("preset-name").value=""; loadPresetList(); }
+    });
+}
+
+function applyPreset(name) {
+  if (!confirm(`Load preset "${name}" and restart server?`)) return;
+  toast("Loading preset...","info");
+  apiFetch(`/api/presets/${encodeURIComponent(name)}/load`,{method:"POST",headers:_H})
+    .then(r=>r.json()).then(d => { toast(d.ok?"✓ "+d.msg:"✗ "+d.msg,d.ok?"ok":"err"); if (d.ok) setTimeout(refreshLive,3000); });
+}
+
+function removePreset(name) {
+  if (!confirm(`Delete preset "${name}"?`)) return;
+  apiFetch(`/api/presets/${encodeURIComponent(name)}`,{method:"DELETE",headers:_H})
+    .then(r=>r.json()).then(d=>{ toast(d.ok?"✓ Deleted":"✗ "+d.msg,d.ok?"ok":"err"); loadPresetList(); });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LOGS
+// ═══════════════════════════════════════════════════════════════════
+function loadLogs() {
+  apiFetch("/logs").then(r=>r.json()).then(d => {
+    const box = document.getElementById("logbox");
+    box.innerHTML = d.logs.split("\n").map(l => {
+      const s = esc(l);
+      if (/ERR|FAIL|error/i.test(l)) return `<span style="color:#ff6b6b">${s}</span>`;
+      if (/WRN|WARN/i.test(l))       return `<span style="color:var(--yellow)">${s}</span>`;
+      if (/INF\b|INFO/i.test(l))     return `<span style="color:#74b9ff">${s}</span>`;
+      if (/DBG|DEBUG/i.test(l))      return `<span style="color:var(--muted)">${s}</span>`;
+      return s;
+    }).join("\n");
+    box.scrollTop = box.scrollHeight;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  UPLOAD
+// ═══════════════════════════════════════════════════════════════════
+function uploadZip() {
+  const file = document.getElementById("zip-inp").files[0];
+  if (!file) return;
+  const fd = new FormData(); fd.append("file", file);
+  document.getElementById("up-prog").style.display = "block";
+  document.getElementById("up-msg").textContent = "Uploading: " + file.name + "...";
+  apiFetch("/upload",{method:"POST",headers:_H,body:fd}).then(r=>r.json()).then(d => {
+    document.getElementById("up-prog").style.display = "none";
+    if (!d.ok) { toast("✗ "+d.msg,"err"); return; }
+    currentZip = d.filename;
+    document.getElementById("zip-name").textContent = d.filename;
+    document.getElementById("z-cars").innerHTML  = d.cars.length
+      ? d.cars.map(c=>`<div class="ci"><input type="checkbox" value="${esc(c)}"><img class="ci-img" src="/car_img/${esc(c)}" onerror="this.style.display='none'" alt=""><div class="ci-info"><span class="ci-name">${esc(c)}</span></div></div>`).join("")
+      : `<div style="padding:8px;color:var(--muted)">${t("no_data")}</div>`;
+    document.getElementById("z-tracks").innerHTML = d.tracks.length
+      ? d.tracks.map(t=>`<div class="ci"><input type="checkbox" value="${esc(t)}"><div class="ci-info"><span class="ci-name">${esc(t)}</span></div></div>`).join("")
+      : `<div style="padding:8px;color:var(--muted)">${t("no_data")}</div>`;
+    document.getElementById("up-modal").classList.add("show");
+  });
+}
+
+function doImport() {
+  const cars   = [...document.querySelectorAll("#z-cars input:checked")].map(i=>i.value);
+  const tracks = [...document.querySelectorAll("#z-tracks input:checked")].map(i=>i.value);
+  if (!cars.length && !tracks.length) { toast(t("no_data"),"err"); return; }
+  toast(t("loading"),"info");
+  apiFetch("/import_zip",{method:"POST",headers:{...{'Content-Type':'application/json'},..._H},
+    body:JSON.stringify({filename:currentZip,cars,tracks})})
+    .then(r=>r.json()).then(d=>{
+      if (d.ok) { toast("✓ Imported: "+d.imported.join(", ")); closeModal(); setTimeout(()=>location.reload(),1800); }
+      else toast("✗ "+d.msg,"err");
+    });
+}
+
+function closeModal() { document.getElementById("up-modal").classList.remove("show"); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════════════
+function filterCars() {
+  const q = document.getElementById("car-search").value.toLowerCase();
+  document.querySelectorAll("#car-list .ci").forEach(el =>
+    el.style.display = el.textContent.toLowerCase().includes(q) ? "" : "none");
+}
+
+function filterZip(listId, searchId) {
+  const q = document.getElementById(searchId).value.toLowerCase();
+  document.querySelectorAll(`#${listId} .ci`).forEach(el =>
+    el.style.display = el.textContent.toLowerCase().includes(q) ? "" : "none");
+}
+
+function fmt(ms) {
+  if (!ms || ms<=0) return "—";
+  const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000), ms3=ms%1000;
+  return `${m}:${String(s).padStart(2,"0")}.${String(ms3).padStart(3,"0")}`;
+}
+
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function copy(text) { navigator.clipboard.writeText(text).then(()=>toast("📋 Copied: "+text,"info")); }
+function copyPub() {
+  const ip = document.getElementById("pub-ip").textContent;
+  if (ip && ip!=="—") copy(ip+":9600");
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+applyLang();
+updateLayouts();
+loadTrackPreview();
+refreshLive();
+loadMapImage();
+loadPresetList();
+
+setInterval(refreshLive, 3000);
+
+setInterval(() => {
+  if (document.getElementById("log-auto").checked &&
+      document.getElementById("p-logs").classList.contains("active")) loadLogs();
+}, 3000);
+</script>
+</body>
+</html>

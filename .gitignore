@@ -1,0 +1,14 @@
+# Sensitive files - never commit
+sever_infos.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db

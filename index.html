@@ -1514,8 +1514,14 @@ function uploadFolder() {
     prog.style.display = "none";
     let d; try { d = JSON.parse(xhr.responseText); } catch(e) { toast("✗ Server error","err"); return; }
     if (d.ok) {
-      toast(`✓ ${esc(d.name)} importiert (${d.files} Dateien)`);
       closeFolderModal();
+      if (confirm(`✓ ${d.name} importiert (${d.files} Dateien).\n\nServer jetzt neu starten damit der Inhalt geladen wird?`)) {
+        apiFetch("/control/restart", {method:"POST"})
+          .then(() => toast("Server wird neu gestartet...","info"))
+          .catch(() => {});
+      } else {
+        toast(`✓ ${esc(d.name)} importiert — Server-Neustart erforderlich`, "ok");
+      }
       setTimeout(() => location.reload(), 2500);
     } else {
       toast("✗ " + d.msg, "err");

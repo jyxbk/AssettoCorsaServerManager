@@ -570,6 +570,34 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
         <div class="num-row"><span class="tog-lbl" data-t="lap_gain"></span><input class="inp num-inp" type="number" id="dt-lap" min="0" max="500" value="{{ dt.get('LAP_GAIN','132') }}"></div>
         <button class="btn btn-red" onclick="saveDynamicTrack()" style="margin-top:12px">💾 <span data-t="save"></span></button>
       </div>
+
+      <!-- Server Profile (Content Manager) -->
+      <div class="card gap" id="server-profile-card">
+        <div class="card-ttl">Server-Profil (Content Manager)</div>
+
+        <div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:4px">
+          <img id="logo-preview" src="/api/server_logo"
+               onerror="this.style.display='none';document.getElementById('logo-placeholder').style.display='flex'"
+               onload="this.style.display='';document.getElementById('logo-placeholder').style.display='none'"
+               style="width:100px;height:100px;object-fit:contain;border:1px solid var(--border);border-radius:6px;background:#111">
+          <div id="logo-placeholder" style="display:none;width:100px;height:100px;border:1px dashed var(--border);border-radius:6px;align-items:center;justify-content:center;color:var(--muted);font-size:11px;flex-shrink:0">kein Logo</div>
+          <div style="flex:1">
+            <label class="lbl">Server-Logo (PNG / JPG)</label>
+            <input type="file" id="logo-inp" accept="image/png,image/jpeg,image/webp"
+                   style="display:block;margin-bottom:8px;color:var(--fg);font-size:12px"
+                   onchange="previewLogo(this)">
+            <button class="btn btn-gray" onclick="uploadLogo()" style="font-size:12px">Bild hochladen</button>
+          </div>
+        </div>
+
+        <div class="fg" style="margin-top:6px">
+          <label class="lbl">Willkommensnachricht</label>
+          <textarea id="welcome-msg" rows="6"
+                    style="width:100%;resize:vertical;background:var(--card);border:1px solid var(--border);color:var(--fg);border-radius:6px;padding:8px;font-size:13px;font-family:inherit"
+                    placeholder="Wird im Content Manager angezeigt, wenn ein Spieler diesen Server auswählt..."></textarea>
+        </div>
+        <button class="btn btn-red" onclick="saveServerProfile()">💾 Profil speichern</button>
+      </div>
     </div>
   </div>
 </div>
@@ -819,8 +847,60 @@ document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.add("active");
     document.getElementById("p-" + tab.dataset.tab).classList.add("active");
     if (tab.dataset.tab === "logs") loadLogs();
+    if (tab.dataset.tab === "settings") loadServerProfile();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+//  SERVER PROFILE
+// ═══════════════════════════════════════════════════════════════════
+async function loadServerProfile() {
+  try {
+    const d = await apiFetch("/api/server_profile").then(r => r.json());
+    document.getElementById("welcome-msg").value = d.welcome || "";
+    const img = document.getElementById("logo-preview");
+    const ph  = document.getElementById("logo-placeholder");
+    if (d.has_logo) {
+      img.src = "/api/server_logo?" + Date.now();
+      img.style.display = "";
+      ph.style.display  = "none";
+    } else {
+      img.style.display = "none";
+      ph.style.display  = "flex";
+    }
+  } catch(e) {}
+}
+
+function previewLogo(inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  const img = document.getElementById("logo-preview");
+  const ph  = document.getElementById("logo-placeholder");
+  img.src = URL.createObjectURL(file);
+  img.style.display = "";
+  ph.style.display  = "none";
+}
+
+async function uploadLogo() {
+  const inp = document.getElementById("logo-inp");
+  if (!inp.files[0]) { toast("Kein Bild ausgewählt", "err"); return; }
+  const fd = new FormData();
+  fd.append("logo", inp.files[0]);
+  const r = await fetch("/api/server_logo", {method:"POST", headers:_H, body:fd});
+  const d = await r.json();
+  toast(d.ok ? "Logo gespeichert ✓" : (d.msg||"Fehler"), d.ok ? "ok" : "err");
+}
+
+async function saveServerProfile() {
+  const welcome = document.getElementById("welcome-msg").value;
+  const r = await fetch("/api/server_profile", {
+    method:"POST",
+    headers: {..._H, "Content-Type":"application/json"},
+    body: JSON.stringify({welcome})
+  });
+  const d = await r.json();
+  toast(d.ok ? "Profil gespeichert ✓" : (d.msg||"Fehler"), d.ok ? "ok" : "err");
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  TOAST

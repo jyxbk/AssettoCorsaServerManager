@@ -28,6 +28,8 @@ CARS_DIR     = CONTENT_DIR / "cars"
 TRACKS_DIR   = CONTENT_DIR / "tracks"
 CFG_DIR      = SERVER_DIR / "cfg"
 PRESETS_FILE = Path("/opt/acweb/presets.json")
+WELCOME_FILE = CFG_DIR / "welcome.txt"
+LOGO_FILE    = SERVER_DIR / "logo.png"
 SERVICE_NAME = "acserver"
 SECRET_KEY   = "ac_dashboard_secret_42x"
 RCON_PORT    = 9700
@@ -984,6 +986,36 @@ def _auto_add_track_params(track):
     entry = f"\n{section}\nCITY={city}\nLATITUDE={lat}\nLONGITUDE={lon}\nTIMEZONE={tz}\n"
     with open(TRACK_PARAMS_FILE, "a") as f:
         f.write(entry)
+
+
+# ── Server profile (welcome message + logo) ──────────────────────────────────
+@app.route("/api/server_profile", methods=["GET", "POST"])
+@auth.login_required
+def server_profile():
+    if request.method == "GET":
+        msg = WELCOME_FILE.read_text(encoding="utf-8") if WELCOME_FILE.exists() else ""
+        return jsonify({"ok": True, "welcome": msg, "has_logo": LOGO_FILE.exists()})
+    data    = request.get_json() or {}
+    welcome = data.get("welcome", "")
+    WELCOME_FILE.write_text(welcome, encoding="utf-8")
+    update_server_cfg({"WELCOME_MESSAGE": "cfg/welcome.txt"})
+    return jsonify({"ok": True})
+
+@app.route("/api/server_logo", methods=["GET"])
+@auth.login_required
+def get_server_logo():
+    if not LOGO_FILE.exists():
+        return ("", 404)
+    return send_file(str(LOGO_FILE), mimetype="image/png")
+
+@app.route("/api/server_logo", methods=["POST"])
+@auth.login_required
+def upload_server_logo():
+    f = request.files.get("logo")
+    if not f:
+        return jsonify({"ok": False, "msg": "no file"}), 400
+    f.save(str(LOGO_FILE))
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

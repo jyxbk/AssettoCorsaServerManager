@@ -177,23 +177,24 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   <div class="hdr-sep"></div>
   <div class="hdr-stat" id="h-uptime" style="font-size:11px">—</div>
   <div class="hdr-btns">
-    <button class="btn btn-green btn-sm" onclick="ctrl('start')">▶ Start</button>
-    <button class="btn btn-gray btn-sm" onclick="ctrl('stop')">■ Stop</button>
-    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ Neustart</button>
-    <a href="/logout" class="logout-btn">Abmelden</a>
+    <button class="btn btn-green btn-sm" onclick="ctrl('start')" data-i18n="btn_start">▶ Start</button>
+    <button class="btn btn-gray btn-sm" onclick="ctrl('stop')" data-i18n="btn_stop">■ Stop</button>
+    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')" data-i18n="btn_restart">↻ Neustart</button>
+    <button class="lang-btn" id="lang-toggle" onclick="toggleLang()">EN</button>
+    <a href="/logout" class="logout-btn" data-i18n="btn_logout">Abmelden</a>
   </div>
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="dash">Dashboard</div>
-  <div class="tab" data-tab="drivers">Fahrer</div>
-  <div class="tab" data-tab="laps">Live Zeiten</div>
-  <div class="tab" data-tab="records">Rekorde</div>
-  <div class="tab" data-tab="settings">Einstellungen</div>
-  <div class="tab" data-tab="content">Inhalte</div>
-  <div class="tab" data-tab="players">Spieler</div>
-  <div class="tab" data-tab="advanced">Erweitert</div>
-  <div class="tab" data-tab="logs">Logs</div>
+  <div class="tab active" data-tab="dash" data-i18n="tab_dash">Dashboard</div>
+  <div class="tab" data-tab="drivers" data-i18n="tab_drivers">Fahrer</div>
+  <div class="tab" data-tab="laps" data-i18n="tab_laps">Live Zeiten</div>
+  <div class="tab" data-tab="records" data-i18n="tab_records">Rekorde</div>
+  <div class="tab" data-tab="settings" data-i18n="tab_settings">Einstellungen</div>
+  <div class="tab" data-tab="content" data-i18n="tab_content">Inhalte</div>
+  <div class="tab" data-tab="players" data-i18n="tab_players">Spieler</div>
+  <div class="tab" data-tab="advanced" data-i18n="tab_advanced">Erweitert</div>
+  <div class="tab" data-tab="logs" data-i18n="tab_logs">Logs</div>
 </div>
 
 <div class="page">
@@ -202,14 +203,14 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 <div class="panel active" id="p-dash">
   <div class="g4 gap">
     <div class="card">
-      <div class="card-ttl">Status</div>
+      <div class="card-ttl" data-i18n="status">Status</div>
       <div class="stat-val"><span id="d-badge" class="bdg">—</span></div>
       <div class="stat-sub" id="d-up" style="margin-top:8px">—</div>
     </div>
     <div class="card">
-      <div class="card-ttl">Spieler Online</div>
+      <div class="card-ttl" data-i18n="players_online">Spieler Online</div>
       <div class="stat-val"><span id="d-cl">0</span><span style="font-size:16px;color:var(--muted)"> / <span id="d-mcl">{{ cfg.get('MAX_CLIENTS','8') }}</span></span></div>
-      <div class="stat-sub">Aktive Verbindungen</div>
+      <div class="stat-sub" data-i18n="active_connections">Aktive Verbindungen</div>
     </div>
     <div class="card">
       <div class="card-ttl">CPU</div>
@@ -226,66 +227,66 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 
   <div class="g2 gap">
     <div class="card">
-      <div class="card-ttl">Server Info</div>
+      <div class="card-ttl" data-i18n="server_info">Server Info</div>
       <table class="itbl">
-        <tr><td>Name</td><td id="i-name">{{ info.name if info else '—' }}</td></tr>
-        <tr><td>Strecke</td><td id="i-track">{{ info.track if info else cfg.get('TRACK','—') }}</td></tr>
-        <tr><td>Layout</td><td id="i-layout">{{ cfg.get('TRACK_LAYOUT','—') or '—' }}</td></tr>
-        <tr><td>Session</td><td id="i-sess">Practice</td></tr>
-        <tr><td>Passwort</td><td>{{ '🔒 Ja' if cfg.get('PASSWORD') else '🔓 Keins' }}</td></tr>
-        <tr><td>Max Spieler</td><td>{{ cfg.get('MAX_CLIENTS','—') }}</td></tr>
-        <tr><td>TCP/UDP Port</td><td>{{ cfg.get('TCP_PORT','9600') }}</td></tr>
-        <tr><td>HTTP Port</td><td>{{ cfg.get('HTTP_PORT','8081') }}</td></tr>
-        <tr><td>Uptime</td><td id="i-uptime">—</td></tr>
+        <tr><td data-i18n="lbl_name">Name</td><td id="i-name">{{ info.name if info else '—' }}</td></tr>
+        <tr><td data-i18n="lbl_track">Strecke</td><td id="i-track">{{ info.track if info else cfg.get('TRACK','—') }}</td></tr>
+        <tr><td data-i18n="lbl_layout">Layout</td><td id="i-layout">{{ cfg.get('TRACK_LAYOUT','—') or '—' }}</td></tr>
+        <tr><td data-i18n="lbl_session">Session</td><td id="i-sess">Practice</td></tr>
+        <tr><td data-i18n="lbl_password">Passwort</td><td>{{ '🔒 Ja' if cfg.get('PASSWORD') else '🔓 Keins' }}</td></tr>
+        <tr><td data-i18n="lbl_max_clients">Max Spieler</td><td>{{ cfg.get('MAX_CLIENTS','—') }}</td></tr>
+        <tr><td data-i18n="lbl_tcp_port">TCP/UDP Port</td><td>{{ cfg.get('TCP_PORT','9600') }}</td></tr>
+        <tr><td data-i18n="lbl_http_port">HTTP Port</td><td>{{ cfg.get('HTTP_PORT','8081') }}</td></tr>
+        <tr><td data-i18n="lbl_uptime">Uptime</td><td id="i-uptime">—</td></tr>
       </table>
     </div>
     <div class="card">
-      <div class="card-ttl">Netzwerk</div>
+      <div class="card-ttl" data-i18n="network">Netzwerk</div>
       <table class="itbl">
         <tr>
-          <td>Lokale IP</td>
+          <td data-i18n="lbl_local_ip">Lokale IP</td>
           <td><div class="ip-row">
             <span class="ip-val">{{ local_ip }}</span>
             <span class="cp-btn" onclick="copy('{{ local_ip }}:9600')">📋</span>
           </div></td>
         </tr>
         <tr>
-          <td>Öffentliche IP</td>
+          <td data-i18n="lbl_public_ip">Öffentliche IP</td>
           <td><div class="ip-row">
             <span class="ip-val" id="pub-ip">{{ info.ip if info else '—' }}</span>
             <span class="cp-btn" onclick="copyPub()">📋</span>
           </div></td>
         </tr>
-        <tr><td>Invite Link</td><td><a id="inv-link" href="#" style="color:var(--red);font-size:12px" target="_blank">In CM öffnen ↗</a></td></tr>
-        <tr><td>Lobby</td><td>{{ 'Öffentlich' if cfg.get('REGISTER_TO_LOBBY')=='1' else 'Privat (LAN)' }}</td></tr>
+        <tr><td data-i18n="lbl_invite">Invite Link</td><td><a id="inv-link" href="#" style="color:var(--red);font-size:12px" target="_blank" data-i18n="lbl_open_cm">In CM öffnen ↗</a></td></tr>
+        <tr><td data-i18n="lbl_lobby">Lobby</td><td>{{ 'Öffentlich' if cfg.get('REGISTER_TO_LOBBY')=='1' else 'Privat (LAN)' }}</td></tr>
         <tr><td>ABS</td><td>{{ 'Erlaubt' if cfg.get('ABS_ALLOWED','1')=='1' else 'Deaktiviert' }}</td></tr>
-        <tr><td>Schadensrate</td><td>{{ cfg.get('DAMAGE_MULTIPLIER','100') }}%</td></tr>
+        <tr><td data-i18n="lbl_damage">Schadensrate</td><td>{{ cfg.get('DAMAGE_MULTIPLIER','100') }}%</td></tr>
       </table>
     </div>
   </div>
 
   <div class="g2 gap">
     <div class="card">
-      <div class="sh"><div class="sh-t">Aktive Fahrer</div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
-      <div class="dg" id="d-drivers"><div class="empty"><div class="empty-ico">🏁</div><div>Keine Fahrer verbunden</div></div></div>
+      <div class="sh"><div class="sh-t" data-i18n="active_drivers">Aktive Fahrer</div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
+      <div class="dg" id="d-drivers"><div class="empty"><div class="empty-ico">🏁</div><div data-i18n="no_drivers">Keine Fahrer verbunden</div></div></div>
     </div>
     <div class="card">
-      <div class="sh"><div class="sh-t">💬 Server Chat</div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
+      <div class="sh"><div class="sh-t">💬 <span data-i18n="chat">Server Chat</span></div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
       <div id="dash-chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:220px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px">
-        <div style="color:var(--muted)">Warte auf Chat...</div>
+        <div style="color:var(--muted)" data-i18n="waiting_chat">Warte auf Chat...</div>
       </div>
     </div>
   </div>
 
   <div class="card">
     <div class="sh">
-      <div class="sh-t">Strecken-Presets</div>
+      <div class="sh-t" data-i18n="presets">Strecken-Presets</div>
       <button class="btn btn-gray btn-sm" onclick="loadPresetList()">↻</button>
     </div>
-    <div class="preset-list" id="preset-list"><div style="color:var(--muted);font-size:13px">Lade...</div></div>
+    <div class="preset-list" id="preset-list"><div style="color:var(--muted);font-size:13px" data-i18n="loading">Lade...</div></div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <input class="inp" id="preset-name" placeholder="Preset-Name (z.B. Nordschleife Tourist)" style="flex:1">
-      <button class="btn btn-red" onclick="savePreset()">💾 Aktuell speichern</button>
+      <input class="inp" id="preset-name" data-i18n-placeholder="preset_name_ph" placeholder="Preset-Name (z.B. Nordschleife Tourist)" style="flex:1">
+      <button class="btn btn-red" onclick="savePreset()" data-i18n="save_preset">💾 Aktuell speichern</button>
     </div>
   </div>
 </div>
@@ -294,19 +295,19 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 <div class="panel" id="p-drivers">
   <div class="g2 gap">
     <div class="card">
-      <div class="sh"><div class="sh-t">Live Fahrer</div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
-      <div class="dg" id="f-drivers"><div class="empty"><div class="empty-ico">🏎️</div><div>Warte auf Fahrer...</div></div></div>
+      <div class="sh"><div class="sh-t" data-i18n="live_drivers">Live Fahrer</div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
+      <div class="dg" id="f-drivers"><div class="empty"><div class="empty-ico">🏎️</div><div data-i18n="waiting_drivers">Warte auf Fahrer...</div></div></div>
     </div>
     <div class="card">
-      <div class="sh-t" style="margin-bottom:12px">Track Positionen</div>
+      <div class="sh-t" style="margin-bottom:12px" data-i18n="track_positions">Track Positionen</div>
       <div class="map-wrap"><canvas id="map-canvas" width="560" height="380"></canvas></div>
-      <div class="map-hint" id="map-hint">Lade Streckenübersicht...</div>
+      <div class="map-hint" id="map-hint" data-i18n="loading_map">Lade Streckenübersicht...</div>
     </div>
   </div>
   <div class="card">
-    <div class="sh"><div class="sh-t">💬 Server Chat</div></div>
+    <div class="sh"><div class="sh-t">💬 <span data-i18n="chat">Server Chat</span></div></div>
     <div id="chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;max-height:260px;overflow-y:auto;font-size:13px;display:flex;flex-direction:column;gap:4px">
-      <div style="color:var(--muted)">Warte auf Chat...</div>
+      <div style="color:var(--muted)" data-i18n="waiting_chat">Warte auf Chat...</div>
     </div>
   </div>
 </div>
@@ -315,17 +316,17 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 <div class="panel" id="p-laps">
   <div class="card">
     <div class="sh">
-      <div class="sh-t">Rundenzeiten</div>
+      <div class="sh-t" data-i18n="lap_times">Rundenzeiten</div>
       <button class="btn btn-gray btn-sm" onclick="refreshLive()">↻</button>
     </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Pos.</th><th>Fahrer</th><th>Fahrzeug</th>
-          <th>Runden</th><th>Beste</th><th>Letzte</th><th>Aktuell</th>
+          <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th data-i18n="col_vehicle">Fahrzeug</th>
+          <th data-i18n="col_laps">Runden</th><th data-i18n="col_best">Beste</th><th data-i18n="col_last">Letzte</th><th data-i18n="col_current">Aktuell</th>
         </tr></thead>
         <tbody id="lap-tbody">
-          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:48px">Keine Daten – warte auf Fahrer</td></tr>
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:48px" data-i18n="no_data">Keine Daten – warte auf Fahrer</td></tr>
         </tbody>
       </table>
     </div>
@@ -337,17 +338,17 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   <!-- Bestzeiten -->
   <div class="card gap">
     <div class="sh">
-      <div class="sh-t">🏆 Bestzeiten (pro Fahrer &amp; Strecke)</div>
+      <div class="sh-t">🏆 <span data-i18n="best_laps">Bestzeiten (pro Fahrer &amp; Strecke)</span></div>
       <button class="btn btn-gray btn-sm" onclick="loadBestLaps()">↻</button>
     </div>
     <div class="tbl-wrap">
       <table id="best-table">
         <thead><tr>
-          <th>Pos.</th><th>Fahrer</th><th>Auto</th><th>Strecke</th>
-          <th>Bestzeit</th><th>Cuts</th><th>Datum</th>
+          <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th data-i18n="col_car">Auto</th><th data-i18n="col_track">Strecke</th>
+          <th data-i18n="col_best">Bestzeit</th><th data-i18n="col_cuts">Cuts</th><th data-i18n="col_date">Datum</th>
         </tr></thead>
         <tbody id="best-tbody">
-          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
         </tbody>
       </table>
     </div>
@@ -356,32 +357,32 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   <!-- Alle Rundenzeiten mit Filter -->
   <div class="card">
     <div class="sh">
-      <div class="sh-t">📋 Alle Rundenzeiten</div>
+      <div class="sh-t">📋 <span data-i18n="all_laps">Alle Rundenzeiten</span></div>
       <div style="display:flex;gap:8px;align-items:center">
         <span id="rec-count" style="font-size:11px;color:var(--muted)"></span>
         <a id="rec-export-btn" href="/api/laptimes/export" class="btn btn-blue btn-sm">⬇ CSV</a>
-        <button class="btn btn-danger btn-sm" onclick="clearLaptimes()">🗑 Alles löschen</button>
+        <button class="btn btn-danger btn-sm" onclick="clearLaptimes()" data-i18n="clear_all">🗑 Alles löschen</button>
       </div>
     </div>
 
     <!-- Filter -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
       <div>
-        <label class="lbl">Fahrer</label>
+        <label class="lbl" data-i18n="col_driver">Fahrer</label>
         <select class="sel" id="rec-filter-driver" onchange="loadAllLaps()">
-          <option value="">Alle Fahrer</option>
+          <option value="" data-i18n="all_drivers">Alle Fahrer</option>
         </select>
       </div>
       <div>
-        <label class="lbl">Strecke</label>
+        <label class="lbl" data-i18n="col_track">Strecke</label>
         <select class="sel" id="rec-filter-track" onchange="loadAllLaps()">
-          <option value="">Alle Strecken</option>
+          <option value="" data-i18n="all_tracks">Alle Strecken</option>
         </select>
       </div>
       <div>
-        <label class="lbl">Auto</label>
+        <label class="lbl" data-i18n="col_car">Auto</label>
         <select class="sel" id="rec-filter-car" onchange="loadAllLaps()">
-          <option value="">Alle Autos</option>
+          <option value="" data-i18n="all_cars">Alle Autos</option>
         </select>
       </div>
     </div>
@@ -389,8 +390,8 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Pos.</th><th>Fahrer</th><th>GUID</th><th>Auto</th><th>Strecke</th>
-          <th>Zeit</th><th>Cuts</th><th>Datum</th>
+          <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th>GUID</th><th data-i18n="col_car">Auto</th><th data-i18n="col_track">Strecke</th>
+          <th data-i18n="col_time">Zeit</th><th data-i18n="col_cuts">Cuts</th><th data-i18n="col_date">Datum</th>
         </tr></thead>
         <tbody id="all-tbody">
           <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
@@ -662,10 +663,10 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
         <div class="sh-t">✅ Whitelist</div>
         <button class="btn btn-gray btn-sm" onclick="loadGuidList('whitelist')">↻</button>
       </div>
-      <div class="guid-list" id="wl-list" style="margin-bottom:10px"><div style="color:var(--muted);font-size:12px;padding:8px">Lade...</div></div>
+      <div class="guid-list" id="wl-list" style="margin-bottom:10px"><div style="color:var(--muted);font-size:12px;padding:8px" data-i18n="loading">Lade...</div></div>
       <div style="display:flex;gap:6px">
         <input class="inp" id="wl-input" placeholder="Steam GUID..." style="flex:1;font-size:12px">
-        <button class="btn btn-green btn-sm" onclick="addGuid('whitelist')">+ Add</button>
+        <button class="btn btn-green btn-sm" onclick="addGuid('whitelist')" data-i18n="btn_add">+ Hinzufügen</button>
       </div>
     </div>
     <!-- Admins -->
@@ -674,20 +675,20 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
         <div class="sh-t">👑 Admins</div>
         <button class="btn btn-gray btn-sm" onclick="loadGuidList('admins')">↻</button>
       </div>
-      <div class="guid-list" id="adm-list" style="margin-bottom:10px"><div style="color:var(--muted);font-size:12px;padding:8px">Lade...</div></div>
+      <div class="guid-list" id="adm-list" style="margin-bottom:10px"><div style="color:var(--muted);font-size:12px;padding:8px" data-i18n="loading">Lade...</div></div>
       <div style="display:flex;gap:6px">
         <input class="inp" id="adm-input" placeholder="Steam GUID..." style="flex:1;font-size:12px">
-        <button class="btn btn-green btn-sm" onclick="addGuid('admins')">+ Add</button>
+        <button class="btn btn-green btn-sm" onclick="addGuid('admins')" data-i18n="btn_add">+ Hinzufügen</button>
       </div>
     </div>
     <!-- Blacklist -->
     <div class="card">
       <div class="sh">
-        <div class="sh-t">⛔ Ban-Liste</div>
+        <div class="sh-t">⛔ <span data-i18n="ban_list">Ban-Liste</span></div>
         <button class="btn btn-gray btn-sm" onclick="loadGuidList('blacklist')">↻</button>
       </div>
-      <div class="guid-list" id="bl-list" style="margin-bottom:10px"><div style="color:var(--muted);font-size:12px;padding:8px">Lade...</div></div>
-      <div style="font-size:11px;color:var(--muted)">Gebannte Spieler können hier entfernt (unban) werden.</div>
+      <div class="guid-list" id="bl-list" style="margin-bottom:10px"><div style="color:var(--muted);font-size:12px;padding:8px" data-i18n="loading">Lade...</div></div>
+      <div style="font-size:11px;color:var(--muted)" data-i18n="ban_hint">Gebannte Spieler können hier entfernt (unban) werden.</div>
     </div>
   </div>
 </div>
@@ -755,10 +756,10 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 <div class="panel" id="p-logs">
   <div class="card">
     <div class="sh">
-      <div class="sh-t">Server Logs (letzte 200 Zeilen)</div>
+      <div class="sh-t"><span data-i18n="server_logs">Server Logs</span></div>
       <div style="display:flex;align-items:center;gap:10px">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--muted)">
-          <input type="checkbox" id="log-auto" checked style="accent-color:var(--red)"> Auto-Refresh (3s)
+          <input type="checkbox" id="log-auto" checked style="accent-color:var(--red)"> <span data-i18n="auto_refresh">Auto-Refresh (3s)</span>
         </label>
         <button class="btn btn-gray btn-sm" onclick="loadLogs()">↻</button>
       </div>
@@ -851,6 +852,91 @@ document.querySelectorAll(".tab").forEach(tab => {
     if (tab.dataset.tab === "records") { loadRecordFilters(); loadBestLaps(); loadAllLaps(); }
   });
 });
+
+// ═══ LANGUAGE SYSTEM ════════════════════════════════════════════════════
+const LANG = {
+  de: {
+    btn_start:'▶ Start', btn_stop:'■ Stop', btn_restart:'↻ Neustart', btn_logout:'Abmelden',
+    btn_add:'+ Hinzufügen', btn_save:'💾 Speichern', btn_cancel:'Abbrechen',
+    tab_dash:'Dashboard', tab_drivers:'Fahrer', tab_laps:'Live Zeiten', tab_records:'Rekorde',
+    tab_settings:'Einstellungen', tab_content:'Inhalte', tab_players:'Spieler',
+    tab_advanced:'Erweitert', tab_logs:'Logs',
+    status:'Status', players_online:'Spieler Online', active_connections:'Aktive Verbindungen',
+    server_info:'Server Info', network:'Netzwerk',
+    lbl_name:'Name', lbl_track:'Strecke', lbl_layout:'Layout', lbl_session:'Session',
+    lbl_password:'Passwort', lbl_max_clients:'Max Spieler', lbl_tcp_port:'TCP/UDP Port',
+    lbl_http_port:'HTTP Port', lbl_uptime:'Uptime',
+    lbl_local_ip:'Lokale IP', lbl_public_ip:'Öffentliche IP',
+    lbl_invite:'Invite Link', lbl_open_cm:'In CM öffnen ↗', lbl_lobby:'Lobby', lbl_damage:'Schadensrate',
+    active_drivers:'Aktive Fahrer', no_drivers:'Keine Fahrer verbunden',
+    chat:'Server Chat', waiting_chat:'Warte auf Chat...', waiting_drivers:'Warte auf Fahrer...',
+    presets:'Strecken-Presets', loading:'Lade...', save_preset:'💾 Aktuell speichern',
+    preset_name_ph:'Preset-Name (z.B. Nordschleife Tourist)',
+    live_drivers:'Live Fahrer', track_positions:'Strecken-Positionen',
+    loading_map:'Lade Streckenübersicht...',
+    lap_times:'Rundenzeiten', col_pos:'Pos.', col_driver:'Fahrer', col_vehicle:'Fahrzeug',
+    col_laps:'Runden', col_best:'Beste', col_last:'Letzte', col_current:'Aktuell',
+    col_car:'Auto', col_track:'Strecke', col_time:'Zeit', col_cuts:'Cuts', col_date:'Datum',
+    no_data:'Keine Daten – warte auf Fahrer',
+    best_laps:'Bestzeiten (pro Fahrer & Strecke)', all_laps:'Alle Rundenzeiten',
+    all_drivers:'Alle Fahrer', all_tracks:'Alle Strecken', all_cars:'Alle Autos',
+    clear_all:'🗑 Alles löschen',
+    ban_list:'Ban-Liste', ban_hint:'Gebannte Spieler können hier entfernt (unban) werden.',
+    server_logs:'Server Logs', auto_refresh:'Auto-Refresh (3s)',
+  },
+  en: {
+    btn_start:'▶ Start', btn_stop:'■ Stop', btn_restart:'↻ Restart', btn_logout:'Logout',
+    btn_add:'+ Add', btn_save:'💾 Save', btn_cancel:'Cancel',
+    tab_dash:'Dashboard', tab_drivers:'Drivers', tab_laps:'Live Times', tab_records:'Records',
+    tab_settings:'Settings', tab_content:'Content', tab_players:'Players',
+    tab_advanced:'Advanced', tab_logs:'Logs',
+    status:'Status', players_online:'Players Online', active_connections:'Active connections',
+    server_info:'Server Info', network:'Network',
+    lbl_name:'Name', lbl_track:'Track', lbl_layout:'Layout', lbl_session:'Session',
+    lbl_password:'Password', lbl_max_clients:'Max Clients', lbl_tcp_port:'TCP/UDP Port',
+    lbl_http_port:'HTTP Port', lbl_uptime:'Uptime',
+    lbl_local_ip:'Local IP', lbl_public_ip:'Public IP',
+    lbl_invite:'Invite Link', lbl_open_cm:'Open in CM ↗', lbl_lobby:'Lobby', lbl_damage:'Damage Rate',
+    active_drivers:'Active Drivers', no_drivers:'No drivers connected',
+    chat:'Server Chat', waiting_chat:'Waiting for chat...', waiting_drivers:'Waiting for drivers...',
+    presets:'Track Presets', loading:'Loading...', save_preset:'💾 Save Current',
+    preset_name_ph:'Preset name (e.g. Nordschleife Tourist)',
+    live_drivers:'Live Drivers', track_positions:'Track Positions',
+    loading_map:'Loading track overview...',
+    lap_times:'Lap Times', col_pos:'Pos.', col_driver:'Driver', col_vehicle:'Vehicle',
+    col_laps:'Laps', col_best:'Best', col_last:'Last', col_current:'Current',
+    col_car:'Car', col_track:'Track', col_time:'Time', col_cuts:'Cuts', col_date:'Date',
+    no_data:'No data — waiting for drivers',
+    best_laps:'Best Laps (per driver & track)', all_laps:'All Lap Times',
+    all_drivers:'All Drivers', all_tracks:'All Tracks', all_cars:'All Cars',
+    clear_all:'🗑 Clear All',
+    ban_list:'Ban List', ban_hint:'Banned players can be removed (unbanned) here.',
+    server_logs:'Server Logs', auto_refresh:'Auto-Refresh (3s)',
+  }
+};
+
+let curLang = localStorage.getItem('acLang') || 'de';
+
+function applyLang() {
+  const L = LANG[curLang] || LANG.de;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (L[key] !== undefined) el.textContent = L[key];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (L[key] !== undefined) el.placeholder = L[key];
+  });
+  document.documentElement.lang = curLang;
+  const btn = document.getElementById('lang-toggle');
+  if (btn) btn.textContent = curLang === 'de' ? 'EN' : 'DE';
+}
+
+function toggleLang() {
+  curLang = curLang === 'de' ? 'en' : 'de';
+  localStorage.setItem('acLang', curLang);
+  applyLang();
+}
 
 // ═══ TOAST ════════════════════════════════════════════════════════════════
 function toast(msg, type="ok") {
@@ -1421,6 +1507,7 @@ function clearLaptimes() {
 }
 
 // ═══ INIT ═════════════════════════════════════════════════════════════════
+applyLang();
 updateLayouts();
 loadTrackPreview();
 refreshLive();

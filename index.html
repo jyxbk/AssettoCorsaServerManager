@@ -179,9 +179,8 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   <div class="hdr-btns">
     <button class="btn btn-green btn-sm" onclick="ctrl('start')">▶ Start</button>
     <button class="btn btn-gray btn-sm" onclick="ctrl('stop')">■ Stop</button>
-    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ Restart</button>
-    <button class="lang-btn" id="lang-toggle" onclick="toggleLang()">DE</button>
-    <a href="/logout" class="logout-btn">Logout</a>
+    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ Neustart</button>
+    <a href="/logout" class="logout-btn">Abmelden</a>
   </div>
 </div>
 
@@ -191,9 +190,9 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   <div class="tab" data-tab="laps">Live Zeiten</div>
   <div class="tab" data-tab="records">Rekorde</div>
   <div class="tab" data-tab="settings">Einstellungen</div>
-  <div class="tab" data-tab="content">Content</div>
-  <div class="tab" data-tab="players">Players</div>
-  <div class="tab" data-tab="advanced">Advanced</div>
+  <div class="tab" data-tab="content">Inhalte</div>
+  <div class="tab" data-tab="players">Spieler</div>
+  <div class="tab" data-tab="advanced">Erweitert</div>
   <div class="tab" data-tab="logs">Logs</div>
 </div>
 
@@ -852,14 +851,6 @@ document.querySelectorAll(".tab").forEach(tab => {
     if (tab.dataset.tab === "records") { loadRecordFilters(); loadBestLaps(); loadAllLaps(); }
   });
 });
-
-// ═══ LANG ═════════════════════════════════════════════════════════════════
-let curLang = localStorage.getItem("acLang") || "en";
-function toggleLang() {
-  curLang = curLang === "en" ? "de" : "en";
-  localStorage.setItem("acLang", curLang);
-  document.getElementById("lang-toggle").textContent = curLang === "en" ? "DE" : "EN";
-}
 
 // ═══ TOAST ════════════════════════════════════════════════════════════════
 function toast(msg, type="ok") {

@@ -475,20 +475,18 @@ def get_uptime_string():
             ["systemctl", "show", SERVICE_NAME, "--property=ActiveEnterTimestamp"],
             capture_output=True, text=True, timeout=5)
         line = r.stdout.strip()
-        # Format: ActiveEnterTimestamp=Wed 2025-01-01 12:00:00 UTC
         m = re.search(r"=(.+)", line)
         if not m or not m.group(1).strip() or m.group(1).strip() == "n/a":
             return "unknown"
         ts_str = m.group(1).strip()
-        # Parse the timestamp
+        # strptime with %Z returns a naive datetime in LOCAL time (ignores tz offset).
+        # Compare against datetime.now() (also local) — not utcnow() — to avoid
+        # a false negative difference of -2h in CEST timezone.
         for fmt in ["%a %Y-%m-%d %H:%M:%S %Z", "%a %Y-%m-%d %H:%M:%S"]:
             try:
-                dt = datetime.strptime(ts_str, fmt)
-                now = datetime.utcnow()
-                diff = now - dt
-                total_seconds = int(diff.total_seconds())
-                if total_seconds < 0:
-                    return "just started"
+                dt  = datetime.strptime(ts_str, fmt)
+                now = datetime.now()
+                total_seconds = max(0, int((now - dt).total_seconds()))
                 days    = total_seconds // 86400
                 hours   = (total_seconds % 86400) // 3600
                 minutes = (total_seconds % 3600) // 60
@@ -1047,50 +1045,57 @@ def index():
 @login_required
 def api_live():
     ensure_udp()
+    status = server_status()
+    active = status == "active"
+
     cfg    = read_server_cfg()
     track  = cfg.get("TRACK", "")
     layout = cfg.get("TRACK_LAYOUT", "")
     raw    = load_spline_points(track, layout)
     spline_pts = [[x,y] for x,y in raw if not (math.isnan(x) or math.isnan(y))]
 
-    drivers = []
-    js = server_json()
-    if js:
-        for i, car in enumerate(js.get("Cars", js.get("cars", []))):
-            if not car.get("IsConnected", car.get("connected", False)):
-                continue
-            name = car.get("DriverName") or car.get("driver", {}).get("name", "")
-            if not name: continue
-            udp = _car_data.get(i, {})
-            drv = {
-                "id":       i,
-                "name":     name,
-                "guid":     car.get("ID", ""),
-                "model":    car.get("Model", car.get("model", "")),
-                "skin":     car.get("Skin",  car.get("skin",  "")),
-                "team":     car.get("DriverTeam", ""),
-                "nation":   car.get("DriverNation", ""),
-                "spLine":   udp.get("spLine", 0),
-                "lapCount": udp.get("lapCount", 0),
-                "lapTime":  udp.get("lapTimeMs", 0),
-                "lastLap":  udp.get("lastLapMs", 0),
-                "bestLap":  udp.get("bestLapMs", 0),
-                "mapX":     None,
-                "mapY":     None,
-            }
-            if spline_pts and drv["spLine"] > 0:
-                idx = int(drv["spLine"] * len(spline_pts)) % len(spline_pts)
-                drv["mapX"] = spline_pts[idx][0]
-                drv["mapY"] = spline_pts[idx][1]
-            drivers.append(drv)
+    # Only hit the AS HTTP API when the server is actually running
+    drivers  = []
+    info     = None
+    if active:
+        info = server_info()
+        js   = server_json()
+        if js:
+            for i, car in enumerate(js.get("Cars", js.get("cars", []))):
+                if not car.get("IsConnected", car.get("connected", False)):
+                    continue
+                name = car.get("DriverName") or car.get("driver", {}).get("name", "")
+                if not name: continue
+                udp = _car_data.get(i, {})
+                drv = {
+                    "id":       i,
+                    "name":     name,
+                    "guid":     car.get("ID", ""),
+                    "model":    car.get("Model", car.get("model", "")),
+                    "skin":     car.get("Skin",  car.get("skin",  "")),
+                    "team":     car.get("DriverTeam", ""),
+                    "nation":   car.get("DriverNation", ""),
+                    "spLine":   udp.get("spLine", 0),
+                    "lapCount": udp.get("lapCount", 0),
+                    "lapTime":  udp.get("lapTimeMs", 0),
+                    "lastLap":  udp.get("lastLapMs", 0),
+                    "bestLap":  udp.get("bestLapMs", 0),
+                    "mapX":     None,
+                    "mapY":     None,
+                }
+                if spline_pts and drv["spLine"] > 0:
+                    idx = int(drv["spLine"] * len(spline_pts)) % len(spline_pts)
+                    drv["mapX"] = spline_pts[idx][0]
+                    drv["mapY"] = spline_pts[idx][1]
+                drivers.append(drv)
 
     return jsonify({
-        "status":        server_status(),
+        "status":        status,
         "system":        get_system_stats(),
-        "info":          server_info(),
+        "info":          info,
         "drivers":       drivers,
         "spline_points": spline_pts,
-        "chat":          get_recent_chat(30),
+        "chat":          get_recent_chat(30) if active else [],
     })
 
 

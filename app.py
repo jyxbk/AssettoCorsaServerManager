@@ -1264,6 +1264,10 @@ def save_server_settings():
     allowed = {
         "NAME","PASSWORD","ADMIN_PASSWORD","REGISTER_TO_LOBBY",
         "MAX_CLIENTS","UDP_PORT","TCP_PORT","HTTP_PORT","SUN_ANGLE",
+        # Extended settings
+        "PICKUP_MODE_ENABLED","LOOP_MODE","SLEEP_TIME","CLIENT_SEND_INTERVAL_HZ",
+        "RACE_OVER_TIME","KICK_QUORUM","VOTING_QUORUM","VOTE_DURATION",
+        "BLACKLIST_MODE","LEGAL_TYRES","ALLOWED_TYRES_OUT",
     }
     updates = {k: v for k,v in data.items() if k in allowed}
     ok, msg = update_server_cfg(updates)

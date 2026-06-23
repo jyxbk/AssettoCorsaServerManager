@@ -566,7 +566,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
       <!-- Server Profile -->
       <div class="card gap">
         <div class="card-ttl">Server-Profil (Content Manager)</div>
-        <div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:4px">
+        <div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:12px">
           <img id="logo-preview" src="/api/server_logo"
                onerror="this.style.display='none';document.getElementById('logo-placeholder').style.display='flex'"
                onload="this.style.display='';document.getElementById('logo-placeholder').style.display='none'"
@@ -575,14 +575,34 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
           <div style="flex:1">
             <label class="lbl">Server-Logo (PNG/JPG)</label>
             <input type="file" id="logo-inp" accept="image/png,image/jpeg,image/webp" style="display:block;margin-bottom:8px;color:var(--text);font-size:12px" onchange="previewLogo(this)">
-            <button class="btn btn-gray" onclick="uploadLogo()" style="font-size:12px">Bild hochladen</button>
+            <button class="btn btn-gray btn-sm" onclick="uploadLogo()">Bild hochladen</button>
           </div>
         </div>
-        <div class="fg" style="margin-top:6px">
-          <label class="lbl">Willkommensnachricht (im CM sichtbar)</label>
-          <textarea id="welcome-msg" rows="5" class="ta" placeholder="Wird im Content Manager angezeigt..."></textarea>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
+          Wird im Content Manager angezeigt wenn ein Spieler diesen Server auswählt. Zeilenumbrüche werden übernommen.
         </div>
-        <button class="btn btn-red" onclick="saveServerProfile()">💾 Profil speichern</button>
+        <!-- Toolbar -->
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('\n\n')">↵ Absatz</button>
+          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('• ')">• Punkt</button>
+          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('★ ')">★ Stern</button>
+          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('🏁 ')">🏁</button>
+          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('🚗 ')">🚗</button>
+          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('⚡ ')">⚡</button>
+          <button class="btn btn-gray btn-sm" onclick="insertWelcomeVar('NAME')">Servername</button>
+          <button class="btn btn-gray btn-sm" onclick="insertWelcomeVar('TRACK')">Strecke</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="lbl">Nachricht bearbeiten <span id="welcome-chars" style="float:right;color:var(--muted)">0 Zeichen</span></label>
+            <textarea id="welcome-msg" rows="10" class="ta" placeholder="Willkommen auf unserem Server!&#10;&#10;• Respektvoller Umgang&#10;• Sauberes Fahren&#10;• Viel Spaß!" oninput="updateWelcomePreview()"></textarea>
+          </div>
+          <div>
+            <label class="lbl">Vorschau (Content Manager)</label>
+            <div id="welcome-preview" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;min-height:160px;font-size:13px;white-space:pre-wrap;color:var(--text);line-height:1.6;overflow-y:auto;max-height:220px"></div>
+          </div>
+        </div>
+        <button class="btn btn-red" onclick="saveServerProfile()" style="margin-top:10px">💾 Profil speichern</button>
       </div>
     </div>
 
@@ -599,13 +619,71 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
       </div>
       <div class="card gap">
         <div class="card-ttl">Schaden & Verschleiß</div>
-        <div class="num-row"><span class="tog-lbl">Kraftstoffverbrauch</span><input class="inp num-inp" type="number" id="v-fuel" min="0" max="200" value="{{ cfg.get('FUEL_RATE','100') }}"></div>
-        <div class="num-row"><span class="tog-lbl">Schadensrate</span><input class="inp num-inp" type="number" id="v-dmg" min="0" max="200" value="{{ cfg.get('DAMAGE_MULTIPLIER','100') }}"></div>
-        <div class="num-row"><span class="tog-lbl">Reifenverschleiß</span><input class="inp num-inp" type="number" id="v-tyre" min="0" max="200" value="{{ cfg.get('TYRE_WEAR_RATE','100') }}"></div>
+        <div class="num-row"><span class="tog-lbl">Kraftstoffverbrauch %</span><input class="inp num-inp" type="number" id="v-fuel" min="0" max="200" value="{{ cfg.get('FUEL_RATE','100') }}"></div>
+        <div class="num-row"><span class="tog-lbl">Schadensrate %</span><input class="inp num-inp" type="number" id="v-dmg" min="0" max="200" value="{{ cfg.get('DAMAGE_MULTIPLIER','100') }}"></div>
+        <div class="num-row"><span class="tog-lbl">Reifenverschleiß %</span><input class="inp num-inp" type="number" id="v-tyre" min="0" max="200" value="{{ cfg.get('TYRE_WEAR_RATE','100') }}"></div>
+        <div class="num-row">
+          <div><span class="tog-lbl">Erlaubte Reifenausritte</span><div style="font-size:10px;color:var(--muted)">0=alle, 2=Standard (2 Reifen aus)</div></div>
+          <input class="inp num-inp" type="number" id="v-tyreout" min="0" max="4" value="{{ cfg.get('ALLOWED_TYRES_OUT','2') }}">
+        </div>
         <div class="num-row"><span class="tog-lbl">Max. Spieler</span><input class="inp num-inp" type="number" id="v-maxcl" min="1" max="200" value="{{ cfg.get('MAX_CLIENTS','8') }}"></div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <button class="btn btn-red" onclick="saveAssists()">💾 Fahrhilfen speichern</button>
+      </div>
+
+      <!-- Erweiterte Server-Einstellungen -->
+      <div class="card gap">
+        <div class="card-ttl">Erweiterte Server-Einstellungen</div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Ports</div>
+        <div class="num-row"><span class="tog-lbl">UDP / TCP Port</span><input class="inp num-inp" type="number" id="sv-udp" min="1024" max="65535" value="{{ cfg.get('UDP_PORT','9600') }}"></div>
+        <div class="num-row"><span class="tog-lbl">HTTP Port</span><input class="inp num-inp" type="number" id="sv-http" min="1024" max="65535" value="{{ cfg.get('HTTP_PORT','8081') }}"></div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Server-Modus</div>
+        <div class="tog-row">
+          <div><div class="tog-lbl">Pickup Mode</div><div class="tog-desc">Spieler wählen ihr Auto selbst</div></div>
+          <label class="tog"><input type="checkbox" id="sv-pickup" {% if cfg.get('PICKUP_MODE_ENABLED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl">Loop Mode</div><div class="tog-desc">Server startet automatisch neue Session</div></div>
+          <label class="tog"><input type="checkbox" id="sv-loop" {% if cfg.get('LOOP_MODE','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl">Blacklist Mode</div><div class="tog-desc">1 = gebannte Spieler werden abgelehnt</div></div>
+          <label class="tog"><input type="checkbox" id="sv-blacklist" {% if cfg.get('BLACKLIST_MODE','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Abstimmung & Kick</div>
+        <div class="num-row">
+          <div><span class="tog-lbl">Kick-Quorum %</span><div style="font-size:10px;color:var(--muted)">Mindest-% Spieler für Kick-Vote</div></div>
+          <input class="inp num-inp" type="number" id="sv-kickq" min="0" max="100" value="{{ cfg.get('KICK_QUORUM','85') }}">
+        </div>
+        <div class="num-row">
+          <div><span class="tog-lbl">Voting-Quorum %</span></div>
+          <input class="inp num-inp" type="number" id="sv-voteq" min="0" max="100" value="{{ cfg.get('VOTING_QUORUM','80') }}">
+        </div>
+        <div class="num-row">
+          <div><span class="tog-lbl">Vote-Dauer (s)</span></div>
+          <input class="inp num-inp" type="number" id="sv-vdur" min="5" max="120" value="{{ cfg.get('VOTE_DURATION','20') }}">
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Race</div>
+        <div class="num-row">
+          <div><span class="tog-lbl">Race Over Time (s)</span><div style="font-size:10px;color:var(--muted)">Zeit nach Sieger bis Session endet</div></div>
+          <input class="inp num-inp" type="number" id="sv-raceover" min="0" max="3600" value="{{ cfg.get('RACE_OVER_TIME','180') }}">
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Netzwerk & Performance</div>
+        <div class="num-row">
+          <div><span class="tog-lbl">Client Send Rate (Hz)</span><div style="font-size:10px;color:var(--muted)">Update-Frequenz pro Sekunde (Standard: 18)</div></div>
+          <input class="inp num-inp" type="number" id="sv-hz" min="1" max="60" value="{{ cfg.get('CLIENT_SEND_INTERVAL_HZ','18') }}">
+        </div>
+        <div class="fg" style="margin-top:8px">
+          <div><label class="lbl">Legal Tyres</label><div style="font-size:10px;color:var(--muted);margin-bottom:4px">Kommagetrennte Reifenkürzel z.B. SV,SM,HR — leer = alle erlaubt</div></div>
+          <input class="inp" id="sv-tyres" value="{{ cfg.get('LEGAL_TYRES','') }}">
+        </div>
+        <button class="btn btn-red" onclick="saveExtendedSettings()">💾 Erweiterte Einstellungen speichern</button>
       </div>
 
       <div class="card gap">
@@ -1313,7 +1391,20 @@ function saveTrackCars() {
 }
 
 function saveAssists() {
-  const data={ABS_ALLOWED:document.getElementById("a-abs").checked?"1":"0",TC_ALLOWED:document.getElementById("a-tc").checked?"1":"0",STABILITY_ALLOWED:document.getElementById("a-stab").checked?"1":"0",AUTOCLUTCH_ALLOWED:document.getElementById("a-clutch").checked?"1":"0",TYRE_BLANKETS_ALLOWED:document.getElementById("a-blanket").checked?"1":"0",FORCE_VIRTUAL_MIRROR:document.getElementById("a-mirror").checked?"1":"0",FUEL_RATE:document.getElementById("v-fuel").value,DAMAGE_MULTIPLIER:document.getElementById("v-dmg").value,TYRE_WEAR_RATE:document.getElementById("v-tyre").value,MAX_CLIENTS:document.getElementById("v-maxcl").value,restart:autoRestart()};
+  const data={
+    ABS_ALLOWED:document.getElementById("a-abs").checked?"1":"0",
+    TC_ALLOWED:document.getElementById("a-tc").checked?"1":"0",
+    STABILITY_ALLOWED:document.getElementById("a-stab").checked?"1":"0",
+    AUTOCLUTCH_ALLOWED:document.getElementById("a-clutch").checked?"1":"0",
+    TYRE_BLANKETS_ALLOWED:document.getElementById("a-blanket").checked?"1":"0",
+    FORCE_VIRTUAL_MIRROR:document.getElementById("a-mirror").checked?"1":"0",
+    FUEL_RATE:document.getElementById("v-fuel").value,
+    DAMAGE_MULTIPLIER:document.getElementById("v-dmg").value,
+    TYRE_WEAR_RATE:document.getElementById("v-tyre").value,
+    ALLOWED_TYRES_OUT:document.getElementById("v-tyreout").value,
+    MAX_CLIENTS:document.getElementById("v-maxcl").value,
+    restart:autoRestart()
+  };
   apiFetch("/save_assists",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
     .then(r=>r.json()).then(d=>toast(d.ok?"✓ Gespeichert":"✗ "+d.msg,d.ok?"ok":"err"));
 }
@@ -1337,10 +1428,31 @@ function saveDynamicTrack() {
 }
 
 // ═══ SERVER PROFILE ═══════════════════════════════════════════════════════
+function updateWelcomePreview() {
+  const txt = document.getElementById('welcome-msg').value;
+  document.getElementById('welcome-preview').textContent = txt;
+  document.getElementById('welcome-chars').textContent = txt.length + ' Zeichen';
+}
+
+function insertWelcomeText(text) {
+  const ta = document.getElementById('welcome-msg');
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  ta.value = ta.value.slice(0, start) + text + ta.value.slice(end);
+  ta.selectionStart = ta.selectionEnd = start + text.length;
+  ta.focus();
+  updateWelcomePreview();
+}
+
+function insertWelcomeVar(key) {
+  const vals = { NAME: document.getElementById('sv-name')?.value || '[Servername]', TRACK: document.getElementById('s-track')?.options[document.getElementById('s-track')?.selectedIndex]?.text || '[Strecke]' };
+  insertWelcomeText(vals[key] || key);
+}
+
 async function loadServerProfile() {
   try {
     const d=await apiFetch("/api/server_profile").then(r=>r.json());
     document.getElementById("welcome-msg").value=d.welcome||"";
+    updateWelcomePreview();
     const img=document.getElementById("logo-preview"), ph=document.getElementById("logo-placeholder");
     if(d.has_logo){img.src="/api/server_logo?"+Date.now();img.style.display="";ph.style.display="none";}
     else{img.style.display="none";ph.style.display="flex";}
@@ -1348,7 +1460,30 @@ async function loadServerProfile() {
 }
 function previewLogo(inp){const f=inp.files[0];if(!f)return;const img=document.getElementById("logo-preview"),ph=document.getElementById("logo-placeholder");img.src=URL.createObjectURL(f);img.style.display="";ph.style.display="none";}
 async function uploadLogo(){const inp=document.getElementById("logo-inp");if(!inp.files[0]){toast("Kein Bild","err");return;}const fd=new FormData();fd.append("logo",inp.files[0]);const r=await fetch("/api/server_logo",{method:"POST",credentials:'same-origin',body:fd});const d=await r.json();toast(d.ok?"Logo gespeichert ✓":d.msg,d.ok?"ok":"err");}
-async function saveServerProfile(){const welcome=document.getElementById("welcome-msg").value;const r=await apiFetch("/api/server_profile",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({welcome})});const d=await r.json();toast(d.ok?"Profil gespeichert ✓":d.msg,d.ok?"ok":"err");}
+async function saveServerProfile(){
+  const welcome=document.getElementById("welcome-msg").value;
+  const r=await apiFetch("/api/server_profile",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({welcome})});
+  const d=await r.json();
+  toast(d.ok?"✓ Profil gespeichert":"✗ "+d.msg,d.ok?"ok":"err");
+}
+
+function saveExtendedSettings() {
+  const bool = id => document.getElementById(id).checked ? '1' : '0';
+  const val  = id => document.getElementById(id).value;
+  const data = {
+    UDP_PORT: val('sv-udp'), TCP_PORT: val('sv-udp'), HTTP_PORT: val('sv-http'),
+    PICKUP_MODE_ENABLED: bool('sv-pickup'), LOOP_MODE: bool('sv-loop'),
+    BLACKLIST_MODE: bool('sv-blacklist'),
+    KICK_QUORUM: val('sv-kickq'), VOTING_QUORUM: val('sv-voteq'),
+    VOTE_DURATION: val('sv-vdur'), RACE_OVER_TIME: val('sv-raceover'),
+    CLIENT_SEND_INTERVAL_HZ: val('sv-hz'),
+    LEGAL_TYRES: val('sv-tyres'),
+    ALLOWED_TYRES_OUT: val('v-tyreout'),
+    restart: autoRestart()
+  };
+  apiFetch('/save_server_settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>toast(d.ok?"✓ Gespeichert":"✗ "+d.msg,d.ok?"ok":"err"));
+}
 
 // ═══ PRESETS ══════════════════════════════════════════════════════════════
 function loadPresetList(){

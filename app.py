@@ -181,15 +181,16 @@ def _discord_monitor():
     while True:
         time.sleep(30)
         try:
-            url = _load_discord_url()
+            dcfg = _load_discord_config()
+            url = dcfg.get("url", "")
             if not url:
                 continue
             current = server_status()
             prev    = _discord_last_status[0]
             if prev is not None and prev == "active" and current in ("failed", "inactive"):
-                _discord_notify(url, f"Server `{SERVICE_NAME}` went **offline** (status: {current})")
+                _discord_notify(url, f"🔴 Server `{SERVICE_NAME}` went **offline** (status: {current})")
             elif prev is not None and prev in ("failed", "inactive") and current == "active":
-                _discord_notify(url, f"Server `{SERVICE_NAME}` is back **online**")
+                _discord_notify(url, f"🟢 Server `{SERVICE_NAME}` is back **online**")
             _discord_last_status[0] = current
         except Exception:
             pass
@@ -207,19 +208,32 @@ def _discord_notify(webhook_url, message):
     except Exception:
         pass
 
-def _load_discord_url():
+def _load_discord_config():
     if DISCORD_FILE.exists():
         try:
-            return json.loads(DISCORD_FILE.read_text()).get("url", "")
+            return json.loads(DISCORD_FILE.read_text())
         except Exception:
             pass
-    return ""
+    return {}
+
+def _load_discord_url():
+    return _load_discord_config().get("url", "")
 
 threading.Thread(target=_discord_monitor, daemon=True).start()
 
 # ── Lap time tracker ──────────────────────────────────────────────────────────
-_lt_lock       = threading.Lock()
-_lt_session    = {}   # driver_name -> {guid, car, track}
+_lt_lock    = threading.Lock()
+_lt_session = {}  # driver_name -> {guid, car, skin, track}
+
+# Fixed regexes — car names may contain hyphens so capture greedily up to last '-'
+_RE_CONNECT = re.compile(
+    r'\[[\d:]+\] INF\] (.+?) \((\d{17}),\s*\d+ \((.+)-([^)]+)\)\) has connected'
+)
+_RE_LAP = re.compile(
+    r'\[(\d{2}:\d{2}:\d{2})\] INF\] Lap completed by (.+?), (\d+) cuts?, laptime (\d+)'
+)
+_RE_DISCONNECT = re.compile(r'\[[\d:]+\] INF\] (.+?) has disconnected')
+_RE_DATE      = re.compile(r'^(\d{4}-\d{2}-\d{2})')
 
 def _load_laptimes():
     if LAPTIMES_FILE.exists():
@@ -236,20 +250,74 @@ def _save_laptimes(entries):
 def _append_laptime(entry):
     with _lt_lock:
         entries = _load_laptimes()
+        # Deduplicate: skip if same driver+track+laptime already stored
+        for e in entries:
+            if (e.get("driver") == entry["driver"] and
+                    e.get("laptime") == entry["laptime"] and
+                    e.get("track") == entry["track"]):
+                return
         entries.append(entry)
         _save_laptimes(entries)
 
-# Regex patterns for journal lines
-_RE_CONNECT = re.compile(
-    r'\[[\d:]+\] INF\] (\S.*?) \((\d{17}),\s*\d+ \(([^-]+)-([^)]+)\)\) has connected'
-)
-_RE_LAP = re.compile(
-    r'\[(\d{2}:\d{2}:\d{2})\] INF\] Lap completed by (.+?), (\d+) cuts?, laptime (\d+)'
-)
-_RE_DISCONNECT = re.compile(r'\[[\d:]+\] INF\] (.+?) has disconnected')
+def _parse_journal_block(lines, known_ts_set):
+    """Parse a list of journal lines and return new lap entries."""
+    session = {}
+    new_entries = []
+    cur_date = time.strftime("%Y-%m-%d")
+
+    for line in lines:
+        line = line.strip()
+        m = _RE_CONNECT.search(line)
+        if m:
+            name, guid, car = m.group(1), m.group(2), m.group(3)
+            session[name] = {"guid": guid, "car": car, "skin": m.group(4)}
+            continue
+        m = _RE_DISCONNECT.search(line)
+        if m:
+            session.pop(m.group(1), None)
+            continue
+        m = _RE_LAP.search(line)
+        if m:
+            ts_str, name, cuts, laptime_ms = m.group(1), m.group(2), int(m.group(3)), int(m.group(4))
+            ts_full = f"{cur_date} {ts_str}"
+            key = f"{name}|{laptime_ms}|{ts_full}"
+            if key in known_ts_set:
+                continue
+            info = session.get(name, {})
+            cfg  = read_server_cfg()
+            track  = cfg.get("TRACK", "")
+            layout = cfg.get("TRACK_LAYOUT", "")
+            new_entries.append({
+                "ts":      ts_full,
+                "driver":  name,
+                "guid":    info.get("guid", ""),
+                "car":     info.get("car", ""),
+                "skin":    info.get("skin", ""),
+                "track":   f"{track}-{layout}" if layout else track,
+                "laptime": laptime_ms,
+                "cuts":    cuts,
+            })
+    return new_entries
+
+def _preload_journal_history():
+    """On startup: parse recent journal and import any laps not yet in laptimes.json."""
+    try:
+        r = subprocess.run(
+            ["journalctl", "-u", SERVICE_NAME, "-n", "5000", "--no-pager", "-o", "cat"],
+            capture_output=True, text=True, timeout=15)
+        lines = r.stdout.splitlines()
+    except Exception:
+        return
+    with _lt_lock:
+        existing = _load_laptimes()
+        known = {f"{e['driver']}|{e['laptime']}|{e['ts']}" for e in existing}
+        new_entries = _parse_journal_block(lines, known)
+        if new_entries:
+            _save_laptimes(existing + new_entries)
 
 def _laptime_monitor():
-    """Tail journalctl and persist lap completions."""
+    """Tail journalctl live and persist new lap completions + Discord notifications."""
+    discord_cfg = {}  # cache
     try:
         proc = subprocess.Popen(
             ["journalctl", "-u", SERVICE_NAME, "-f", "-n", "0", "--no-pager", "-o", "cat"],
@@ -260,24 +328,28 @@ def _laptime_monitor():
 
     for line in proc.stdout:
         line = line.strip()
-        # Track connected driver → guid + car
         m = _RE_CONNECT.search(line)
         if m:
-            name, guid, car, skin = m.group(1), m.group(2), m.group(3), m.group(4)
+            name, guid, car = m.group(1), m.group(2), m.group(3)
             cfg = read_server_cfg()
-            track = cfg.get("TRACK", "")
-            layout = cfg.get("TRACK_LAYOUT", "")
+            track = cfg.get("TRACK", ""); layout = cfg.get("TRACK_LAYOUT", "")
             _lt_session[name] = {
-                "guid": guid,
-                "car":  car,
-                "skin": skin,
+                "guid": guid, "car": car, "skin": m.group(4),
                 "track": f"{track}-{layout}" if layout else track,
             }
+            # Discord: player joined (if enabled)
+            dcfg = _load_discord_config()
+            if dcfg.get("url") and dcfg.get("notify_join"):
+                _discord_notify(dcfg["url"], f"🟢 **{name}** connected ({car})")
             continue
 
         m = _RE_DISCONNECT.search(line)
         if m:
-            _lt_session.pop(m.group(1), None)
+            left = m.group(1)
+            info = _lt_session.pop(left, {})
+            dcfg = _load_discord_config()
+            if dcfg.get("url") and dcfg.get("notify_join"):
+                _discord_notify(dcfg["url"], f"🔴 **{left}** disconnected")
             continue
 
         m = _RE_LAP.search(line)
@@ -285,20 +357,21 @@ def _laptime_monitor():
             ts_str, name, cuts, laptime_ms = m.group(1), m.group(2), int(m.group(3)), int(m.group(4))
             info = _lt_session.get(name, {})
             cfg  = read_server_cfg()
-            track = cfg.get("TRACK", "")
-            layout = cfg.get("TRACK_LAYOUT", "")
+            track = cfg.get("TRACK", ""); layout = cfg.get("TRACK_LAYOUT", "")
             entry = {
-                "ts":       time.strftime("%Y-%m-%d ") + ts_str,
-                "driver":   name,
-                "guid":     info.get("guid", ""),
-                "car":      info.get("car", ""),
-                "skin":     info.get("skin", ""),
-                "track":    f"{track}-{layout}" if layout else track,
-                "laptime":  laptime_ms,
-                "cuts":     cuts,
+                "ts":      time.strftime("%Y-%m-%d ") + ts_str,
+                "driver":  name,
+                "guid":    info.get("guid", ""),
+                "car":     info.get("car", ""),
+                "skin":    info.get("skin", ""),
+                "track":   f"{track}-{layout}" if layout else track,
+                "laptime": laptime_ms,
+                "cuts":    cuts,
             }
             _append_laptime(entry)
 
+# Run startup history import, then start live monitor
+threading.Thread(target=_preload_journal_history, daemon=True).start()
 threading.Thread(target=_laptime_monitor, daemon=True).start()
 
 # ── System helpers ────────────────────────────────────────────────────────────
@@ -1384,6 +1457,51 @@ def api_laptimes_export():
         headers={"Content-Disposition": "attachment; filename=laptimes.csv"}
     )
 
+@app.route("/api/laptimes/stats")
+@login_required
+def api_laptimes_stats():
+    """Per-driver aggregated statistics."""
+    entries = _load_laptimes()
+    drivers = {}
+    for e in entries:
+        d = e.get("driver", "")
+        if not d:
+            continue
+        s = drivers.setdefault(d, {
+            "driver": d, "guid": e.get("guid",""),
+            "total_laps": 0, "clean_laps": 0,
+            "best_overall": None, "tracks": {}
+        })
+        s["total_laps"] += 1
+        if e.get("cuts", 0) == 0:
+            s["clean_laps"] += 1
+        lt = e.get("laptime", 0)
+        if lt and (s["best_overall"] is None or lt < s["best_overall"]):
+            s["best_overall"] = lt
+        track = e.get("track", "unknown")
+        t = s["tracks"].setdefault(track, {"laps": 0, "best": None, "car": ""})
+        t["laps"] += 1
+        if lt and (t["best"] is None or lt < t["best"]):
+            t["best"] = lt
+            t["car"]  = e.get("car", "")
+    result = sorted(drivers.values(), key=lambda x: x["total_laps"], reverse=True)
+    return jsonify({"ok": True, "stats": result})
+
+@app.route("/api/laptimes/today")
+@login_required
+def api_laptimes_today():
+    """Quick stats for today's dashboard summary."""
+    today   = time.strftime("%Y-%m-%d")
+    entries = [e for e in _load_laptimes() if e.get("ts","").startswith(today)]
+    best    = min(entries, key=lambda e: e.get("laptime", 99999999), default=None)
+    drivers = len({e.get("driver","") for e in entries if e.get("driver")})
+    return jsonify({
+        "laps_today":   len(entries),
+        "drivers_today": drivers,
+        "best_today":   best,
+    })
+
+
 # ── Config backup/restore ─────────────────────────────────────────────────────
 @app.route("/api/backup")
 @login_required
@@ -1459,18 +1577,33 @@ def installed_content():
     return jsonify({"cars": cars, "tracks": tracks})
 
 
+# ── Chat (broadcast via RCON) ─────────────────────────────────────────────────
+@app.route("/api/chat", methods=["POST"])
+@login_required
+def api_chat_send():
+    msg = (request.json or {}).get("message", "").strip()
+    if not msg:
+        return jsonify({"ok": False, "msg": "Nachricht darf nicht leer sein"}), 400
+    ok, resp = rcon_send(f"/say {msg}")
+    return jsonify({"ok": ok, "response": resp})
+
+
 # ── Discord webhook ───────────────────────────────────────────────────────────
 @app.route("/api/discord", methods=["GET"])
 @login_required
 def get_discord():
-    return jsonify({"url": _load_discord_url()})
+    return jsonify(_load_discord_config())
 
 @app.route("/api/discord", methods=["POST"])
 @login_required
 def set_discord():
-    url = (request.json or {}).get("url", "").strip()
+    data = request.json or {}
+    url  = data.get("url", "").strip()
+    cfg  = _load_discord_config()
+    cfg["url"]          = url
+    cfg["notify_join"]  = bool(data.get("notify_join", cfg.get("notify_join", False)))
     DISCORD_FILE.parent.mkdir(parents=True, exist_ok=True)
-    DISCORD_FILE.write_text(json.dumps({"url": url}))
+    DISCORD_FILE.write_text(json.dumps(cfg))
     return jsonify({"ok": True})
 
 @app.route("/api/discord/test", methods=["POST"])
@@ -1478,10 +1611,10 @@ def set_discord():
 def test_discord():
     url = _load_discord_url()
     if not url:
-        return jsonify({"ok": False, "msg": "No webhook URL configured"}), 400
+        return jsonify({"ok": False, "msg": "Keine Webhook URL konfiguriert"}), 400
     try:
-        _discord_notify(url, f"Test message from AC Server Dashboard ({SERVICE_NAME})")
-        return jsonify({"ok": True, "msg": "Test message sent"})
+        _discord_notify(url, f"🔔 Test-Nachricht vom AC Server Dashboard (`{SERVICE_NAME}`)")
+        return jsonify({"ok": True, "msg": "Test-Nachricht gesendet"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 

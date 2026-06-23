@@ -38,6 +38,20 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 @media(max-width:900px){.g4{grid-template-columns:1fr 1fr}.g2,.g3{grid-template-columns:1fr}}
+@media(max-width:600px){
+  .g4,.g2,.g3{grid-template-columns:1fr}
+  .hdr{height:auto;flex-wrap:wrap;padding:8px 12px;gap:8px}
+  .hdr-sep{display:none}
+  .hdr-btns{width:100%;justify-content:flex-end;margin-left:0}
+  .tabs{padding:0 8px}
+  .tab{padding:10px 10px;font-size:11px}
+  .page{padding:10px}
+  .card{padding:12px}
+  .dc-stats{grid-template-columns:1fr 1fr}
+  table{font-size:11px}
+  th,td{padding:6px 8px}
+  .car-cfg.open{grid-template-columns:1fr}
+}
 .gap{margin-bottom:16px}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px}
 .card-ttl{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
@@ -201,6 +215,25 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 
 <!-- ══ DASHBOARD ══════════════════════════════════════════════════════════ -->
 <div class="panel active" id="p-dash">
+  <!-- Quick Stats Bar -->
+  <div style="display:flex;gap:10px;margin-bottom:14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="color:var(--muted)" data-i18n="qs_laps_today">Runden heute:</span>
+      <strong id="qs-laps">—</strong>
+    </div>
+    <div style="width:1px;background:var(--border)"></div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="color:var(--muted)" data-i18n="qs_drivers_today">Fahrer heute:</span>
+      <strong id="qs-drivers">—</strong>
+    </div>
+    <div style="width:1px;background:var(--border)"></div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="color:var(--muted)" data-i18n="qs_best_today">Beste heute:</span>
+      <strong id="qs-best" class="best-t">—</strong>
+      <span id="qs-best-driver" style="color:var(--muted);font-size:11px"></span>
+    </div>
+  </div>
+
   <div class="g4 gap">
     <div class="card">
       <div class="card-ttl" data-i18n="status">Status</div>
@@ -272,8 +305,12 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
     </div>
     <div class="card">
       <div class="sh"><div class="sh-t">💬 <span data-i18n="chat">Server Chat</span></div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
-      <div id="dash-chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:220px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px">
+      <div id="dash-chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:180px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px">
         <div style="color:var(--muted)" data-i18n="waiting_chat">Warte auf Chat...</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input class="inp" id="chat-send-inp" data-i18n-placeholder="chat_ph" placeholder="Nachricht an alle senden..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn btn-red btn-sm" onclick="sendChat()" data-i18n="btn_send">Senden</button>
       </div>
     </div>
   </div>
@@ -394,7 +431,32 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
           <th data-i18n="col_time">Zeit</th><th data-i18n="col_cuts">Cuts</th><th data-i18n="col_date">Datum</th>
         </tr></thead>
         <tbody id="all-tbody">
-          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination -->
+    <div id="all-pagination" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
+  </div>
+
+  <!-- Fahrer Statistiken -->
+  <div class="card">
+    <div class="sh">
+      <div class="sh-t" data-i18n="driver_stats">Fahrer Statistiken</div>
+      <button class="btn btn-gray btn-sm" onclick="loadDriverStats()">↻</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th data-i18n="col_driver">Fahrer</th>
+          <th data-i18n="stat_total_laps">Runden gesamt</th>
+          <th data-i18n="stat_clean_laps">Saubere Runden</th>
+          <th data-i18n="stat_best">Beste Zeit</th>
+          <th data-i18n="col_track">Beste Strecke</th>
+          <th data-i18n="col_car">Bestes Auto</th>
+        </tr></thead>
+        <tbody id="stats-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
         </tbody>
       </table>
     </div>
@@ -728,11 +790,36 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
           <label class="lbl">Webhook URL</label>
           <input class="inp" id="discord-url" placeholder="https://discord.com/api/webhooks/...">
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-red" onclick="saveDiscord()">💾 Speichern</button>
-          <button class="btn btn-gray" onclick="testDiscord()">🔔 Test senden</button>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-i18n="discord_notify_join">Fahrer Join/Leave melden</div><div class="tog-desc" data-i18n="discord_notify_join_desc">Nachricht wenn Fahrer verbindet oder trennt</div></div>
+          <label class="tog"><input type="checkbox" id="discord-notify-join"><span class="tog-sl"></span></label>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px">Benachrichtigung wenn Server abstürzt oder wieder online geht.</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-red" onclick="saveDiscord()" data-i18n="btn_save">💾 Speichern</button>
+          <button class="btn btn-gray" onclick="testDiscord()">🔔 <span data-i18n="discord_test">Test senden</span></button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px" data-i18n="discord_hint">Benachrichtigung wenn Server abstürzt oder wieder online geht.</div>
+      </div>
+
+      <!-- Track Params Editor -->
+      <div class="card gap adv-section">
+        <div class="card-ttl" data-i18n="track_params">Track Parameter</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px" data-i18n="track_params_hint">Koordinaten für neu installierte Strecken setzen (für Real Time).</div>
+        <div class="fg">
+          <label class="lbl" data-i18n="lbl_track">Strecke</label>
+          <select class="sel" id="tp-track">
+            {% for t in tracks %}<option value="{{ t.name }}">{{ t.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label class="lbl">Latitude</label><input class="inp" type="number" id="tp-lat" step="0.0001" value="0"></div>
+          <div><label class="lbl">Longitude</label><input class="inp" type="number" id="tp-lon" step="0.0001" value="0"></div>
+        </div>
+        <div class="fg" style="margin-top:8px">
+          <label class="lbl">Timezone (z.B. Europe/Berlin)</label>
+          <input class="inp" id="tp-tz" value="Europe/Berlin">
+        </div>
+        <button class="btn btn-red" onclick="saveTrackParams()" data-i18n="btn_save">💾 Speichern</button>
       </div>
 
       <!-- Backup -->
@@ -766,11 +853,16 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
     </div>
     <div class="logbox" id="logbox">Klicke Neu laden oder warte auf Auto-Refresh...</div>
     <!-- RCON Console -->
-    <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
-      <input class="inp" id="rcon-inp" placeholder="RCON Befehl (z.B. /say Hallo)" style="flex:1;font-family:monospace" onkeydown="if(event.key==='Enter')sendRcon()">
-      <button class="btn btn-gray" onclick="sendRcon()">▶ Senden</button>
+    <div style="margin-top:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">RCON Console</div>
+      <div id="rcon-history" style="background:#080808;border:1px solid var(--border);border-radius:6px;padding:8px;font-family:monospace;font-size:11px;max-height:120px;overflow-y:auto;margin-bottom:6px;display:flex;flex-direction:column;gap:2px">
+        <span style="color:var(--muted)">Befehlsverlauf...</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="inp" id="rcon-inp" data-i18n-placeholder="rcon_ph" placeholder="RCON Befehl (z.B. /say Hallo)" style="flex:1;font-family:monospace" onkeydown="if(event.key==='Enter')sendRcon()">
+        <button class="btn btn-gray" onclick="sendRcon()">▶ <span data-i18n="btn_send">Senden</span></button>
+      </div>
     </div>
-    <div id="rcon-resp" style="margin-top:6px;font-size:11px;font-family:monospace;color:var(--muted);min-height:18px"></div>
   </div>
 </div>
 
@@ -849,7 +941,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     if (tab.dataset.tab === "players") { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
     if (tab.dataset.tab === "advanced") { loadExtraCfg(); loadDiscord(); }
     if (tab.dataset.tab === "content") loadInstalledContent();
-    if (tab.dataset.tab === "records") { loadRecordFilters(); loadBestLaps(); loadAllLaps(); }
+    if (tab.dataset.tab === "records") { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
   });
 });
 
@@ -883,6 +975,15 @@ const LANG = {
     clear_all:'🗑 Alles löschen',
     ban_list:'Ban-Liste', ban_hint:'Gebannte Spieler können hier entfernt (unban) werden.',
     server_logs:'Server Logs', auto_refresh:'Auto-Refresh (3s)',
+    qs_laps_today:'Runden heute:', qs_drivers_today:'Fahrer heute:', qs_best_today:'Beste heute:',
+    btn_send:'Senden', chat_ph:'Nachricht an alle senden...', rcon_ph:'RCON Befehl (z.B. /say Hallo)',
+    driver_stats:'Fahrer Statistiken', stat_total_laps:'Runden gesamt',
+    stat_clean_laps:'Saubere Runden', stat_best:'Beste Zeit',
+    discord_notify_join:'Fahrer Join/Leave melden',
+    discord_notify_join_desc:'Nachricht wenn Fahrer verbindet oder trennt',
+    discord_test:'Test senden', discord_hint:'Benachrichtigung bei Server-Ausfall oder Neustart.',
+    track_params:'Track Parameter', track_params_hint:'Koordinaten für Real Time setzen.',
+    best_no_data:'Noch keine Rundenzeiten gespeichert',
   },
   en: {
     btn_start:'▶ Start', btn_stop:'■ Stop', btn_restart:'↻ Restart', btn_logout:'Logout',
@@ -912,6 +1013,15 @@ const LANG = {
     clear_all:'🗑 Clear All',
     ban_list:'Ban List', ban_hint:'Banned players can be removed (unbanned) here.',
     server_logs:'Server Logs', auto_refresh:'Auto-Refresh (3s)',
+    qs_laps_today:'Laps today:', qs_drivers_today:'Drivers today:', qs_best_today:'Best today:',
+    btn_send:'Send', chat_ph:'Send message to all...', rcon_ph:'RCON command (e.g. /say Hello)',
+    driver_stats:'Driver Statistics', stat_total_laps:'Total Laps',
+    stat_clean_laps:'Clean Laps', stat_best:'Best Time',
+    discord_notify_join:'Notify Player Join/Leave',
+    discord_notify_join_desc:'Message when driver connects or disconnects',
+    discord_test:'Send Test', discord_hint:'Notify on server crash or restart.',
+    track_params:'Track Parameters', track_params_hint:'Set coordinates for Real Time.',
+    best_no_data:'No lap times recorded yet',
   }
 };
 
@@ -1252,17 +1362,38 @@ function savePreset(){const name=document.getElementById("preset-name").value.tr
 function applyPreset(name){if(!confirm(`Preset "${name}" laden und Server neu starten?`))return;toast("Lade Preset...","info");apiFetch(`/api/presets/${encodeURIComponent(name)}/load`,{method:"POST"}).then(r=>r.json()).then(d=>{toast(d.ok?"✓ "+d.msg:"✗ "+d.msg,d.ok?"ok":"err");if(d.ok)setTimeout(refreshLive,3000);});}
 function removePreset(name){if(!confirm(`Preset "${name}" löschen?`))return;apiFetch(`/api/presets/${encodeURIComponent(name)}`,{method:"DELETE"}).then(r=>r.json()).then(d=>{toast(d.ok?"✓ Gelöscht":"✗ "+d.msg,d.ok?"ok":"err");loadPresetList();});}
 
+// ═══ CHAT SEND ════════════════════════════════════════════════════════════
+function sendChat() {
+  const inp = document.getElementById('chat-send-inp');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  apiFetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})})
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok?'✓ Gesendet':'✗ '+d.msg, d.ok?'ok':'err');
+      if (d.ok) inp.value='';
+    });
+}
+
 // ═══ LOGS + RCON ══════════════════════════════════════════════════════════
 function loadLogs(){apiFetch("/logs").then(r=>r.json()).then(d=>{const box=document.getElementById("logbox");box.innerHTML=d.logs.split("\n").map(l=>{const s=esc(l);if(/ERR|FAIL|error/i.test(l))return`<span style="color:#ff6b6b">${s}</span>`;if(/WRN|WARN/i.test(l))return`<span style="color:var(--yellow)">${s}</span>`;if(/INF\b|INFO/i.test(l))return`<span style="color:#74b9ff">${s}</span>`;return s;}).join("\n");box.scrollTop=box.scrollHeight;});}
 
-function sendRcon(){
-  const cmd=document.getElementById("rcon-inp").value.trim();
-  if(!cmd)return;
-  const resp=document.getElementById("rcon-resp");
-  resp.textContent="Sende...";
-  apiFetch("/api/rcon_console",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd})})
-    .then(r=>r.json()).then(d=>{resp.textContent=(d.ok?"✓ ":"✗ ")+d.response;document.getElementById("rcon-inp").value="";})
-    .catch(()=>{resp.textContent="Fehler beim Senden";});
+const _rconHistory = [];
+function sendRcon() {
+  const inp = document.getElementById('rcon-inp');
+  const cmd = inp.value.trim();
+  if (!cmd) return;
+  const hist = document.getElementById('rcon-history');
+  apiFetch('/api/rcon_console', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cmd})})
+    .then(r=>r.json()).then(d => {
+      _rconHistory.push({cmd, ok:d.ok, resp:d.response});
+      if (_rconHistory.length > 50) _rconHistory.shift();
+      hist.innerHTML = _rconHistory.map(h =>
+        `<div><span style="color:var(--muted)">›</span> <span style="color:var(--text)">${esc(h.cmd)}</span>`+
+        (h.resp?` <span style="color:${h.ok?'var(--green)':'var(--red)'}">${esc(h.resp)}</span>`:'')+'</div>'
+      ).join('');
+      hist.scrollTop = hist.scrollHeight;
+      inp.value = '';
+    }).catch(()=>{});
 }
 
 // ═══ INSTALLED CONTENT + DELETE ═══════════════════════════════════════════
@@ -1414,6 +1545,21 @@ function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").
 function copy(text){navigator.clipboard.writeText(text).then(()=>toast("📋 Kopiert: "+text,"info"));}
 function copyPub(){const ip=document.getElementById("pub-ip").textContent;if(ip&&ip!=="—")copy(ip+":9600");}
 
+// ═══ QUICK STATS ══════════════════════════════════════════════════════════
+function refreshQuickStats() {
+  apiFetch('/api/laptimes/today').then(r=>r.json()).then(d=>{
+    document.getElementById('qs-laps').textContent    = d.laps_today    ?? '0';
+    document.getElementById('qs-drivers').textContent = d.drivers_today ?? '0';
+    if (d.best_today) {
+      document.getElementById('qs-best').textContent        = fmtMs(d.best_today.laptime);
+      document.getElementById('qs-best-driver').textContent = '(' + esc(d.best_today.driver) + ')';
+    } else {
+      document.getElementById('qs-best').textContent        = '—';
+      document.getElementById('qs-best-driver').textContent = '';
+    }
+  }).catch(()=>{});
+}
+
 // ═══ RECORDS TAB ══════════════════════════════════════════════════════════
 function fmtMs(ms) {
   if (!ms || ms <= 0) return '—';
@@ -1421,18 +1567,21 @@ function fmtMs(ms) {
   return `${m}:${s.toFixed(3).padStart(6,'0')}`;
 }
 
+// Fix: rebuild filter options without overwriting data-i18n on the "Alle" option
 async function loadRecordFilters() {
   const d = await apiFetch('/api/laptimes/drivers').then(r => r.json()).catch(() => null);
   if (!d) return;
-  const fill = (id, items) => {
+  const L = LANG[curLang] || LANG.de;
+  const fill = (id, items, allKey) => {
     const sel = document.getElementById(id);
     const cur = sel.value;
-    sel.innerHTML = `<option value="">Alle</option>` + items.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    sel.innerHTML = `<option value="">${L[allKey] || 'Alle'}</option>` +
+      items.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
     if (cur) sel.value = cur;
   };
-  fill('rec-filter-driver', d.drivers);
-  fill('rec-filter-track',  d.tracks);
-  fill('rec-filter-car',    d.cars);
+  fill('rec-filter-driver', d.drivers, 'all_drivers');
+  fill('rec-filter-track',  d.tracks,  'all_tracks');
+  fill('rec-filter-car',    d.cars,    'all_cars');
 }
 
 async function loadBestLaps() {
@@ -1457,7 +1606,12 @@ async function loadBestLaps() {
   }).join('');
 }
 
-async function loadAllLaps() {
+// Pagination state
+let _allLapsData = [], _allLapsPage = 0;
+const _PAGE_SIZE = 50;
+
+async function loadAllLaps(resetPage) {
+  if (resetPage !== false) _allLapsPage = 0;
   const driver = document.getElementById('rec-filter-driver').value;
   const track  = document.getElementById('rec-filter-track').value;
   const car    = document.getElementById('rec-filter-car').value;
@@ -1472,38 +1626,109 @@ async function loadAllLaps() {
   if (!d || !d.entries.length) {
     tb.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Keine Einträge</td></tr>`;
     cnt.textContent = '0 Einträge';
+    document.getElementById('all-pagination').innerHTML = '';
     return;
   }
+  _allLapsData = d.entries;
   cnt.textContent = d.total + ' Einträge';
+  document.getElementById('rec-export-btn').href = '/api/laptimes/export?' + params;
+  renderAllLapsPage();
+}
 
-  // Export link with filters
-  const expUrl = '/api/laptimes/export?' + params;
-  document.getElementById('rec-export-btn').href = expUrl;
+function renderAllLapsPage() {
+  const data = _allLapsData;
+  const start = _allLapsPage * _PAGE_SIZE;
+  const page  = data.slice(start, start + _PAGE_SIZE);
+  const tb    = document.getElementById('all-tbody');
 
-  tb.innerHTML = d.entries.map((e, i) => {
-    const pc = ['pos-1','pos-2','pos-3'][i] || '';
+  tb.innerHTML = page.map((e, i) => {
+    const gi = start + i;
+    const pc = ['pos-1','pos-2','pos-3'][gi] || '';
     const guidShort = e.guid ? e.guid.slice(-8) : '—';
     return `<tr>
-      <td class="${pc}">${i+1}</td>
+      <td class="${pc}">${gi+1}</td>
       <td><strong>${esc(e.driver)}</strong></td>
       <td style="font-size:10px;color:var(--muted);font-family:monospace" title="${esc(e.guid)}">${guidShort}</td>
       <td style="font-size:11px;color:var(--muted)">${esc(e.car)}</td>
       <td style="font-size:11px">${esc(e.track)}</td>
-      <td class="${i===0?'best-t':''}" style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
+      <td class="${gi===0?'best-t':''}" style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
       <td style="color:${e.cuts>0?'var(--yellow)':'var(--muted)'};">${e.cuts}</td>
       <td style="color:var(--muted);font-size:11px">${esc(e.ts||'')}</td>
     </tr>`;
   }).join('');
+
+  // Pagination controls
+  const pages = Math.ceil(data.length / _PAGE_SIZE);
+  const pag   = document.getElementById('all-pagination');
+  if (pages <= 1) { pag.innerHTML = ''; return; }
+  let html = '';
+  if (_allLapsPage > 0)
+    html += `<button class="btn btn-gray btn-sm" onclick="_allLapsPage--;renderAllLapsPage()">‹</button>`;
+  const lo = Math.max(0, _allLapsPage-2), hi = Math.min(pages-1, _allLapsPage+2);
+  for (let p = lo; p <= hi; p++)
+    html += `<button class="btn ${p===_allLapsPage?'btn-red':'btn-gray'} btn-sm" onclick="_allLapsPage=${p};renderAllLapsPage()">${p+1}</button>`;
+  if (_allLapsPage < pages-1)
+    html += `<button class="btn btn-gray btn-sm" onclick="_allLapsPage++;renderAllLapsPage()">›</button>`;
+  html += `<span style="font-size:11px;color:var(--muted)">Seite ${_allLapsPage+1}/${pages}</span>`;
+  pag.innerHTML = html;
 }
 
 function clearLaptimes() {
   if (!confirm('Alle gespeicherten Rundenzeiten löschen? Dies kann nicht rückgängig gemacht werden!')) return;
-  apiFetch('/api/laptimes', {method: 'DELETE'})
-    .then(r => r.json())
-    .then(d => {
-      toast(d.ok ? '✓ Rundenzeiten gelöscht' : '✗ ' + d.msg, d.ok ? 'ok' : 'err');
-      if (d.ok) { loadBestLaps(); loadAllLaps(); }
-    });
+  apiFetch('/api/laptimes', {method:'DELETE'}).then(r=>r.json()).then(d=>{
+    toast(d.ok?'✓ Rundenzeiten gelöscht':'✗ '+d.msg, d.ok?'ok':'err');
+    if (d.ok) { loadBestLaps(); loadAllLaps(); loadDriverStats(); refreshQuickStats(); }
+  });
+}
+
+async function loadDriverStats() {
+  const d = await apiFetch('/api/laptimes/stats').then(r=>r.json()).catch(()=>null);
+  const tb = document.getElementById('stats-tbody');
+  if (!d || !d.stats.length) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Daten</td></tr>`;
+    return;
+  }
+  tb.innerHTML = d.stats.map((s, i) => {
+    const pc = ['pos-1','pos-2','pos-3'][i] || '';
+    // Find best track entry
+    const bestTrack = Object.entries(s.tracks).sort((a,b)=>((a[1].best||99999999)-(b[1].best||99999999)))[0];
+    const cleanPct = s.total_laps ? Math.round(s.clean_laps/s.total_laps*100) : 0;
+    return `<tr>
+      <td class="${pc}"><strong>${esc(s.driver)}</strong><div style="font-size:10px;color:var(--muted);font-family:monospace">${esc(s.guid.slice(-8)||'')}</div></td>
+      <td style="font-weight:700">${s.total_laps}</td>
+      <td><span style="color:${cleanPct>=80?'var(--green)':cleanPct>=50?'var(--yellow)':'var(--red)'}">${s.clean_laps}</span> <span style="color:var(--muted);font-size:11px">(${cleanPct}%)</span></td>
+      <td class="best-t" style="font-family:monospace">${fmtMs(s.best_overall)}</td>
+      <td style="font-size:11px;color:var(--muted)">${bestTrack?esc(bestTrack[0]):'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${bestTrack?esc(bestTrack[1].car||''):'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══ DISCORD ══════════════════════════════════════════════════════════════
+function loadDiscord() {
+  apiFetch('/api/discord').then(r=>r.json()).then(d=>{
+    document.getElementById('discord-url').value = d.url||'';
+    const cb = document.getElementById('discord-notify-join');
+    if (cb) cb.checked = !!d.notify_join;
+  }).catch(()=>{});
+}
+function saveDiscord() {
+  const url  = document.getElementById('discord-url').value.trim();
+  const nj   = document.getElementById('discord-notify-join')?.checked || false;
+  apiFetch('/api/discord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,notify_join:nj})})
+    .then(r=>r.json()).then(d=>toast(d.ok?'✓ Webhook gespeichert':'✗ '+d.msg,d.ok?'ok':'err'));
+}
+function testDiscord(){apiFetch('/api/discord/test',{method:'POST'}).then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));}
+
+// ═══ TRACK PARAMS ═════════════════════════════════════════════════════════
+function saveTrackParams() {
+  const track = document.getElementById('tp-track').value;
+  const lat   = parseFloat(document.getElementById('tp-lat').value)||0;
+  const lon   = parseFloat(document.getElementById('tp-lon').value)||0;
+  const tz    = document.getElementById('tp-tz').value.trim()||'UTC';
+  apiFetch('/api/add_track_params',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({track,lat,lon,tz,city:track})})
+    .then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));
 }
 
 // ═══ INIT ═════════════════════════════════════════════════════════════════
@@ -1515,9 +1740,11 @@ loadMapImage();
 loadPresetList();
 refreshUptime();
 loadServerProfile();
+refreshQuickStats();
 
 setInterval(refreshLive, 3000);
 setInterval(refreshUptime, 30000);
+setInterval(refreshQuickStats, 60000);
 setInterval(()=>{if(document.getElementById("log-auto").checked&&document.getElementById("p-logs").classList.contains("active"))loadLogs();},3000);
 </script>
 </body>

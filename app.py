@@ -11,10 +11,11 @@ import time
 import zipfile
 import subprocess
 import functools
+import urllib.request
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_file
-from flask_httpauth import HTTPBasicAuth
-from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timezone
+from flask import (Flask, render_template, request, jsonify,
+                   send_file, session, redirect, url_for)
 from werkzeug.utils import secure_filename
 try:
     import psutil
@@ -28,13 +29,19 @@ CARS_DIR     = CONTENT_DIR / "cars"
 TRACKS_DIR   = CONTENT_DIR / "tracks"
 CFG_DIR      = SERVER_DIR / "cfg"
 PRESETS_FILE = Path("/opt/acweb/presets.json")
-WELCOME_FILE = CFG_DIR / "welcome.txt"
-LOGO_FILE    = SERVER_DIR / "logo.png"
+DISCORD_FILE = Path("/opt/acweb/discord.json")
+WELCOME_FILE    = CFG_DIR / "welcome.txt"
+EXTRA_CFG_FILE  = CFG_DIR / "extra_cfg.yml"
+LOGO_FILE       = SERVER_DIR / "logo.png"
+WHITELIST_FILE  = SERVER_DIR / "whitelist.txt"
+ADMINS_FILE     = SERVER_DIR / "admins.txt"
+BLACKLIST_FILE  = SERVER_DIR / "blacklist.txt"
 SERVICE_NAME = "acserver"
-SECRET_KEY   = "ac_dashboard_secret_42x"
+SECRET_KEY   = os.environ.get("ACWEB_SECRET", "ac_dashboard_secret_42x")
 RCON_PORT    = 9700
 
-USERS = {"admin": generate_password_hash("acserver")}
+ACWEB_USER = os.environ.get("ACWEB_USER", "admin")
+ACWEB_PASS = os.environ.get("ACWEB_PASS", "acserver")
 
 UPLOAD_TMP = Path("/tmp/acweb_uploads")
 UPLOAD_TMP.mkdir(exist_ok=True)
@@ -42,7 +49,6 @@ UPLOAD_TMP.mkdir(exist_ok=True)
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024
-auth = HTTPBasicAuth()
 
 # ── Weather presets available in AC ──────────────────────────────────────────
 WEATHER_PRESETS = [
@@ -51,8 +57,65 @@ WEATHER_PRESETS = [
     "9_light_drizzle","10_drizzle_race","11_practice_storm",
 ]
 
+# ── Rate limiting for login ───────────────────────────────────────────────────
+_rate_limit = {}  # ip -> [timestamps]
+_rate_lock  = threading.Lock()
+
+def _check_rate_limit(ip):
+    now = time.time()
+    with _rate_lock:
+        times = [t for t in _rate_limit.get(ip, []) if now - t < 300]
+        if len(times) >= 10:
+            return False
+        times.append(now)
+        _rate_limit[ip] = times
+        return True
+
+# ── Auth decorator ────────────────────────────────────────────────────────────
+def login_required(f):
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            if request.path.startswith("/api/") or request.path.startswith("/control/") \
+               or request.path in ("/logs", "/upload", "/import_zip",
+                                    "/upload_file", "/upload_folder",
+                                    "/upload_folder_done", "/save_config",
+                                    "/save_assists", "/save_server_settings",
+                                    "/save_session", "/save_weather",
+                                    "/save_dynamic_track"):
+                return jsonify({"ok": False, "msg": "Unauthorized"}), 401
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+# ── Login / Logout routes ─────────────────────────────────────────────────────
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("logged_in"):
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        ip = request.remote_addr
+        if not _check_rate_limit(ip):
+            error = "Too many attempts. Try again in 5 minutes."
+        else:
+            username = request.form.get("username", "")
+            password = request.form.get("password", "")
+            if username == ACWEB_USER and password == ACWEB_PASS:
+                session["logged_in"] = True
+                session.permanent = False
+                return redirect(url_for("index"))
+            else:
+                error = "Invalid username or password."
+    return render_template("login.html", error=error)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
 # ── UDP live position listener ────────────────────────────────────────────────
-_car_data   = {}   # car_id -> {spLine, lapTimeMs, lastLapMs, bestLapMs, lapCount}
+_car_data   = {}
 _udp_pkt    = [0]
 _udp_err    = ["none"]
 _udp_ready  = False
@@ -71,7 +134,7 @@ def _udp_listener():
             if not data: continue
             _udp_pkt[0] += 1
             pkt, size = data[0], len(data)
-            if pkt in (2, 53) and size >= 2:   # RT_CAR_UPDATE
+            if pkt in (2, 53) and size >= 2:
                 cid = data[1]
                 entry = _car_data.get(cid, {})
                 if size >= 33:
@@ -91,7 +154,7 @@ def _udp_listener():
                         entry["lapCount"] = struct.unpack_from("<H", data, 45)[0]
                     except Exception: pass
                 _car_data[cid] = entry
-            elif pkt == 4 and size >= 6:        # RT_LAP_COMPLETED
+            elif pkt == 4 and size >= 6:
                 cid = data[1]
                 lap_ms = struct.unpack_from("<I", data, 2)[0]
                 entry = _car_data.get(cid, {})
@@ -110,11 +173,48 @@ def ensure_udp():
         _udp_ready = True
         threading.Thread(target=_udp_listener, daemon=True).start()
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
-@auth.verify_password
-def verify_password(username, password):
-    if username in USERS and check_password_hash(USERS[username], password):
-        return username
+# ── Discord webhook background thread ────────────────────────────────────────
+_discord_last_status = [None]
+
+def _discord_monitor():
+    while True:
+        time.sleep(30)
+        try:
+            url = _load_discord_url()
+            if not url:
+                continue
+            current = server_status()
+            prev    = _discord_last_status[0]
+            if prev is not None and prev == "active" and current in ("failed", "inactive"):
+                _discord_notify(url, f"Server `{SERVICE_NAME}` went **offline** (status: {current})")
+            elif prev is not None and prev in ("failed", "inactive") and current == "active":
+                _discord_notify(url, f"Server `{SERVICE_NAME}` is back **online**")
+            _discord_last_status[0] = current
+        except Exception:
+            pass
+
+def _discord_notify(webhook_url, message):
+    try:
+        payload = json.dumps({"content": message}).encode("utf-8")
+        req = urllib.request.Request(
+            webhook_url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
+
+def _load_discord_url():
+    if DISCORD_FILE.exists():
+        try:
+            return json.loads(DISCORD_FILE.read_text()).get("url", "")
+        except Exception:
+            pass
+    return ""
+
+threading.Thread(target=_discord_monitor, daemon=True).start()
 
 # ── System helpers ────────────────────────────────────────────────────────────
 def run_systemctl(action):
@@ -131,7 +231,6 @@ def server_status():
     return r.stdout.strip()
 
 def server_info():
-    import urllib.request
     for url in ["http://127.0.0.1:8081/api/details",
                 "http://127.0.0.1:8081/INFO"]:
         try:
@@ -142,7 +241,6 @@ def server_info():
     return None
 
 def server_json():
-    import urllib.request
     try:
         with urllib.request.urlopen("http://127.0.0.1:8081/JSON|", timeout=2) as r:
             return json.loads(r.read())
@@ -169,6 +267,40 @@ def get_local_ip():
     except Exception:
         return "unknown"
 
+def get_uptime_string():
+    try:
+        r = subprocess.run(
+            ["systemctl", "show", SERVICE_NAME, "--property=ActiveEnterTimestamp"],
+            capture_output=True, text=True, timeout=5)
+        line = r.stdout.strip()
+        # Format: ActiveEnterTimestamp=Wed 2025-01-01 12:00:00 UTC
+        m = re.search(r"=(.+)", line)
+        if not m or not m.group(1).strip() or m.group(1).strip() == "n/a":
+            return "unknown"
+        ts_str = m.group(1).strip()
+        # Parse the timestamp
+        for fmt in ["%a %Y-%m-%d %H:%M:%S %Z", "%a %Y-%m-%d %H:%M:%S"]:
+            try:
+                dt = datetime.strptime(ts_str, fmt)
+                now = datetime.utcnow()
+                diff = now - dt
+                total_seconds = int(diff.total_seconds())
+                if total_seconds < 0:
+                    return "just started"
+                days    = total_seconds // 86400
+                hours   = (total_seconds % 86400) // 3600
+                minutes = (total_seconds % 3600) // 60
+                parts = []
+                if days:    parts.append(f"{days}d")
+                if hours:   parts.append(f"{hours}h")
+                if minutes: parts.append(f"{minutes}m")
+                return " ".join(parts) if parts else "< 1m"
+            except Exception:
+                continue
+        return "unknown"
+    except Exception:
+        return "unknown"
+
 # ── Content helpers ───────────────────────────────────────────────────────────
 def list_cars():
     if not CARS_DIR.exists(): return []
@@ -185,10 +317,8 @@ def list_tracks():
     return result
 
 def get_car_ui(car):
-    """Return display name + badge path for a car."""
     ui_path = CARS_DIR / car / "ui" / "ui_car.json"
-    name = car
-    brand = ""
+    name = car; brand = ""
     if ui_path.exists():
         try:
             d = json.loads(ui_path.read_text(encoding="utf-8", errors="replace"))
@@ -199,7 +329,6 @@ def get_car_ui(car):
     return {"id": car, "name": name, "brand": brand}
 
 def get_track_ui(track, layout=""):
-    """Return display info for a track/layout."""
     candidates = []
     if layout:
         candidates.append(TRACKS_DIR / track / "ui" / layout / "ui_track.json")
@@ -224,7 +353,6 @@ def get_car_skins(car):
 
 # ── Config helpers ────────────────────────────────────────────────────────────
 def read_server_cfg():
-    """Read [SERVER] section only."""
     cfg_path = CFG_DIR / "server_cfg.ini"
     if not cfg_path.exists(): return {}
     data, section = {}, None
@@ -239,7 +367,6 @@ def read_server_cfg():
     return data
 
 def read_full_server_cfg():
-    """Read all sections of server_cfg.ini."""
     cfg_path = CFG_DIR / "server_cfg.ini"
     if not cfg_path.exists(): return {}
     result, section = {}, None
@@ -257,34 +384,59 @@ def read_full_server_cfg():
     return result
 
 def update_server_cfg(updates):
-    """Update key=value pairs in server_cfg.ini (in any section)."""
     cfg_path = CFG_DIR / "server_cfg.ini"
     if not cfg_path.exists(): return False, "server_cfg.ini not found"
     lines = cfg_path.read_text().splitlines()
     new_lines = []
+    found_keys = set()
+
     for line in lines:
         replaced = False
         for key, value in updates.items():
             if line.strip().startswith(key + "="):
                 new_lines.append(f"{key}={value}")
+                found_keys.add(key)
                 replaced = True
                 break
         if not replaced:
             new_lines.append(line)
+
+    missing = {k: v for k, v in updates.items() if k not in found_keys}
+    if missing:
+        server_start = None
+        next_section = None
+        for i, line in enumerate(new_lines):
+            s = line.strip()
+            if s == "[SERVER]":
+                server_start = i
+            elif s.startswith("[") and s.endswith("]") and server_start is not None:
+                next_section = i
+                break
+        insert_at = next_section if next_section is not None else len(new_lines)
+        if server_start is None:
+            insert_at = len(new_lines)
+        for k, v in missing.items():
+            new_lines.insert(insert_at, f"{k}={v}")
+            insert_at += 1
+
     cfg_path.write_text("\n".join(new_lines) + "\n")
     return True, "Saved"
 
 def update_section_cfg(section_updates):
-    """Update multiple keys inside specific INI sections.
-    section_updates = {"PRACTICE": {"TIME": 60, "IS_OPEN": 1}, ...}
-    """
     cfg_path = CFG_DIR / "server_cfg.ini"
     if not cfg_path.exists(): return False, "server_cfg.ini not found"
     lines = cfg_path.read_text().splitlines()
     new_lines, current_section = [], None
+    found = {sec: set() for sec in section_updates}
+
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("[") and stripped.endswith("]"):
+            if current_section in section_updates:
+                for k, v in section_updates[current_section].items():
+                    if k not in found[current_section]:
+                        new_lines.append(f"{k}={v}")
+                        found[current_section].add(k)
             current_section = stripped[1:-1]
             new_lines.append(line)
             continue
@@ -293,9 +445,16 @@ def update_section_cfg(section_updates):
             k = stripped.split("=", 1)[0].strip()
             if k in section_updates[current_section]:
                 new_lines.append(f"{k}={section_updates[current_section][k]}")
+                found[current_section].add(k)
                 replaced = True
         if not replaced:
             new_lines.append(line)
+
+    if current_section in section_updates:
+        for k, v in section_updates[current_section].items():
+            if k not in found[current_section]:
+                new_lines.append(f"{k}={v}")
+
     cfg_path.write_text("\n".join(new_lines) + "\n")
     return True, "Saved"
 
@@ -386,22 +545,30 @@ def load_presets():
     return {}
 
 def save_presets(data):
+    PRESETS_FILE.parent.mkdir(parents=True, exist_ok=True)
     PRESETS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
 # ── Entry-list generator ──────────────────────────────────────────────────────
-def _regen_entry_list(car_models, slots_per_car=2):
+def _regen_entry_list(car_models, slots_per_car=2, car_config=None):
+    """Generate entry_list.ini.
+    car_config: {car_id: {skin, ballast, restrictor}} — optional per-car overrides.
+    """
     try:
         lines, i = [], 0
         for model in car_models:
-            skin = ""
-            skins_dir = CARS_DIR / model / "skins"
-            if skins_dir.exists():
-                sk = sorted(s.name for s in skins_dir.iterdir() if s.is_dir())
-                if sk: skin = sk[0]
+            cfg_entry = (car_config or {}).get(model, {})
+            skin = cfg_entry.get("skin", "")
+            if not skin:
+                skins_dir = CARS_DIR / model / "skins"
+                if skins_dir.exists():
+                    sk = sorted(s.name for s in skins_dir.iterdir() if s.is_dir())
+                    if sk: skin = sk[0]
+            ballast    = cfg_entry.get("ballast",    0)
+            restrictor = cfg_entry.get("restrictor", 0)
             for _ in range(slots_per_car):
                 lines += [f"[CAR_{i}]", f"MODEL={model}", f"SKIN={skin}",
                           "SPECTATOR_MODE=0","DRIVERNAME=","TEAM=","GUID=",
-                          "BALLAST=0","RESTRICTOR=0",""]
+                          f"BALLAST={ballast}",f"RESTRICTOR={restrictor}",""]
                 i += 1
         (CFG_DIR / "entry_list.ini").write_text("\n".join(lines))
     except Exception:
@@ -420,7 +587,6 @@ def analyze_zip(zip_path):
                 m = re.search(r"(?:^|/)tracks/([^/]+)/", n)
                 if m and m.group(1) not in items["tracks"]:
                     items["tracks"].append(m.group(1))
-            # Flat ZIPs: root folder is the car/track itself (no cars/ or tracks/ prefix)
             if not items["cars"] and not items["tracks"]:
                 roots = set()
                 for n in names:
@@ -440,7 +606,6 @@ def analyze_zip(zip_path):
     return items, None
 
 def _zip_rel(name, prefix):
-    """Return the relative path after 'prefix/name/' in a zip entry, or None."""
     m = re.search(rf"(?:^|/){re.escape(prefix)}/(.+)", name)
     if m:
         return m.group(1)
@@ -450,7 +615,6 @@ def extract_from_zip(zip_path, sel_cars, sel_tracks):
     imported = []
     with zipfile.ZipFile(zip_path) as zf:
         names = zf.namelist()
-        # Detect if this is a flat ZIP (no cars/ or tracks/ prefix)
         has_prefix_cars   = any(re.search(r"(?:^|/)cars/",   n) for n in names)
         has_prefix_tracks = any(re.search(r"(?:^|/)tracks/", n) for n in names)
 
@@ -482,13 +646,171 @@ def extract_from_zip(zip_path, sel_cars, sel_tracks):
                     if key not in imported: imported.append(key)
     return imported
 
+# ── extra_cfg.yml helpers ─────────────────────────────────────────────────────
+EXTRA_CFG_KEYS = [
+    "EnableServerDetails", "ServerDescription", "LoadingImageUrl",
+    "EnableAntiAfk", "MaxAfkTimeMinutes", "MaxPing", "ForceLights",
+    "EnableWeatherFx", "MinimumCSPVersion", "EnableClientMessages",
+    "EnableRealTime", "MandatoryClientSecurityLevel", "RconPort",
+]
+
+def _yaml_quote(s):
+    """Always produce a double-quoted, single-line YAML string with \\n for newlines."""
+    s = str(s)
+    s = s.replace("\\", "\\\\").replace('"', '\\"')
+    s = s.replace("\n", "\\n").replace("\r", "")
+    return '"' + s + '"'
+
+def _yaml_unquote(s):
+    s = s.strip()
+    if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+        inner = s[1:-1]
+        inner = inner.replace('\\"', '"').replace('\\n', '\n').replace('\\\\', '\\')
+        return inner
+    if len(s) >= 2 and s[0] == "'" and s[-1] == "'":
+        return s[1:-1].replace("''", "'")
+    return s
+
+def read_extra_cfg():
+    result = {}
+    if not EXTRA_CFG_FILE.exists():
+        return result
+    for line in EXTRA_CFG_FILE.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        for key in EXTRA_CFG_KEYS:
+            if stripped.startswith(key + ":"):
+                val = stripped[len(key)+1:].strip()
+                result[key] = _yaml_unquote(val)
+                break
+    return result
+
+def _yaml_format_value(val):
+    """Format a Python value as a YAML scalar (always single-line)."""
+    if isinstance(val, bool):
+        return "true" if val else "false"
+    s = str(val)
+    if s.lower() in ("true", "false"):
+        return s.lower()
+    try:
+        float(s)
+        return s
+    except ValueError:
+        return _yaml_quote(s)
+
+def write_extra_cfg(updates):
+    if not EXTRA_CFG_FILE.exists():
+        return False, "extra_cfg.yml not found"
+    lines = EXTRA_CFG_FILE.read_text(encoding="utf-8").splitlines()
+    found_keys = set()
+    new_lines = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        matched_key = None
+        for key in updates:
+            if stripped.startswith(key + ":"):
+                matched_key = key
+                break
+        if matched_key is not None:
+            new_lines.append(f"{matched_key}: {_yaml_format_value(updates[matched_key])}")
+            found_keys.add(matched_key)
+            # Skip any continuation lines (indented or non-key lines) that belonged
+            # to a multi-line value of this key
+            i += 1
+            while i < len(lines):
+                nxt = lines[i].strip()
+                # A top-level YAML key starts with a word char followed by ':'
+                # or is a comment — stop skipping
+                import re as _re
+                if _re.match(r'^[A-Za-z#]', nxt):
+                    break
+                i += 1
+            continue
+        new_lines.append(line)
+        i += 1
+
+    for key, val in updates.items():
+        if key not in found_keys:
+            new_lines.append(f"{key}: {_yaml_format_value(val)}")
+
+    EXTRA_CFG_FILE.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    return True, "Saved"
+
+def get_extra_cfg_description():
+    return read_extra_cfg().get("ServerDescription", "")
+
+def set_extra_cfg_description(description):
+    return write_extra_cfg({"ServerDescription": description})
+
+# ── Player list helpers ───────────────────────────────────────────────────────
+def _read_guid_list(path: Path):
+    if not path.exists(): return []
+    return [l.strip() for l in path.read_text().splitlines() if l.strip()]
+
+def _write_guid_list(path: Path, guids):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(guids) + ("\n" if guids else ""))
+
+def _add_guid(path: Path, guid: str):
+    guids = _read_guid_list(path)
+    if guid not in guids:
+        guids.append(guid)
+        _write_guid_list(path, guids)
+        return True
+    return False
+
+def _remove_guid(path: Path, guid: str):
+    guids = _read_guid_list(path)
+    if guid in guids:
+        guids.remove(guid)
+        _write_guid_list(path, guids)
+        return True
+    return False
+
+# ── Track params ──────────────────────────────────────────────────────────────
+TRACK_PARAMS_FILE = SERVER_DIR / "data" / "data_track_params.ini"
+
+def _auto_add_track_params(track):
+    section = f"[{track.lower()}]"
+    existing = TRACK_PARAMS_FILE.read_text() if TRACK_PARAMS_FILE.exists() else ""
+    if section in existing:
+        return
+    lat, lon, tz = 0.0, 0.0, "UTC"
+    ui_path = TRACKS_DIR / track / "ui" / "ui_track.json"
+    if not ui_path.exists():
+        for d in ((TRACKS_DIR / track).iterdir() if (TRACKS_DIR / track).exists() else []):
+            candidate = TRACKS_DIR / track / d.name / "ui" / "ui_track.json"
+            if candidate.exists():
+                ui_path = candidate
+                break
+    if ui_path.exists():
+        try:
+            d = json.loads(ui_path.read_text(encoding="utf-8", errors="replace"))
+            city = d.get("city", track)
+        except Exception:
+            city = track
+    else:
+        city = track
+    entry = f"\n{section}\nCITY={city}\nLATITUDE={lat}\nLONGITUDE={lon}\nTIMEZONE={tz}\n"
+    with open(TRACK_PARAMS_FILE, "a") as f:
+        f.write(entry)
+
+# ── Folder upload helper ──────────────────────────────────────────────────────
+def secure_filename_path(rel):
+    parts = Path(rel.replace("\\", "/")).parts
+    safe  = [secure_filename(p) for p in parts if p and p not in (".", "..")]
+    return Path(*safe) if safe else Path("file")
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  ROUTES
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.route("/")
-@auth.login_required
+@login_required
 def index():
     cfg    = read_server_cfg()
     full   = read_full_server_cfg()
@@ -518,7 +840,7 @@ def index():
 
 # ── Live data ────────────────────────────────────────────────────────────────
 @app.route("/api/live")
-@auth.login_required
+@login_required
 def api_live():
     ensure_udp()
     cfg    = read_server_cfg()
@@ -535,7 +857,6 @@ def api_live():
                 continue
             name = car.get("DriverName") or car.get("driver", {}).get("name", "")
             if not name: continue
-            sp = _car_data.get(i, {}).get("spLine", 0)
             udp = _car_data.get(i, {})
             drv = {
                 "id":       i,
@@ -569,9 +890,16 @@ def api_live():
     })
 
 
+# ── Uptime ───────────────────────────────────────────────────────────────────
+@app.route("/api/uptime")
+@login_required
+def api_uptime():
+    return jsonify({"uptime": get_uptime_string()})
+
+
 # ── Image endpoints ───────────────────────────────────────────────────────────
 @app.route("/car_img/<car>")
-@auth.login_required
+@login_required
 def car_img(car):
     base = CARS_DIR / car
     for rel in ["ui/badge.png", "ui/car_small.png", "ui/car.png"]:
@@ -581,7 +909,7 @@ def car_img(car):
     return "", 404
 
 @app.route("/skin_img/<car>/<path:skin>")
-@auth.login_required
+@login_required
 def skin_img(car, skin):
     base = CARS_DIR / car / "skins" / skin
     for fn in ["livery.png", "preview.png", "Skin.png"]:
@@ -592,7 +920,7 @@ def skin_img(car, skin):
 
 @app.route("/track_img/<track>")
 @app.route("/track_img/<track>/<layout>")
-@auth.login_required
+@login_required
 def track_img(track, layout=""):
     base = TRACKS_DIR / track
     candidates = []
@@ -613,7 +941,7 @@ def track_img(track, layout=""):
     return "", 404
 
 @app.route("/map")
-@auth.login_required
+@login_required
 def track_map():
     cfg    = read_server_cfg()
     track  = cfg.get("TRACK", "")
@@ -638,22 +966,52 @@ def track_map():
 
 # ── API: car/track UI info ────────────────────────────────────────────────────
 @app.route("/api/car_info/<car>")
-@auth.login_required
+@login_required
 def api_car_info(car):
     ui   = get_car_ui(car)
     skins = get_car_skins(car)
     return jsonify({**ui, "skins": skins})
 
+@app.route("/api/car_skins/<car>")
+@login_required
+def api_car_skins(car):
+    return jsonify({"skins": get_car_skins(car)})
+
+@app.route("/api/content_check/<kind>/<name>")
+@login_required
+def content_check(kind, name):
+    if kind == "car":
+        base = CARS_DIR / name
+        checks = {
+            "collider.kn5": (base / "collider.kn5").exists(),
+            "data":         (base / "data").is_dir() or (base / "data.acd").exists(),
+            "ui":           (base / "ui" / "ui_car.json").exists(),
+        }
+    elif kind == "track":
+        base = TRACKS_DIR / name
+        checks = {
+            "ui":           (base / "ui" / "ui_track.json").exists(),
+            "data/surfaces":(base / "data" / "surfaces.ini").exists(),
+        }
+    else:
+        return jsonify({"ok": False, "msg": "kind must be car or track"}), 400
+    ok = all(checks.values())
+    return jsonify({"ok": ok, "name": name, "checks": checks})
+
 @app.route("/api/track_info/<track>")
 @app.route("/api/track_info/<track>/<layout>")
-@auth.login_required
+@login_required
 def api_track_info(track, layout=""):
     return jsonify(get_track_ui(track, layout))
 
 
 # ── Settings saves ────────────────────────────────────────────────────────────
+def _maybe_restart(data):
+    if data.get("restart"):
+        run_systemctl("restart")
+
 @app.route("/save_config", methods=["POST"])
-@auth.login_required
+@login_required
 def save_config():
     data = request.json or {}
     updates = {}
@@ -667,12 +1025,17 @@ def save_config():
     if updates.get("TRACK") or updates.get("TRACK_LAYOUT"):
         load_spline_points.cache_clear()
     spc = int(data.get("slots_per_car", 2))
+    car_config = data.get("car_config")
     if data.get("cars"):
-        _regen_entry_list(data["cars"], max(1, min(5, spc)))
+        spc_clamped = max(1, min(5, spc))
+        _regen_entry_list(data["cars"], spc_clamped, car_config)
+        total_slots = len(data["cars"]) * spc_clamped
+        update_server_cfg({"MAX_CLIENTS": total_slots})
+    _maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})
 
 @app.route("/save_assists", methods=["POST"])
-@auth.login_required
+@login_required
 def save_assists():
     data = request.json or {}
     allowed = {
@@ -682,10 +1045,11 @@ def save_assists():
     }
     updates = {k: v for k,v in data.items() if k in allowed}
     ok, msg = update_server_cfg(updates)
+    _maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})
 
 @app.route("/save_server_settings", methods=["POST"])
-@auth.login_required
+@login_required
 def save_server_settings():
     data = request.json or {}
     allowed = {
@@ -694,10 +1058,11 @@ def save_server_settings():
     }
     updates = {k: v for k,v in data.items() if k in allowed}
     ok, msg = update_server_cfg(updates)
+    _maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})
 
 @app.route("/save_session", methods=["POST"])
-@auth.login_required
+@login_required
 def save_session():
     data = request.json or {}
     section_updates = {}
@@ -712,10 +1077,11 @@ def save_session():
     if not section_updates:
         return jsonify({"ok": False, "msg": "No data"})
     ok, msg = update_section_cfg(section_updates)
+    _maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})
 
 @app.route("/save_weather", methods=["POST"])
-@auth.login_required
+@login_required
 def save_weather():
     data = request.json or {}
     section_updates = {}
@@ -732,24 +1098,24 @@ def save_weather():
     if not section_updates:
         return jsonify({"ok": False, "msg": "No data"})
     ok, msg = update_section_cfg(section_updates)
+    _maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})
 
 @app.route("/save_dynamic_track", methods=["POST"])
-@auth.login_required
+@login_required
 def save_dynamic_track():
     data = request.json or {}
     allowed = {"SESSION_START","RANDOMNESS","SESSION_TRANSFER","LAP_GAIN"}
     upd = {k: v for k,v in data.items() if k in allowed}
     if not upd: return jsonify({"ok": False, "msg": "No data"})
     ok, msg = update_section_cfg({"DYNAMIC_TRACK": upd})
+    _maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})
 
 
 # ── Track params ─────────────────────────────────────────────────────────────
-TRACK_PARAMS_FILE = SERVER_DIR / "data" / "data_track_params.ini"
-
 @app.route("/api/add_track_params", methods=["POST"])
-@auth.login_required
+@login_required
 def add_track_params():
     data = request.json or {}
     track = data.get("track", "").strip()
@@ -770,7 +1136,7 @@ def add_track_params():
 
 # ── Server control ────────────────────────────────────────────────────────────
 @app.route("/control/<action>", methods=["POST"])
-@auth.login_required
+@login_required
 def control(action):
     if action not in ("start","stop","restart"):
         return jsonify({"ok": False, "msg": "Invalid action"}), 400
@@ -778,7 +1144,7 @@ def control(action):
     return jsonify({"ok": ok, "msg": msg, "status": server_status()})
 
 @app.route("/logs")
-@auth.login_required
+@login_required
 def logs():
     try:
         r = subprocess.run(
@@ -789,14 +1155,195 @@ def logs():
         return jsonify({"logs": f"Error: {e}"})
 
 
+# ── RCON console ─────────────────────────────────────────────────────────────
+@app.route("/api/rcon_console", methods=["POST"])
+@login_required
+def rcon_console():
+    cmd = (request.json or {}).get("cmd", "").strip()
+    if not cmd:
+        return jsonify({"ok": False, "response": "No command"}), 400
+    ok, resp = rcon_send(cmd)
+    return jsonify({"ok": ok, "response": resp})
+
+
+# ── Extra CFG ────────────────────────────────────────────────────────────────
+@app.route("/api/extra_cfg", methods=["GET"])
+@login_required
+def get_extra_cfg():
+    return jsonify({"ok": True, "data": read_extra_cfg()})
+
+@app.route("/api/extra_cfg", methods=["POST"])
+@login_required
+def post_extra_cfg():
+    data = request.json or {}
+    updates = {k: v for k, v in data.items() if k in EXTRA_CFG_KEYS}
+    if not updates:
+        return jsonify({"ok": False, "msg": "No valid keys provided"}), 400
+    ok, msg = write_extra_cfg(updates)
+    return jsonify({"ok": ok, "msg": msg})
+
+
+# ── Player management (whitelist/admins/blacklist) ────────────────────────────
+@app.route("/api/whitelist", methods=["GET"])
+@login_required
+def get_whitelist():
+    return jsonify({"guids": _read_guid_list(WHITELIST_FILE)})
+
+@app.route("/api/whitelist", methods=["POST"])
+@login_required
+def add_whitelist():
+    guid = (request.json or {}).get("guid", "").strip()
+    if not guid: return jsonify({"ok": False, "msg": "GUID required"}), 400
+    added = _add_guid(WHITELIST_FILE, guid)
+    return jsonify({"ok": True, "added": added})
+
+@app.route("/api/whitelist/<guid>", methods=["DELETE"])
+@login_required
+def del_whitelist(guid):
+    removed = _remove_guid(WHITELIST_FILE, guid)
+    return jsonify({"ok": removed, "msg": "Removed" if removed else "Not found"})
+
+@app.route("/api/admins", methods=["GET"])
+@login_required
+def get_admins():
+    return jsonify({"guids": _read_guid_list(ADMINS_FILE)})
+
+@app.route("/api/admins", methods=["POST"])
+@login_required
+def add_admin():
+    guid = (request.json or {}).get("guid", "").strip()
+    if not guid: return jsonify({"ok": False, "msg": "GUID required"}), 400
+    added = _add_guid(ADMINS_FILE, guid)
+    return jsonify({"ok": True, "added": added})
+
+@app.route("/api/admins/<guid>", methods=["DELETE"])
+@login_required
+def del_admin(guid):
+    removed = _remove_guid(ADMINS_FILE, guid)
+    return jsonify({"ok": removed, "msg": "Removed" if removed else "Not found"})
+
+@app.route("/api/blacklist", methods=["GET"])
+@login_required
+def get_blacklist():
+    return jsonify({"guids": _read_guid_list(BLACKLIST_FILE)})
+
+@app.route("/api/blacklist/<guid>", methods=["DELETE"])
+@login_required
+def del_blacklist(guid):
+    removed = _remove_guid(BLACKLIST_FILE, guid)
+    return jsonify({"ok": removed, "msg": "Removed" if removed else "Not found"})
+
+
+# ── Config backup/restore ─────────────────────────────────────────────────────
+@app.route("/api/backup")
+@login_required
+def config_backup():
+    import io
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fname in ["server_cfg.ini", "entry_list.ini", "extra_cfg.yml", "welcome.txt"]:
+            p = CFG_DIR / fname
+            if p.exists():
+                zf.write(str(p), fname)
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name="acserver_backup.zip"
+    )
+
+@app.route("/api/restore", methods=["POST"])
+@login_required
+def config_restore():
+    f = request.files.get("backup")
+    if not f:
+        return jsonify({"ok": False, "msg": "No file"}), 400
+    if not f.filename.lower().endswith(".zip"):
+        return jsonify({"ok": False, "msg": "ZIP only"}), 400
+    try:
+        tmp = UPLOAD_TMP / secure_filename(f.filename)
+        f.save(str(tmp))
+        allowed = {"server_cfg.ini", "entry_list.ini", "extra_cfg.yml", "welcome.txt"}
+        with zipfile.ZipFile(tmp) as zf:
+            for name in zf.namelist():
+                bname = Path(name).name
+                if bname in allowed:
+                    dest = CFG_DIR / bname
+                    dest.write_bytes(zf.read(name))
+        tmp.unlink(missing_ok=True)
+        run_systemctl("restart")
+        return jsonify({"ok": True, "msg": "Config restored and server restarted"})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+# ── Car/track deletion ────────────────────────────────────────────────────────
+@app.route("/api/delete_content/<ctype>/<name>", methods=["DELETE"])
+@login_required
+def delete_content(ctype, name):
+    if ctype not in ("car", "track"):
+        return jsonify({"ok": False, "msg": "type must be car or track"}), 400
+    if ctype == "car":
+        target = CARS_DIR / name
+    else:
+        target = TRACKS_DIR / name
+    if not target.exists():
+        return jsonify({"ok": False, "msg": f"{name} not found"}), 404
+    try:
+        shutil.rmtree(str(target))
+        if ctype == "car":
+            cfg = read_server_cfg()
+            existing = [c for c in cfg.get("CARS", "").split(";") if c and c != name]
+            update_server_cfg({"CARS": ";".join(existing)})
+            _regen_entry_list(existing, 2)
+        return jsonify({"ok": True, "msg": f"{name} deleted"})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+@app.route("/api/installed_content")
+@login_required
+def installed_content():
+    cars   = list_cars()
+    tracks = [t["name"] for t in list_tracks()]
+    return jsonify({"cars": cars, "tracks": tracks})
+
+
+# ── Discord webhook ───────────────────────────────────────────────────────────
+@app.route("/api/discord", methods=["GET"])
+@login_required
+def get_discord():
+    return jsonify({"url": _load_discord_url()})
+
+@app.route("/api/discord", methods=["POST"])
+@login_required
+def set_discord():
+    url = (request.json or {}).get("url", "").strip()
+    DISCORD_FILE.parent.mkdir(parents=True, exist_ok=True)
+    DISCORD_FILE.write_text(json.dumps({"url": url}))
+    return jsonify({"ok": True})
+
+@app.route("/api/discord/test", methods=["POST"])
+@login_required
+def test_discord():
+    url = _load_discord_url()
+    if not url:
+        return jsonify({"ok": False, "msg": "No webhook URL configured"}), 400
+    try:
+        _discord_notify(url, f"Test message from AC Server Dashboard ({SERVICE_NAME})")
+        return jsonify({"ok": True, "msg": "Test message sent"})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
 # ── Presets ───────────────────────────────────────────────────────────────────
 @app.route("/api/presets", methods=["GET"])
-@auth.login_required
+@login_required
 def get_presets():
     return jsonify(load_presets())
 
 @app.route("/api/presets", methods=["POST"])
-@auth.login_required
+@login_required
 def save_preset():
     data = request.json or {}
     name = (data.get("name") or "").strip()
@@ -815,7 +1362,7 @@ def save_preset():
     return jsonify({"ok": True, "msg": f"Preset '{name}' saved"})
 
 @app.route("/api/presets/<name>/load", methods=["POST"])
-@auth.login_required
+@login_required
 def load_preset_route(name):
     presets = load_presets()
     if name not in presets:
@@ -834,7 +1381,7 @@ def load_preset_route(name):
     return jsonify({"ok": False, "msg": msg}), 500
 
 @app.route("/api/presets/<name>", methods=["DELETE"])
-@auth.login_required
+@login_required
 def delete_preset(name):
     presets = load_presets()
     if name not in presets:
@@ -844,9 +1391,9 @@ def delete_preset(name):
     return jsonify({"ok": True})
 
 
-# ── Player management ────────────────────────────────────────────────────────
+# ── Player management (kick/ban) ─────────────────────────────────────────────
 @app.route("/api/kick", methods=["POST"])
-@auth.login_required
+@login_required
 def kick_player():
     car_id = (request.json or {}).get("car_id")
     if car_id is None: return jsonify({"ok": False, "msg": "car_id missing"}), 400
@@ -854,29 +1401,57 @@ def kick_player():
     return jsonify({"ok": ok, "msg": msg})
 
 @app.route("/api/ban", methods=["POST"])
-@auth.login_required
+@login_required
 def ban_player():
     data  = request.json or {}
     guid  = data.get("guid","")
     name  = data.get("name","unknown")
     car_id = data.get("car_id")
     if not guid: return jsonify({"ok": False, "msg": "GUID missing"}), 400
-    bl = SERVER_DIR / "blacklist.txt"
-    existing = bl.read_text() if bl.exists() else ""
-    if guid not in existing:
-        with open(bl, "a") as f: f.write(f"{guid}\n")
+    _add_guid(BLACKLIST_FILE, guid)
     if car_id is not None: rcon_send(f"/kick_id {car_id}")
     return jsonify({"ok": True, "msg": f"{name} banned"})
 
 
 # ── Folder upload ─────────────────────────────────────────────────────────────
-def secure_filename_path(rel):
-    parts = Path(rel.replace("\\", "/")).parts
-    safe  = [secure_filename(p) for p in parts if p and p not in (".", "..")]
-    return Path(*safe) if safe else Path("file")
+@app.route("/upload_file", methods=["POST"])
+@login_required
+def upload_file():
+    content_type = request.form.get("type", "").strip()
+    root_name    = request.form.get("root_name", "").strip()
+    rel_path     = request.form.get("rel_path", "").strip()
+    f            = request.files.get("file")
+    if content_type not in ("car", "track"):
+        return jsonify({"ok": False, "msg": "type must be car or track"}), 400
+    if not root_name or not rel_path or not f:
+        return jsonify({"ok": False, "msg": "missing fields"}), 400
+    base_dir = CARS_DIR / root_name if content_type == "car" else TRACKS_DIR / root_name
+    rel      = secure_filename_path(rel_path)
+    tgt      = base_dir / rel
+    tgt.parent.mkdir(parents=True, exist_ok=True)
+    f.save(str(tgt))
+    return jsonify({"ok": True, "path": str(rel)})
+
+@app.route("/upload_folder_done", methods=["POST"])
+@login_required
+def upload_folder_done():
+    content_type = request.json.get("type", "").strip() if request.json else ""
+    root_name    = request.json.get("root_name", "").strip() if request.json else ""
+    if content_type not in ("car", "track") or not root_name:
+        return jsonify({"ok": False, "msg": "missing fields"}), 400
+    if content_type == "track":
+        _auto_add_track_params(root_name)
+    else:
+        cfg = read_server_cfg()
+        existing = [c for c in cfg.get("CARS", "").split(";") if c]
+        if root_name not in existing:
+            all_cars = existing + [root_name]
+            update_server_cfg({"CARS": ";".join(all_cars)})
+            _regen_entry_list(all_cars, 2)
+    return jsonify({"ok": True, "name": root_name})
 
 @app.route("/upload_folder", methods=["POST"])
-@auth.login_required
+@login_required
 def upload_folder():
     content_type = request.form.get("type", "").strip()
     root_name    = request.form.get("root_name", "").strip()
@@ -904,9 +1479,9 @@ def upload_folder():
             _regen_entry_list(all_cars, 2)
     return jsonify({"ok": True, "name": root_name, "files": written})
 
-# ── Content upload ────────────────────────────────────────────────────────────
+# ── Content upload (ZIP) ──────────────────────────────────────────────────────
 @app.route("/upload", methods=["POST"])
-@auth.login_required
+@login_required
 def upload_zip():
     if "file" not in request.files:
         return jsonify({"ok": False, "msg": "No file"}), 400
@@ -928,7 +1503,7 @@ def upload_zip():
                     "_zip_sample": sample})
 
 @app.route("/import_zip", methods=["POST"])
-@auth.login_required
+@login_required
 def import_zip():
     data = request.json or {}
     filename     = data.get("filename")
@@ -942,11 +1517,9 @@ def import_zip():
         imported = extract_from_zip(zip_path, sel_cars, sel_tracks)
         zip_path.unlink(missing_ok=True)
 
-        # Auto-add track params for new tracks
         for track in sel_tracks:
             _auto_add_track_params(track)
 
-        # Auto-add new cars to server_cfg.ini
         if sel_cars:
             cfg = read_server_cfg()
             existing = [c for c in cfg.get("CARS", "").split(";") if c]
@@ -961,55 +1534,31 @@ def import_zip():
         return jsonify({"ok": False, "msg": str(e)}), 500
 
 
-def _auto_add_track_params(track):
-    section = f"[{track.lower()}]"
-    existing = TRACK_PARAMS_FILE.read_text() if TRACK_PARAMS_FILE.exists() else ""
-    if section in existing:
-        return
-    # Try to get coordinates from ui_track.json if available
-    lat, lon, tz = 0.0, 0.0, "UTC"
-    ui_path = TRACKS_DIR / track / "ui" / "ui_track.json"
-    if not ui_path.exists():
-        for d in (TRACKS_DIR / track).iterdir() if (TRACKS_DIR / track).exists() else []:
-            candidate = TRACKS_DIR / track / d.name / "ui" / "ui_track.json"
-            if candidate.exists():
-                ui_path = candidate
-                break
-    if ui_path.exists():
-        try:
-            d = json.loads(ui_path.read_text(encoding="utf-8", errors="replace"))
-            city = d.get("city", track)
-        except Exception:
-            city = track
-    else:
-        city = track
-    entry = f"\n{section}\nCITY={city}\nLATITUDE={lat}\nLONGITUDE={lon}\nTIMEZONE={tz}\n"
-    with open(TRACK_PARAMS_FILE, "a") as f:
-        f.write(entry)
-
-
 # ── Server profile (welcome message + logo) ──────────────────────────────────
 @app.route("/api/server_profile", methods=["GET", "POST"])
-@auth.login_required
+@login_required
 def server_profile():
     if request.method == "GET":
-        msg = WELCOME_FILE.read_text(encoding="utf-8") if WELCOME_FILE.exists() else ""
+        msg = get_extra_cfg_description()
+        if not msg and WELCOME_FILE.exists():
+            msg = WELCOME_FILE.read_text(encoding="utf-8")
         return jsonify({"ok": True, "welcome": msg, "has_logo": LOGO_FILE.exists()})
     data    = request.get_json() or {}
     welcome = data.get("welcome", "")
     WELCOME_FILE.write_text(welcome, encoding="utf-8")
+    set_extra_cfg_description(welcome)
     update_server_cfg({"WELCOME_MESSAGE": "cfg/welcome.txt"})
     return jsonify({"ok": True})
 
 @app.route("/api/server_logo", methods=["GET"])
-@auth.login_required
+@login_required
 def get_server_logo():
     if not LOGO_FILE.exists():
         return ("", 404)
     return send_file(str(LOGO_FILE), mimetype="image/png")
 
 @app.route("/api/server_logo", methods=["POST"])
-@auth.login_required
+@login_required
 def upload_server_logo():
     f = request.files.get("logo")
     if not f:

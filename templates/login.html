@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AC Server — Login</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#e8150c;--red-dark:#a00e09;
+  --bg:#0d0d0d;--bg2:#141414;--bg3:#1c1c1c;--bg4:#242424;
+  --border:#2a2a2a;--text:#e4e4e4;--muted:#777;
+  --green:#27ae60;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+     min-height:100vh;display:flex;align-items:center;justify-content:center;font-size:14px}
+.box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:36px 32px;
+     width:100%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.logo{text-align:center;margin-bottom:28px}
+.logo-mark{color:var(--red);font-size:28px;font-weight:900;letter-spacing:4px;text-transform:uppercase}
+.logo-sub{font-size:11px;color:var(--muted);letter-spacing:1.5px;margin-top:4px;text-transform:uppercase}
+.fg{margin-bottom:16px}
+.lbl{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase}
+.inp{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);
+     padding:10px 12px;border-radius:7px;font-size:14px;transition:border-color .15s}
+.inp:focus{outline:none;border-color:var(--red)}
+.btn{display:block;width:100%;padding:11px;background:var(--red);color:#fff;border:none;
+     border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;
+     transition:filter .15s;margin-top:20px}
+.btn:hover{filter:brightness(1.15)}
+.err{background:rgba(232,21,12,.12);border:1px solid rgba(232,21,12,.3);color:#ff6b6b;
+     border-radius:7px;padding:10px 12px;font-size:12px;margin-bottom:16px;text-align:center}
+.divider{height:1px;background:var(--border);margin:24px 0}
+.footer{text-align:center;font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <div class="logo-mark">⚡ AC Server</div>
+    <div class="logo-sub">Dashboard Login</div>
+  </div>
+
+  {% if error %}
+  <div class="err">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="/login">
+    <div class="fg">
+      <label class="lbl" for="username">Username</label>
+      <input class="inp" id="username" name="username" type="text"
+             autocomplete="username" required autofocus
+             placeholder="admin">
+    </div>
+    <div class="fg">
+      <label class="lbl" for="password">Password</label>
+      <input class="inp" id="password" name="password" type="password"
+             autocomplete="current-password" required
+             placeholder="••••••••">
+    </div>
+    <button class="btn" type="submit">Sign In</button>
+  </form>
+
+  <div class="divider"></div>
+  <div class="footer">Assetto Corsa Server Dashboard</div>
+</div>
+</body>
+</html>

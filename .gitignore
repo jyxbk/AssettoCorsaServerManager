@@ -1,5 +1,6 @@
 # Sensitive files - never commit
 sever_infos.txt
+fix_yaml.py
 
 # Python
 __pycache__/

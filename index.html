@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,48 +11,56 @@
   --bg:#0d0d0d;--bg2:#141414;--bg3:#1c1c1c;--bg4:#242424;
   --border:#2a2a2a;--text:#e4e4e4;--muted:#777;
   --green:#27ae60;--yellow:#f39c12;--blue:#2980b9;
+  --sidebar:220px;
 }
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
-.hdr{background:var(--bg2);border-bottom:2px solid var(--red);padding:0 20px;display:flex;align-items:center;gap:12px;height:52px;position:sticky;top:0;z-index:200}
-.hdr-logo{color:var(--red);font-size:18px;font-weight:800;letter-spacing:3px;text-transform:uppercase;white-space:nowrap}
-.hdr-sep{width:1px;height:20px;background:var(--border)}
-.hdr-stat{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-.hdr-stat strong{color:var(--text)}
-.dot{width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0}
-.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
-.dot.fail{background:var(--red);box-shadow:0 0 6px var(--red)}
-.dot.pulse{animation:pulse 1.5s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.hdr-btns{margin-left:auto;display:flex;gap:6px;align-items:center}
-.lang-btn{background:var(--bg4);border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px}
-.lang-btn:hover{color:var(--text)}
-.logout-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer}
-.logout-btn:hover{border-color:var(--red);color:var(--red)}
-.tabs{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;padding:0 20px;gap:2px;overflow-x:auto}
-.tab{padding:13px 16px;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap}
-.tab:hover{color:var(--text)}
-.tab.active{color:var(--red);border-bottom-color:var(--red)}
-.page{padding:20px;max-width:1440px;margin:0 auto}
-.panel{display:none}.panel.active{display:block}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+
+/* ── LAYOUT ─────────────────────────────────────── */
+.layout{display:flex;height:100vh}
+.sidebar{width:var(--sidebar);flex-shrink:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:relative;z-index:100}
+.content{flex:1;height:100vh;overflow-y:auto;background:var(--bg)}
+.page{padding:24px;max-width:1400px}
+
+/* ── SIDEBAR ─────────────────────────────────────── */
+.sb-logo{padding:16px;border-bottom:1px solid var(--border)}
+.sb-logo-mark{color:var(--red);font-size:16px;font-weight:900;letter-spacing:3px;text-transform:uppercase}
+.sb-status{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12px;color:var(--muted)}
+.sb-status strong{color:var(--text)}
+.sb-ctrl{display:flex;gap:5px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.sb-ctrl .btn{flex:1;justify-content:center;padding:6px 4px;font-size:11px}
+.sb-restart{display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)}
+.sb-restart label{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text);font-size:11px;user-select:none}
+.nav-sep{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:14px 14px 4px;opacity:.5}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600;transition:all .15s;border-left:3px solid transparent;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg3)}
+.nav-item.active{color:var(--text);background:var(--bg3);border-left-color:var(--red)}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.sb-bottom{margin-top:auto;padding:12px;border-top:1px solid var(--border);display:flex;gap:8px}
+.sb-bottom a,.sb-bottom button{flex:1;text-align:center;justify-content:center}
+
+/* ── HAMBURGER (mobile) ───────────────────────────── */
+.hamburger{display:none;position:fixed;top:12px;left:12px;z-index:300;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;cursor:pointer;font-size:16px}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99}
+
+/* ── SECTION HEADERS ─────────────────────────────── */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid var(--border)}
+.sec-hdr h2{font-size:20px;font-weight:800;color:var(--text)}
+.sec-hdr .sec-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ── SAVE FOOTER ─────────────────────────────────── */
+.save-footer{position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 30%);padding:20px 0 0;margin-top:24px;display:flex;gap:10px;align-items:center}
+
+/* ── PANELS ──────────────────────────────────────── */
+.panel{display:none}
+.panel.active{display:block}
+
+/* ── GRIDS ───────────────────────────────────────── */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-@media(max-width:900px){.g4{grid-template-columns:1fr 1fr}.g2,.g3{grid-template-columns:1fr}}
-@media(max-width:600px){
-  .g4,.g2,.g3{grid-template-columns:1fr}
-  .hdr{height:auto;flex-wrap:wrap;padding:8px 12px;gap:8px}
-  .hdr-sep{display:none}
-  .hdr-btns{width:100%;justify-content:flex-end;margin-left:0}
-  .tabs{padding:0 8px}
-  .tab{padding:10px 10px;font-size:11px}
-  .page{padding:10px}
-  .card{padding:12px}
-  .dc-stats{grid-template-columns:1fr 1fr}
-  table{font-size:11px}
-  th,td{padding:6px 8px}
-  .car-cfg.open{grid-template-columns:1fr}
-}
 .gap{margin-bottom:16px}
+
+/* ── CARDS ───────────────────────────────────────── */
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px}
 .card-ttl{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
 .stat-val{font-size:30px;font-weight:800;line-height:1;margin-bottom:4px}
@@ -60,6 +68,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .bar{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-top:10px}
 .bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
 .bar-cpu{background:var(--blue)}.bar-ram{background:var(--yellow)}.bar-hot{background:var(--red)!important}.bar-green{background:var(--green)}
+
+/* ── BUTTONS ─────────────────────────────────────── */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;transition:filter .15s;white-space:nowrap}
 .btn:hover{filter:brightness(1.15)}
 .btn-red{background:var(--red);color:#fff}
@@ -69,34 +79,19 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .btn-warn{background:#7a4500;color:#fff}
 .btn-blue{background:var(--blue);color:#fff}
 .btn-sm{padding:5px 10px;font-size:11px}
+
+/* ── FORM ELEMENTS ───────────────────────────────── */
 .inp,.sel,.ta{background:var(--bg);color:var(--text);border:1px solid var(--border);padding:8px 10px;border-radius:6px;font-size:13px;width:100%}
 .inp:focus,.sel:focus,.ta:focus{outline:none;border-color:var(--red)}
 .ta{resize:vertical;font-family:inherit}
 .lbl{font-size:11px;color:var(--muted);margin-bottom:5px;display:block;font-weight:600}
 .fg{margin-bottom:12px}
+
+/* ── TABLES ──────────────────────────────────────── */
 .itbl{width:100%;border-collapse:collapse}
 .itbl td{padding:5px 0;font-size:13px;vertical-align:top}
 .itbl td:first-child{color:var(--muted);width:140px;padding-right:12px}
 .itbl td:last-child{font-weight:600}
-.dg{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.dc{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;transition:border-color .2s}
-.dc:hover{border-color:var(--red)}
-.dc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-.dc-name{font-weight:800;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
-.dc-car{font-size:11px;color:var(--muted);margin-top:2px}
-.dc-laps{font-size:11px;color:var(--muted);background:var(--bg4);padding:2px 7px;border-radius:10px}
-.sp-bar{height:3px;background:var(--bg4);border-radius:2px;margin-bottom:4px;overflow:hidden}
-.sp-fill{height:100%;background:var(--red);border-radius:2px}
-.sp-txt{font-size:10px;color:var(--muted);margin-bottom:10px}
-.dc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
-.dc-st{background:var(--bg4);border-radius:5px;padding:7px;text-align:center}
-.dc-stv{font-size:13px;font-weight:700}
-.dc-stl{font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase}
-.dc-acts{display:flex;gap:6px}
-.best-t{color:#2ecc71}
-.map-wrap{position:relative;background:var(--bg3);border-radius:8px;overflow:hidden;border:1px solid var(--border)}
-#map-canvas{display:block;width:100%;border-radius:8px}
-.map-hint{font-size:10px;color:var(--muted);text-align:center;padding:6px 0}
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
 th{text-align:left;padding:9px 12px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
@@ -104,6 +99,8 @@ td{padding:10px 12px;border-bottom:1px solid #1a1a1a}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--bg3)}
 .pos-1{color:var(--yellow);font-weight:800}.pos-2{color:#aaa;font-weight:800}.pos-3{color:#cd7f32;font-weight:800}
+
+/* ── TOGGLES ─────────────────────────────────────── */
 .tog-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
 .tog-row:last-child{border-bottom:none}
 .tog-lbl{font-size:13px;font-weight:600}
@@ -117,6 +114,13 @@ tr:hover td{background:var(--bg3)}
 .num-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
 .num-row:last-child{border-bottom:none}
 .num-inp{width:80px;text-align:center}
+
+/* ── MISC ────────────────────────────────────────── */
+.dot{width:8px;height:8px;border-radius:50%;background:#444;flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.fail{background:var(--red);box-shadow:0 0 6px var(--red)}
+.dot.pulse{animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .bdg{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700}
 .bdg-on{background:rgba(39,174,96,.15);color:var(--green);border:1px solid rgba(39,174,96,.3)}
 .bdg-off{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border)}
@@ -148,9 +152,9 @@ tr:hover td{background:var(--bg3)}
 .preset-name{font-weight:700;font-size:14px}
 .preset-info{font-size:11px;color:var(--muted);margin-top:2px}
 .preset-acts{display:flex;gap:6px;flex-shrink:0}
-.dropzone{border:2px dashed var(--border);border-radius:10px;padding:48px 20px;text-align:center;cursor:pointer;transition:border-color .2s}
+.dropzone{border:2px dashed var(--border);border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s}
 .dropzone:hover,.dropzone.dz-over{border-color:var(--red);background:rgba(232,21,12,.04)}
-.logbox{background:#080808;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'Cascadia Code','Courier New',monospace;font-size:11px;line-height:1.7;max-height:480px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.logbox{background:#080808;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'Cascadia Code','Courier New',monospace;font-size:11px;line-height:1.7;max-height:calc(100vh - 320px);overflow-y:auto;white-space:pre-wrap;word-break:break-all}
 .ip-row{display:flex;align-items:center;gap:8px}
 .ip-val{font-family:monospace;font-size:14px;font-weight:700}
 .cp-btn{font-size:11px;cursor:pointer;color:var(--muted);background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:2px 7px}
@@ -160,61 +164,129 @@ tr:hover td{background:var(--bg3)}
 input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 .slider-row{display:flex;align-items:center;gap:12px}
 .slider-val{font-weight:700;min-width:40px;text-align:right;font-size:13px}
-/* Players tab */
 .guid-list{max-height:220px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:6px}
 .guid-row{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-bottom:1px solid var(--border);font-size:12px;font-family:monospace}
 .guid-row:last-child{border-bottom:none}
 .guid-row:hover{background:var(--bg3)}
-/* Car config expand */
 .car-cfg{display:none;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:4px;gap:8px}
 .car-cfg.open{display:grid;grid-template-columns:1fr 80px 80px}
-/* Auto-restart row */
-.restart-row{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:12px;color:var(--muted)}
-.restart-row label{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text);font-size:12px}
-/* Advanced tab */
-.adv-section{margin-bottom:20px}
+.dg{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.dc{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;transition:border-color .2s}
+.dc:hover{border-color:var(--red)}
+.dc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.dc-name{font-weight:800;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.dc-car{font-size:11px;color:var(--muted);margin-top:2px}
+.dc-laps{font-size:11px;color:var(--muted);background:var(--bg4);padding:2px 7px;border-radius:10px}
+.sp-bar{height:3px;background:var(--bg4);border-radius:2px;margin-bottom:4px;overflow:hidden}
+.sp-fill{height:100%;background:var(--red);border-radius:2px}
+.sp-txt{font-size:10px;color:var(--muted);margin-bottom:10px}
+.dc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.dc-st{background:var(--bg4);border-radius:5px;padding:7px;text-align:center}
+.dc-stv{font-size:13px;font-weight:700}
+.dc-stl{font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase}
+.dc-acts{display:flex;gap:6px}
+.best-t{color:#2ecc71}
+.map-wrap{position:relative;background:var(--bg3);border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+#map-canvas{display:block;width:100%;border-radius:8px}
+.map-hint{font-size:10px;color:var(--muted);text-align:center;padding:6px 0}
+/* Help page */
+.help-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
+.help-card-hdr{padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:13px;user-select:none}
+.help-card-hdr:hover{background:var(--bg3)}
+.help-card-body{padding:0 18px 18px;display:none;font-size:13px;line-height:1.7}
+.help-card-body.open{display:block}
+.help-row{padding:8px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:180px 1fr;gap:12px}
+.help-row:last-child{border-bottom:none}
+.help-key{font-family:monospace;font-size:12px;color:var(--red);font-weight:700}
+.help-val{color:var(--muted);font-size:12px}
+.help-cmd{background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:monospace;font-size:11px;color:var(--text);display:inline-block;margin:2px 0}
+/* Mobile */
+@media(max-width:768px){
+  .hamburger{display:block}
+  .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .25s;z-index:200}
+  .sidebar.open{transform:translateX(0)}
+  .sb-overlay.open{display:block}
+  .content{width:100%}
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .page{padding:14px}
+  .dc-stats{grid-template-columns:1fr 1fr}
+  .car-cfg.open{grid-template-columns:1fr}
+  .help-row{grid-template-columns:1fr}
+}
+@media(max-width:1100px){
+  .g4{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
 
-<div class="hdr">
-  <div class="hdr-logo">⚡ AC Server</div>
-  <div class="hdr-sep"></div>
-  <div class="hdr-stat">
-    <div class="dot" id="h-dot"></div>
-    <span id="h-status">{{ status }}</span>
-  </div>
-  <div class="hdr-sep"></div>
-  <div class="hdr-stat"><strong id="h-players">0</strong>&nbsp;/ <strong id="h-maxp">{{ cfg.get('MAX_CLIENTS','?') }}</strong>&nbsp;Fahrer</div>
-  <div class="hdr-sep"></div>
-  <div class="hdr-stat" id="h-track" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ cfg.get('TRACK','—') }}</div>
-  <div class="hdr-sep"></div>
-  <div class="hdr-stat" id="h-uptime" style="font-size:11px">—</div>
-  <div class="hdr-btns">
-    <button class="btn btn-green btn-sm" onclick="ctrl('start')" data-i18n="btn_start">▶ Start</button>
-    <button class="btn btn-gray btn-sm" onclick="ctrl('stop')" data-i18n="btn_stop">■ Stop</button>
-    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')" data-i18n="btn_restart">↻ Neustart</button>
-    <button class="lang-btn" id="lang-toggle" onclick="toggleLang()">EN</button>
-    <a href="/logout" class="logout-btn" data-i18n="btn_logout">Abmelden</a>
-  </div>
-</div>
+<!-- Mobile hamburger -->
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+<div class="sb-overlay" id="sb-overlay" onclick="toggleSidebar()"></div>
 
-<div class="tabs">
-  <div class="tab active" data-tab="dash" data-i18n="tab_dash">Dashboard</div>
-  <div class="tab" data-tab="drivers" data-i18n="tab_drivers">Fahrer</div>
-  <div class="tab" data-tab="laps" data-i18n="tab_laps">Live Zeiten</div>
-  <div class="tab" data-tab="records" data-i18n="tab_records">Rekorde</div>
-  <div class="tab" data-tab="settings" data-i18n="tab_settings">Einstellungen</div>
-  <div class="tab" data-tab="content" data-i18n="tab_content">Inhalte</div>
-  <div class="tab" data-tab="players" data-i18n="tab_players">Spieler</div>
-  <div class="tab" data-tab="advanced" data-i18n="tab_advanced">Erweitert</div>
-  <div class="tab" data-tab="logs" data-i18n="tab_logs">Logs</div>
-</div>
+<div class="layout">
 
+<!-- ══ SIDEBAR ══════════════════════════════════════════════════════════════ -->
+<nav class="sidebar" id="sidebar">
+  <!-- Logo + Status -->
+  <div class="sb-logo">
+    <div class="sb-logo-mark">⚡ AC Server</div>
+    <div class="sb-status">
+      <div class="dot" id="h-dot"></div>
+      <span id="h-status">{{ status }}</span>
+      &nbsp;·&nbsp;
+      <strong id="h-players">0</strong>/<strong id="h-maxp">{{ cfg.get('MAX_CLIENTS','?') }}</strong>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="h-track">{{ cfg.get('TRACK','—') }}</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:2px" id="h-uptime"></div>
+  </div>
+
+  <!-- Server Control -->
+  <div class="sb-ctrl">
+    <button class="btn btn-green btn-sm" onclick="ctrl('start')">▶</button>
+    <button class="btn btn-gray btn-sm" onclick="ctrl('stop')">■</button>
+    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ Neustart</button>
+  </div>
+  <div class="sb-restart">
+    <label><input type="checkbox" id="auto-restart" style="accent-color:var(--red)"> Nach Speichern neu starten</label>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav-sep">Live</div>
+  <div class="nav-item active" data-nav="dashboard" onclick="navTo('dashboard')"><span class="nav-icon">🏠</span> Dashboard</div>
+  <div class="nav-item" data-nav="drivers" onclick="navTo('drivers')"><span class="nav-icon">🚗</span> Live Fahrer</div>
+  <div class="nav-item" data-nav="laps" onclick="navTo('laps')"><span class="nav-icon">⏱️</span> Live Zeiten</div>
+  <div class="nav-item" data-nav="records" onclick="navTo('records')"><span class="nav-icon">🏆</span> Rekorde</div>
+
+  <div class="nav-sep">Einstellungen</div>
+  <div class="nav-item" data-nav="settings-server" onclick="navTo('settings-server')"><span class="nav-icon">⚙️</span> Server</div>
+  <div class="nav-item" data-nav="settings-track" onclick="navTo('settings-track')"><span class="nav-icon">🗺️</span> Strecke & Autos</div>
+  <div class="nav-item" data-nav="settings-assists" onclick="navTo('settings-assists')"><span class="nav-icon">🛡️</span> Fahrhilfen</div>
+  <div class="nav-item" data-nav="settings-sessions" onclick="navTo('settings-sessions')"><span class="nav-icon">📅</span> Sessions</div>
+  <div class="nav-item" data-nav="settings-weather" onclick="navTo('settings-weather')"><span class="nav-icon">🌤️</span> Wetter</div>
+  <div class="nav-item" data-nav="settings-profile" onclick="navTo('settings-profile')"><span class="nav-icon">🎨</span> Serverprofil</div>
+
+  <div class="nav-sep">Tools</div>
+  <div class="nav-item" data-nav="content" onclick="navTo('content')"><span class="nav-icon">📦</span> Inhalte</div>
+  <div class="nav-item" data-nav="players" onclick="navTo('players')"><span class="nav-icon">👥</span> Spieler</div>
+  <div class="nav-item" data-nav="advanced" onclick="navTo('advanced')"><span class="nav-icon">🔧</span> Erweitert</div>
+  <div class="nav-item" data-nav="logs" onclick="navTo('logs')"><span class="nav-icon">📜</span> Logs</div>
+  <div class="nav-item" data-nav="help" onclick="navTo('help')"><span class="nav-icon">❓</span> Hilfe</div>
+
+  <!-- Bottom: Lang + Logout -->
+  <div class="sb-bottom">
+    <button class="lang-btn btn btn-gray btn-sm" id="lang-toggle" onclick="toggleLang()" style="flex:1">EN</button>
+    <a href="/logout" class="btn btn-gray btn-sm" style="flex:1;justify-content:center">Abmelden</a>
+  </div>
+</nav>
+
+<!-- ══ CONTENT ═══════════════════════════════════════════════════════════════ -->
+<div class="content">
 <div class="page">
 
-<!-- ══ DASHBOARD ══════════════════════════════════════════════════════════ -->
-<div class="panel active" id="p-dash">
+<!-- ══ DASHBOARD ═══════════════════════════════════════════════════════════ -->
+<div class="panel active" id="p-dashboard">
   <!-- Quick Stats Bar -->
   <div style="display:flex;gap:10px;margin-bottom:14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:8px;font-size:12px">
@@ -463,277 +535,204 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   </div>
 </div>
 
-<!-- ══ SETTINGS ═════════════════════════════════════════════════════════════ -->
-<div class="panel" id="p-settings">
-  <!-- Auto-Restart Checkbox global -->
-  <div class="restart-row gap">
-    <label><input type="checkbox" id="auto-restart" style="accent-color:var(--red)"> Nach Speichern Server automatisch neu starten</label>
-  </div>
-
+<!-- ══ SETTINGS: SERVER ════════════════════════════════════════════════════ -->
+<div class="panel" id="p-settings-server">
+  <div class="sec-hdr"><h2>⚙️ Server</h2></div>
   <div class="g2 gap">
-    <!-- LEFT -->
-    <div>
-      <div class="card gap">
-        <div class="card-ttl">Server Allgemein</div>
-        <div class="fg">
-          <label class="lbl">Server Name</label>
-          <input class="inp" id="sv-name" value="{{ cfg.get('NAME','') }}">
-        </div>
-        <div class="fg">
-          <label class="lbl">Server Passwort</label>
-          <input class="inp" id="sv-pass" type="password" placeholder="({{ 'gesetzt' if cfg.get('PASSWORD') else 'keins' }})" value="">
-        </div>
-        <div class="fg">
-          <label class="lbl">Admin Passwort</label>
-          <input class="inp" id="sv-adminpass" type="password" placeholder="({{ 'gesetzt' if cfg.get('ADMIN_PASSWORD') else 'keins' }})" value="">
-        </div>
-        <div class="tog-row">
-          <div><div class="tog-lbl">Öffentliche Lobby</div><div class="tog-desc">Im Kunos-Lobby registrieren (weltweit sichtbar)</div></div>
-          <label class="tog"><input type="checkbox" id="sv-lobby" {% if cfg.get('REGISTER_TO_LOBBY')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
-        </div>
-        <div class="fg" style="margin-top:10px">
-          <label class="lbl">Tageszeit (Sun Angle: <span id="sun-val">{{ cfg.get('SUN_ANGLE','48') }}</span>°)</label>
-          <div class="slider-row">
-            <span style="font-size:11px;color:var(--muted)">🌅</span>
-            <input type="range" id="sv-sun" min="0" max="360" value="{{ cfg.get('SUN_ANGLE','48') }}" oninput="document.getElementById('sun-val').textContent=this.value">
-            <span style="font-size:11px;color:var(--muted)">🌙</span>
-          </div>
-        </div>
-        <button class="btn btn-red" onclick="saveServerSettings()">💾 Speichern</button>
-      </div>
-
-      <div class="card gap">
-        <div class="card-ttl">Strecke & Autos</div>
-        <div class="fg">
-          <label class="lbl">Strecke</label>
-          <select class="sel" id="s-track" onchange="updateLayouts();loadTrackPreview()">
-            {% for t in tracks %}
-            <option value="{{ t.name }}" data-layouts='{{ t.layouts|tojson }}' {% if t.name == cfg.get('TRACK') %}selected{% endif %}>
-              {{ track_ui.get(t.name, {}).get('name', t.name) }}</option>
-            {% endfor %}
-          </select>
-          <img id="track-preview" class="track-preview" src="" alt="">
-          <div class="track-info-bar" id="track-info-bar">
-            <span>📏 <span id="ti-length"></span></span>
-            <span>🅿️ <span id="ti-pits"></span></span>
-          </div>
-        </div>
-        <div class="fg">
-          <label class="lbl">Layout</label>
-          <select class="sel" id="s-layout" onchange="loadTrackPreview()"></select>
-        </div>
-        <div class="fg">
-          <label class="lbl">Fahrzeuge</label>
-          <input class="inp" id="car-search" placeholder="Suchen..." oninput="filterCars()" style="margin-bottom:6px">
-          <div class="clist" id="car-list">
-            {% for c in cars %}
-            <div class="ci" onclick="toggleCar(this,event)">
-              <input type="checkbox" value="{{ c }}" {% if c in selected_cars %}checked{% endif %} onclick="event.stopPropagation()">
-              <img class="ci-img" src="/car_img/{{ c }}" onerror="this.style.display='none'" alt="">
-              <div class="ci-info">
-                <span class="ci-name">{{ car_ui.get(c, {}).get('name', c) }}</span>
-                <span class="ci-brand">{{ car_ui.get(c, {}).get('brand', '') }}</span>
-              </div>
-              <button class="btn btn-gray btn-sm" onclick="event.stopPropagation();toggleCarCfg(this,'{{ c }}')" style="margin-left:auto;flex-shrink:0">⚙</button>
-            </div>
-            <div class="car-cfg" id="cfg-{{ c }}">
-              <div>
-                <label class="lbl">Skin</label>
-                <select class="sel" id="skin-{{ c }}" style="font-size:11px"></select>
-              </div>
-              <div>
-                <label class="lbl">Ballast kg</label>
-                <input class="inp num-inp" type="number" id="ballast-{{ c }}" min="0" max="150" value="0" style="width:100%">
-              </div>
-              <div>
-                <label class="lbl">Restrictor %</label>
-                <input class="inp num-inp" type="number" id="restrictor-{{ c }}" min="0" max="400" value="0" style="width:100%">
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-        <div class="fg">
-          <label class="lbl">Slots pro Auto</label>
-          <input class="inp num-inp" type="number" id="slots-per-car" min="1" max="5" value="2">
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-red" onclick="saveTrackCars()">💾 Strecke & Autos speichern</button>
-          <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ Restart</button>
-        </div>
-      </div>
-
-      <!-- Server Profile -->
-      <div class="card gap">
-        <div class="card-ttl">Server-Profil (Content Manager)</div>
-        <div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:12px">
-          <img id="logo-preview" src="/api/server_logo"
-               onerror="this.style.display='none';document.getElementById('logo-placeholder').style.display='flex'"
-               onload="this.style.display='';document.getElementById('logo-placeholder').style.display='none'"
-               style="width:100px;height:100px;object-fit:contain;border:1px solid var(--border);border-radius:6px;background:#111">
-          <div id="logo-placeholder" style="display:none;width:100px;height:100px;border:1px dashed var(--border);border-radius:6px;align-items:center;justify-content:center;color:var(--muted);font-size:11px;flex-shrink:0">kein Logo</div>
-          <div style="flex:1">
-            <label class="lbl">Server-Logo (PNG/JPG)</label>
-            <input type="file" id="logo-inp" accept="image/png,image/jpeg,image/webp" style="display:block;margin-bottom:8px;color:var(--text);font-size:12px" onchange="previewLogo(this)">
-            <button class="btn btn-gray btn-sm" onclick="uploadLogo()">Bild hochladen</button>
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
-          Wird im Content Manager angezeigt wenn ein Spieler diesen Server auswählt. Zeilenumbrüche werden übernommen.
-        </div>
-        <!-- Toolbar -->
-        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('\n\n')">↵ Absatz</button>
-          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('• ')">• Punkt</button>
-          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('★ ')">★ Stern</button>
-          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('🏁 ')">🏁</button>
-          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('🚗 ')">🚗</button>
-          <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('⚡ ')">⚡</button>
-          <button class="btn btn-gray btn-sm" onclick="insertWelcomeVar('NAME')">Servername</button>
-          <button class="btn btn-gray btn-sm" onclick="insertWelcomeVar('TRACK')">Strecke</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
-            <label class="lbl">Nachricht bearbeiten <span id="welcome-chars" style="float:right;color:var(--muted)">0 Zeichen</span></label>
-            <textarea id="welcome-msg" rows="10" class="ta" placeholder="Willkommen auf unserem Server!&#10;&#10;• Respektvoller Umgang&#10;• Sauberes Fahren&#10;• Viel Spaß!" oninput="updateWelcomePreview()"></textarea>
-          </div>
-          <div>
-            <label class="lbl">Vorschau (Content Manager)</label>
-            <div id="welcome-preview" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;min-height:160px;font-size:13px;white-space:pre-wrap;color:var(--text);line-height:1.6;overflow-y:auto;max-height:220px"></div>
-          </div>
-        </div>
-        <button class="btn btn-red" onclick="saveServerProfile()" style="margin-top:10px">💾 Profil speichern</button>
+    <div class="card">
+      <div class="card-ttl">Allgemein</div>
+      <div class="fg"><label class="lbl">Server Name</label><input class="inp" id="sv-name" value="{{ cfg.get('NAME','') }}"></div>
+      <div class="fg"><label class="lbl">Server Passwort</label><input class="inp" id="sv-pass" type="password" placeholder="({{ 'gesetzt' if cfg.get('PASSWORD') else 'keins' }})"></div>
+      <div class="fg"><label class="lbl">Admin Passwort</label><input class="inp" id="sv-adminpass" type="password" placeholder="({{ 'gesetzt' if cfg.get('ADMIN_PASSWORD') else 'keins' }})"></div>
+      <div class="tog-row"><div><div class="tog-lbl">Öffentliche Lobby</div><div class="tog-desc">Im Kunos-Lobby registrieren (weltweit sichtbar)</div></div><label class="tog"><input type="checkbox" id="sv-lobby" {% if cfg.get('REGISTER_TO_LOBBY')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="fg" style="margin-top:10px">
+        <label class="lbl">Tageszeit (Sun Angle: <span id="sun-val">{{ cfg.get('SUN_ANGLE','48') }}</span>°)</label>
+        <div class="slider-row"><span style="font-size:11px;color:var(--muted)">🌅</span><input type="range" id="sv-sun" min="0" max="360" value="{{ cfg.get('SUN_ANGLE','48') }}" oninput="document.getElementById('sun-val').textContent=this.value"><span style="font-size:11px;color:var(--muted)">🌙</span></div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-ttl">Ports & Modus</div>
+      <div class="num-row"><span class="tog-lbl">UDP / TCP Port</span><input class="inp num-inp" type="number" id="sv-udp" min="1024" max="65535" value="{{ cfg.get('UDP_PORT','9600') }}"></div>
+      <div class="num-row"><span class="tog-lbl">HTTP Port</span><input class="inp num-inp" type="number" id="sv-http" min="1024" max="65535" value="{{ cfg.get('HTTP_PORT','8081') }}"></div>
+      <div class="tog-row"><div><div class="tog-lbl">Pickup Mode</div><div class="tog-desc">Spieler wählen ihr Auto selbst</div></div><label class="tog"><input type="checkbox" id="sv-pickup" {% if cfg.get('PICKUP_MODE_ENABLED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Loop Mode</div><div class="tog-desc">Automatischer Session-Neustart</div></div><label class="tog"><input type="checkbox" id="sv-loop" {% if cfg.get('LOOP_MODE','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Blacklist Mode</div><div class="tog-desc">Gebannte Spieler werden abgelehnt</div></div><label class="tog"><input type="checkbox" id="sv-blacklist" {% if cfg.get('BLACKLIST_MODE','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="num-row"><div><span class="tog-lbl">Kick-Quorum %</span><div style="font-size:10px;color:var(--muted)">Mindest-% für Kick-Vote</div></div><input class="inp num-inp" type="number" id="sv-kickq" min="0" max="100" value="{{ cfg.get('KICK_QUORUM','85') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Voting-Quorum %</span><input class="inp num-inp" type="number" id="sv-voteq" min="0" max="100" value="{{ cfg.get('VOTING_QUORUM','80') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Vote-Dauer (s)</span><input class="inp num-inp" type="number" id="sv-vdur" min="5" max="120" value="{{ cfg.get('VOTE_DURATION','20') }}"></div>
+      <div class="num-row"><div><span class="tog-lbl">Race Over Time (s)</span><div style="font-size:10px;color:var(--muted)">Zeit nach Sieger bis Session endet</div></div><input class="inp num-inp" type="number" id="sv-raceover" min="0" max="3600" value="{{ cfg.get('RACE_OVER_TIME','180') }}"></div>
+      <div class="num-row"><div><span class="tog-lbl">Client Send Rate (Hz)</span><div style="font-size:10px;color:var(--muted)">Standard: 18</div></div><input class="inp num-inp" type="number" id="sv-hz" min="1" max="60" value="{{ cfg.get('CLIENT_SEND_INTERVAL_HZ','18') }}"></div>
+      <div class="fg" style="margin-top:8px"><label class="lbl">Legal Tyres <span style="font-weight:400;color:var(--muted)">(leer = alle erlaubt)</span></label><input class="inp" id="sv-tyres" placeholder="z.B. SV,SM,HR" value="{{ cfg.get('LEGAL_TYRES','') }}"></div>
+    </div>
+  </div>
+  <div class="save-footer">
+    <button class="btn btn-red" onclick="saveAllServerSettings()">💾 Server-Einstellungen speichern</button>
+    <button class="btn btn-gray" onclick="ctrl('restart')">↻ Neustart</button>
+  </div>
+</div>
 
-    <!-- RIGHT -->
-    <div>
-      <div class="card gap">
-        <div class="card-ttl">Fahrhilfen</div>
-        <div class="tog-row"><div><div class="tog-lbl">ABS</div><div class="tog-desc">Anti-Blockier-System</div></div><label class="tog"><input type="checkbox" id="a-abs" {% if cfg.get('ABS_ALLOWED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
-        <div class="tog-row"><div><div class="tog-lbl">Traktionskontrolle (TC)</div></div><label class="tog"><input type="checkbox" id="a-tc" {% if cfg.get('TC_ALLOWED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
-        <div class="tog-row"><div><div class="tog-lbl">Stabilitätskontrolle (ESP)</div></div><label class="tog"><input type="checkbox" id="a-stab" {% if cfg.get('STABILITY_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
-        <div class="tog-row"><div><div class="tog-lbl">Auto-Kupplung</div></div><label class="tog"><input type="checkbox" id="a-clutch" {% if cfg.get('AUTOCLUTCH_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
-        <div class="tog-row"><div><div class="tog-lbl">Reifenwärmer</div></div><label class="tog"><input type="checkbox" id="a-blanket" {% if cfg.get('TYRE_BLANKETS_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
-        <div class="tog-row"><div><div class="tog-lbl">Virtueller Spiegel (erzwingen)</div></div><label class="tog"><input type="checkbox" id="a-mirror" {% if cfg.get('FORCE_VIRTUAL_MIRROR','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+<!-- ══ SETTINGS: STRECKE & AUTOS ═══════════════════════════════════════════ -->
+<div class="panel" id="p-settings-track">
+  <div class="sec-hdr"><h2>🗺️ Strecke & Autos</h2></div>
+  <div class="g2 gap">
+    <div class="card">
+      <div class="card-ttl">Strecke</div>
+      <div class="fg">
+        <label class="lbl">Strecke</label>
+        <select class="sel" id="s-track" onchange="updateLayouts();loadTrackPreview()">
+          {% for t in tracks %}<option value="{{ t.name }}" data-layouts='{{ t.layouts|tojson }}' {% if t.name == cfg.get('TRACK') %}selected{% endif %}>{{ track_ui.get(t.name, {}).get('name', t.name) }}</option>{% endfor %}
+        </select>
+        <img id="track-preview" class="track-preview" src="" alt="">
+        <div class="track-info-bar" id="track-info-bar"><span>📏 <span id="ti-length"></span></span><span>🅿️ <span id="ti-pits"></span></span></div>
       </div>
-      <div class="card gap">
-        <div class="card-ttl">Schaden & Verschleiß</div>
-        <div class="num-row"><span class="tog-lbl">Kraftstoffverbrauch %</span><input class="inp num-inp" type="number" id="v-fuel" min="0" max="200" value="{{ cfg.get('FUEL_RATE','100') }}"></div>
-        <div class="num-row"><span class="tog-lbl">Schadensrate %</span><input class="inp num-inp" type="number" id="v-dmg" min="0" max="200" value="{{ cfg.get('DAMAGE_MULTIPLIER','100') }}"></div>
-        <div class="num-row"><span class="tog-lbl">Reifenverschleiß %</span><input class="inp num-inp" type="number" id="v-tyre" min="0" max="200" value="{{ cfg.get('TYRE_WEAR_RATE','100') }}"></div>
-        <div class="num-row">
-          <div><span class="tog-lbl">Erlaubte Reifenausritte</span><div style="font-size:10px;color:var(--muted)">0=alle, 2=Standard (2 Reifen aus)</div></div>
-          <input class="inp num-inp" type="number" id="v-tyreout" min="0" max="4" value="{{ cfg.get('ALLOWED_TYRES_OUT','2') }}">
+      <div class="fg"><label class="lbl">Layout</label><select class="sel" id="s-layout" onchange="loadTrackPreview()"></select></div>
+      <div class="fg"><label class="lbl">Slots pro Auto</label><input class="inp num-inp" type="number" id="slots-per-car" min="1" max="5" value="2"></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">Fahrzeuge</div>
+      <input class="inp" id="car-search" placeholder="Suchen..." oninput="filterCars()" style="margin-bottom:6px">
+      <div class="clist" id="car-list">
+        {% for c in cars %}
+        <div class="ci" onclick="toggleCar(this,event)">
+          <input type="checkbox" value="{{ c }}" {% if c in selected_cars %}checked{% endif %} onclick="event.stopPropagation()">
+          <img class="ci-img" src="/car_img/{{ c }}" onerror="this.style.display='none'" alt="">
+          <div class="ci-info"><span class="ci-name">{{ car_ui.get(c, {}).get('name', c) }}</span><span class="ci-brand">{{ car_ui.get(c, {}).get('brand', '') }}</span></div>
+          <button class="btn btn-gray btn-sm" onclick="event.stopPropagation();toggleCarCfg(this,'{{ c }}')" style="margin-left:auto;flex-shrink:0">⚙</button>
         </div>
-        <div class="num-row"><span class="tog-lbl">Max. Spieler</span><input class="inp num-inp" type="number" id="v-maxcl" min="1" max="200" value="{{ cfg.get('MAX_CLIENTS','8') }}"></div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <button class="btn btn-red" onclick="saveAssists()">💾 Fahrhilfen speichern</button>
-      </div>
-
-      <!-- Erweiterte Server-Einstellungen -->
-      <div class="card gap">
-        <div class="card-ttl">Erweiterte Server-Einstellungen</div>
-
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Ports</div>
-        <div class="num-row"><span class="tog-lbl">UDP / TCP Port</span><input class="inp num-inp" type="number" id="sv-udp" min="1024" max="65535" value="{{ cfg.get('UDP_PORT','9600') }}"></div>
-        <div class="num-row"><span class="tog-lbl">HTTP Port</span><input class="inp num-inp" type="number" id="sv-http" min="1024" max="65535" value="{{ cfg.get('HTTP_PORT','8081') }}"></div>
-
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Server-Modus</div>
-        <div class="tog-row">
-          <div><div class="tog-lbl">Pickup Mode</div><div class="tog-desc">Spieler wählen ihr Auto selbst</div></div>
-          <label class="tog"><input type="checkbox" id="sv-pickup" {% if cfg.get('PICKUP_MODE_ENABLED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+        <div class="car-cfg" id="cfg-{{ c }}">
+          <div><label class="lbl">Skin</label><select class="sel" id="skin-{{ c }}" style="font-size:11px"></select></div>
+          <div><label class="lbl">Ballast kg</label><input class="inp num-inp" type="number" id="ballast-{{ c }}" min="0" max="150" value="0" style="width:100%"></div>
+          <div><label class="lbl">Restrictor %</label><input class="inp num-inp" type="number" id="restrictor-{{ c }}" min="0" max="400" value="0" style="width:100%"></div>
         </div>
-        <div class="tog-row">
-          <div><div class="tog-lbl">Loop Mode</div><div class="tog-desc">Server startet automatisch neue Session</div></div>
-          <label class="tog"><input type="checkbox" id="sv-loop" {% if cfg.get('LOOP_MODE','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
-        </div>
-        <div class="tog-row">
-          <div><div class="tog-lbl">Blacklist Mode</div><div class="tog-desc">1 = gebannte Spieler werden abgelehnt</div></div>
-          <label class="tog"><input type="checkbox" id="sv-blacklist" {% if cfg.get('BLACKLIST_MODE','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
-        </div>
-
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Abstimmung & Kick</div>
-        <div class="num-row">
-          <div><span class="tog-lbl">Kick-Quorum %</span><div style="font-size:10px;color:var(--muted)">Mindest-% Spieler für Kick-Vote</div></div>
-          <input class="inp num-inp" type="number" id="sv-kickq" min="0" max="100" value="{{ cfg.get('KICK_QUORUM','85') }}">
-        </div>
-        <div class="num-row">
-          <div><span class="tog-lbl">Voting-Quorum %</span></div>
-          <input class="inp num-inp" type="number" id="sv-voteq" min="0" max="100" value="{{ cfg.get('VOTING_QUORUM','80') }}">
-        </div>
-        <div class="num-row">
-          <div><span class="tog-lbl">Vote-Dauer (s)</span></div>
-          <input class="inp num-inp" type="number" id="sv-vdur" min="5" max="120" value="{{ cfg.get('VOTE_DURATION','20') }}">
-        </div>
-
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Race</div>
-        <div class="num-row">
-          <div><span class="tog-lbl">Race Over Time (s)</span><div style="font-size:10px;color:var(--muted)">Zeit nach Sieger bis Session endet</div></div>
-          <input class="inp num-inp" type="number" id="sv-raceover" min="0" max="3600" value="{{ cfg.get('RACE_OVER_TIME','180') }}">
-        </div>
-
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Netzwerk & Performance</div>
-        <div class="num-row">
-          <div><span class="tog-lbl">Client Send Rate (Hz)</span><div style="font-size:10px;color:var(--muted)">Update-Frequenz pro Sekunde (Standard: 18)</div></div>
-          <input class="inp num-inp" type="number" id="sv-hz" min="1" max="60" value="{{ cfg.get('CLIENT_SEND_INTERVAL_HZ','18') }}">
-        </div>
-        <div class="fg" style="margin-top:8px">
-          <div><label class="lbl">Legal Tyres</label><div style="font-size:10px;color:var(--muted);margin-bottom:4px">Kommagetrennte Reifenkürzel z.B. SV,SM,HR — leer = alle erlaubt</div></div>
-          <input class="inp" id="sv-tyres" value="{{ cfg.get('LEGAL_TYRES','') }}">
-        </div>
-        <button class="btn btn-red" onclick="saveExtendedSettings()">💾 Erweiterte Einstellungen speichern</button>
-      </div>
-
-      <div class="card gap">
-        <div class="card-ttl">Sessions</div>
-        {% set practice = full_cfg.get('PRACTICE', {}) %}
-        {% set qualify  = full_cfg.get('QUALIFY',  {}) %}
-        {% set race     = full_cfg.get('RACE',     {}) %}
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Practice</div>
-        <div class="num-row"><span class="tog-lbl">Dauer (min)</span><input class="inp num-inp" type="number" id="prc-time" value="{{ practice.get('TIME','9999') }}"></div>
-        <div class="tog-row"><div class="tog-lbl">Offen</div><label class="tog"><input type="checkbox" id="prc-open" {% if practice.get('IS_OPEN','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Qualify</div>
-        <div class="num-row"><span class="tog-lbl">Dauer (min)</span><input class="inp num-inp" type="number" id="qlf-time" value="{{ qualify.get('TIME','0') }}"></div>
-        <div class="tog-row"><div class="tog-lbl">Offen</div><label class="tog"><input type="checkbox" id="qlf-open" {% if qualify.get('IS_OPEN','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Race</div>
-        <div class="num-row"><span class="tog-lbl">Runden</span><input class="inp num-inp" type="number" id="race-laps" value="{{ race.get('LAPS','0') }}"></div>
-        <div class="num-row"><span class="tog-lbl">Wartezeit (s)</span><input class="inp num-inp" type="number" id="race-wait" value="{{ race.get('WAIT_TIME','0') }}"></div>
-        <button class="btn btn-red" style="margin-top:10px" onclick="saveSessions()">💾 Speichern</button>
-      </div>
-
-      <div class="card gap">
-        <div class="card-ttl">Wetter</div>
-        {% set w0 = full_cfg.get('WEATHER_0', {}) %}
-        {% set w1 = full_cfg.get('WEATHER_1', {}) %}
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Wetter Slot 1</div>
-        <div class="fg"><label class="lbl">Grafik-Preset</label>
-          <select class="sel" id="w0-graphics">{% for wp in weather_presets %}<option value="{{ wp }}" {% if w0.get('GRAPHICS','3_clear')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}</select></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w0-amb" value="{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}"></div>
-          <div><label class="lbl">Straße °C</label><input class="inp" type="number" id="w0-road" value="{{ w0.get('BASE_TEMPERATURE_ROAD','8') }}"></div>
-        </div>
-        <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase">Wetter Slot 2</div>
-        <div class="fg"><label class="lbl">Grafik-Preset</label>
-          <select class="sel" id="w1-graphics">{% for wp in weather_presets %}<option value="{{ wp }}" {% if w1.get('GRAPHICS','7_heavy_clouds')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}</select></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w1-amb" value="{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}"></div>
-          <div><label class="lbl">Straße °C</label><input class="inp" type="number" id="w1-road" value="{{ w1.get('BASE_TEMPERATURE_ROAD','-1') }}"></div>
-        </div>
-        <button class="btn btn-red" onclick="saveWeather()" style="margin-top:10px">💾 Speichern</button>
-      </div>
-
-      {% set dt = full_cfg.get('DYNAMIC_TRACK', {}) %}
-      <div class="card">
-        <div class="card-ttl">Dynamische Strecke</div>
-        <div class="num-row"><span class="tog-lbl">Start Grip %</span><input class="inp num-inp" type="number" id="dt-start" min="0" max="100" value="{{ dt.get('SESSION_START','95') }}"></div>
-        <div class="num-row"><span class="tog-lbl">Zufälligkeit</span><input class="inp num-inp" type="number" id="dt-rand" min="0" max="10" value="{{ dt.get('RANDOMNESS','1') }}"></div>
-        <div class="num-row"><span class="tog-lbl">Session Transfer %</span><input class="inp num-inp" type="number" id="dt-transfer" min="0" max="100" value="{{ dt.get('SESSION_TRANSFER','80') }}"></div>
-        <div class="num-row"><span class="tog-lbl">Runden-Gewinn</span><input class="inp num-inp" type="number" id="dt-lap" min="0" max="500" value="{{ dt.get('LAP_GAIN','132') }}"></div>
-        <button class="btn btn-red" onclick="saveDynamicTrack()" style="margin-top:12px">💾 Speichern</button>
+        {% endfor %}
       </div>
     </div>
+  </div>
+  <div class="save-footer">
+    <button class="btn btn-red" onclick="saveTrackCars()">💾 Strecke & Autos speichern</button>
+    <button class="btn btn-gray" onclick="ctrl('restart')">↻ Neustart</button>
+  </div>
+</div>
+
+<!-- ══ SETTINGS: FAHRHILFEN ════════════════════════════════════════════════ -->
+<div class="panel" id="p-settings-assists">
+  <div class="sec-hdr"><h2>🛡️ Fahrhilfen & Regeln</h2></div>
+  <div class="g2 gap">
+    <div class="card">
+      <div class="card-ttl">Fahrhilfen</div>
+      <div class="tog-row"><div><div class="tog-lbl">ABS</div><div class="tog-desc">Anti-Blockier-System</div></div><label class="tog"><input type="checkbox" id="a-abs" {% if cfg.get('ABS_ALLOWED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Traktionskontrolle (TC)</div></div><label class="tog"><input type="checkbox" id="a-tc" {% if cfg.get('TC_ALLOWED','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Stabilitätskontrolle (ESP)</div></div><label class="tog"><input type="checkbox" id="a-stab" {% if cfg.get('STABILITY_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Auto-Kupplung</div></div><label class="tog"><input type="checkbox" id="a-clutch" {% if cfg.get('AUTOCLUTCH_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Reifenwärmer</div></div><label class="tog"><input type="checkbox" id="a-blanket" {% if cfg.get('TYRE_BLANKETS_ALLOWED','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Virtueller Spiegel (erzwingen)</div></div><label class="tog"><input type="checkbox" id="a-mirror" {% if cfg.get('FORCE_VIRTUAL_MIRROR','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">Schaden & Verschleiß</div>
+      <div class="num-row"><span class="tog-lbl">Kraftstoffverbrauch %</span><input class="inp num-inp" type="number" id="v-fuel" min="0" max="200" value="{{ cfg.get('FUEL_RATE','100') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Schadensrate %</span><input class="inp num-inp" type="number" id="v-dmg" min="0" max="200" value="{{ cfg.get('DAMAGE_MULTIPLIER','100') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Reifenverschleiß %</span><input class="inp num-inp" type="number" id="v-tyre" min="0" max="200" value="{{ cfg.get('TYRE_WEAR_RATE','100') }}"></div>
+      <div class="num-row"><div><span class="tog-lbl">Erlaubte Reifenausritte</span><div style="font-size:10px;color:var(--muted)">0=alle, 2=Standard</div></div><input class="inp num-inp" type="number" id="v-tyreout" min="0" max="4" value="{{ cfg.get('ALLOWED_TYRES_OUT','2') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Max. Spieler</span><input class="inp num-inp" type="number" id="v-maxcl" min="1" max="200" value="{{ cfg.get('MAX_CLIENTS','8') }}"></div>
+    </div>
+  </div>
+  <div class="save-footer">
+    <button class="btn btn-red" onclick="saveAssists()">💾 Fahrhilfen speichern</button>
+    <button class="btn btn-gray" onclick="ctrl('restart')">↻ Neustart</button>
+  </div>
+</div>
+
+<!-- ══ SETTINGS: SESSIONS ══════════════════════════════════════════════════ -->
+<div class="panel" id="p-settings-sessions">
+  <div class="sec-hdr"><h2>📅 Sessions</h2></div>
+  {% set practice = full_cfg.get('PRACTICE', {}) %}
+  {% set qualify  = full_cfg.get('QUALIFY',  {}) %}
+  {% set race     = full_cfg.get('RACE',     {}) %}
+  <div class="g3 gap">
+    <div class="card">
+      <div class="card-ttl">🏃 Practice</div>
+      <div class="num-row"><span class="tog-lbl">Dauer (min)</span><input class="inp num-inp" type="number" id="prc-time" value="{{ practice.get('TIME','9999') }}"></div>
+      <div class="tog-row"><div class="tog-lbl">Offen (freier Beitritt)</div><label class="tog"><input type="checkbox" id="prc-open" {% if practice.get('IS_OPEN','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">🏎 Qualifying</div>
+      <div class="num-row"><span class="tog-lbl">Dauer (min)</span><input class="inp num-inp" type="number" id="qlf-time" value="{{ qualify.get('TIME','0') }}"></div>
+      <div class="tog-row"><div class="tog-lbl">Offen</div><label class="tog"><input type="checkbox" id="qlf-open" {% if qualify.get('IS_OPEN','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">🏁 Race</div>
+      <div class="num-row"><span class="tog-lbl">Runden (0=zeitbasiert)</span><input class="inp num-inp" type="number" id="race-laps" value="{{ race.get('LAPS','0') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Wartezeit (s)</span><input class="inp num-inp" type="number" id="race-wait" value="{{ race.get('WAIT_TIME','0') }}"></div>
+    </div>
+  </div>
+  <div class="save-footer">
+    <button class="btn btn-red" onclick="saveSessions()">💾 Sessions speichern</button>
+    <button class="btn btn-gray" onclick="ctrl('restart')">↻ Neustart</button>
+  </div>
+</div>
+
+<!-- ══ SETTINGS: WETTER ════════════════════════════════════════════════════ -->
+<div class="panel" id="p-settings-weather">
+  <div class="sec-hdr"><h2>🌤️ Wetter & Strecke</h2></div>
+  {% set w0 = full_cfg.get('WEATHER_0', {}) %}
+  {% set w1 = full_cfg.get('WEATHER_1', {}) %}
+  {% set dt = full_cfg.get('DYNAMIC_TRACK', {}) %}
+  <div class="g3 gap">
+    <div class="card">
+      <div class="card-ttl">Wetter Slot 1</div>
+      <div class="fg"><label class="lbl">Grafik-Preset</label><select class="sel" id="w0-graphics">{% for wp in weather_presets %}<option value="{{ wp }}" {% if w0.get('GRAPHICS','3_clear')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}</select></div>
+      <div class="g2"><div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w0-amb" value="{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}"></div><div><label class="lbl">Straße °C</label><input class="inp" type="number" id="w0-road" value="{{ w0.get('BASE_TEMPERATURE_ROAD','8') }}"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">Wetter Slot 2</div>
+      <div class="fg"><label class="lbl">Grafik-Preset</label><select class="sel" id="w1-graphics">{% for wp in weather_presets %}<option value="{{ wp }}" {% if w1.get('GRAPHICS','7_heavy_clouds')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}</select></div>
+      <div class="g2"><div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w1-amb" value="{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}"></div><div><label class="lbl">Straße °C</label><input class="inp" type="number" id="w1-road" value="{{ w1.get('BASE_TEMPERATURE_ROAD','-1') }}"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-ttl">Dynamische Strecke</div>
+      <div class="num-row"><span class="tog-lbl">Start Grip %</span><input class="inp num-inp" type="number" id="dt-start" min="0" max="100" value="{{ dt.get('SESSION_START','95') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Zufälligkeit</span><input class="inp num-inp" type="number" id="dt-rand" min="0" max="10" value="{{ dt.get('RANDOMNESS','1') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Session Transfer %</span><input class="inp num-inp" type="number" id="dt-transfer" min="0" max="100" value="{{ dt.get('SESSION_TRANSFER','80') }}"></div>
+      <div class="num-row"><span class="tog-lbl">Runden-Gewinn</span><input class="inp num-inp" type="number" id="dt-lap" min="0" max="500" value="{{ dt.get('LAP_GAIN','132') }}"></div>
+    </div>
+  </div>
+  <div class="save-footer">
+    <button class="btn btn-red" onclick="saveWeatherPage()">💾 Wetter & Strecke speichern</button>
+    <button class="btn btn-gray" onclick="ctrl('restart')">↻ Neustart</button>
+  </div>
+</div>
+
+<!-- ══ SETTINGS: PROFIL ════════════════════════════════════════════════════ -->
+<div class="panel" id="p-settings-profile">
+  <div class="sec-hdr"><h2>🎨 Serverprofil</h2></div>
+  <div class="card gap">
+    <div class="card-ttl">Server-Logo</div>
+    <div style="display:flex;gap:1rem;align-items:flex-start">
+      <img id="logo-preview" src="/api/server_logo" onerror="this.style.display='none';document.getElementById('logo-placeholder').style.display='flex'" onload="this.style.display='';document.getElementById('logo-placeholder').style.display='none'" style="width:100px;height:100px;object-fit:contain;border:1px solid var(--border);border-radius:6px;background:#111">
+      <div id="logo-placeholder" style="display:none;width:100px;height:100px;border:1px dashed var(--border);border-radius:6px;align-items:center;justify-content:center;color:var(--muted);font-size:11px;flex-shrink:0">kein Logo</div>
+      <div style="flex:1"><label class="lbl">PNG / JPG</label><input type="file" id="logo-inp" accept="image/png,image/jpeg,image/webp" style="display:block;margin-bottom:8px;color:var(--text);font-size:12px" onchange="previewLogo(this)"><button class="btn btn-gray btn-sm" onclick="uploadLogo()">Bild hochladen</button></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-ttl">Willkommensnachricht <span style="font-weight:400;color:var(--muted);float:right" id="welcome-chars">0 Zeichen</span></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Wird im Content Manager angezeigt wenn ein Spieler diesen Server auswählt.</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('\n\n')">↵ Absatz</button>
+      <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('• ')">• Punkt</button>
+      <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('★ ')">★ Stern</button>
+      <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('🏁 ')">🏁</button>
+      <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('🚗 ')">🚗</button>
+      <button class="btn btn-gray btn-sm" onclick="insertWelcomeText('⚡ ')">⚡</button>
+      <button class="btn btn-gray btn-sm" onclick="insertWelcomeVar('NAME')">Servername</button>
+      <button class="btn btn-gray btn-sm" onclick="insertWelcomeVar('TRACK')">Strecke</button>
+    </div>
+    <div class="g2">
+      <div><label class="lbl">Bearbeiten</label><textarea id="welcome-msg" rows="12" class="ta" placeholder="Willkommen auf unserem Server!&#10;&#10;• Respektvoller Umgang&#10;• Sauberes Fahren" oninput="updateWelcomePreview()"></textarea></div>
+      <div><label class="lbl">Vorschau (wie im Content Manager)</label><div id="welcome-preview" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;min-height:200px;font-size:13px;white-space:pre-wrap;color:var(--text);line-height:1.7;overflow-y:auto"></div></div>
+    </div>
+  </div>
+  <div class="save-footer">
+    <button class="btn btn-red" onclick="saveServerProfile()">💾 Profil speichern</button>
   </div>
 </div>
 
@@ -944,7 +943,38 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   </div>
 </div>
 
+<!-- ══ HILFE ═══════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-help">
+  <div class="sec-hdr"><h2>❓ Hilfe & Einstellungs-Referenz</h2></div>
+
+  <div class="help-card"><div class="help-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">⚙️ Server Allgemein <span>▾</span></div><div class="help-card-body"><div class="help-row"><div class="help-key">NAME</div><div class="help-val">Anzeigename des Servers im Content Manager und in der Serverliste.</div></div><div class="help-row"><div class="help-key">PASSWORD</div><div class="help-val">Passwort für Spieler zum Joinen. Leer lassen = kein Passwort.</div></div><div class="help-row"><div class="help-key">ADMIN_PASSWORD</div><div class="help-val">Passwort für Admin-Befehle im Spiel (/admin) und für RCON-Verbindungen.</div></div><div class="help-row"><div class="help-key">REGISTER_TO_LOBBY</div><div class="help-val">1 = Server erscheint in der öffentlichen Kunos-Serverliste weltweit. 0 = Nur über direkte IP erreichbar.</div></div><div class="help-row"><div class="help-key">SUN_ANGLE</div><div class="help-val">Tageszeit als Winkelgrad. 0° = Mitternacht, 48° ≈ Morgen, 180° = Mittag, 320° ≈ Abend.</div></div></div></div>
+
+  <div class="help-card"><div class="help-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">🔌 Ports & Verbindung <span>▾</span></div><div class="help-card-body"><div class="help-row"><div class="help-key">UDP_PORT / TCP_PORT</div><div class="help-val">Hauptport für Spiel-Verbindungen (Standard: 9600). Muss in der Firewall / Router-Portweiterleitung geöffnet sein.</div></div><div class="help-row"><div class="help-key">HTTP_PORT</div><div class="help-val">Port für den HTTP-Info-Endpunkt (Standard: 8081). Wird vom Content Manager für Serverdetails abgefragt.</div></div><div class="help-row"><div class="help-key">PICKUP_MODE_ENABLED</div><div class="help-val">1 = Spieler wählen ihr Auto selbst beim Joinen. 0 = Zugewiesene Slots (z.B. für Rennevents).</div></div><div class="help-row"><div class="help-key">LOOP_MODE</div><div class="help-val">1 = Server startet nach jeder Session automatisch neu (Trackday-Modus). 0 = Server wartet auf manuellen Neustart.</div></div><div class="help-row"><div class="help-key">CLIENT_SEND_INTERVAL_HZ</div><div class="help-val">Wie oft pro Sekunde der Server Positionsdaten sendet. Standard: 18 Hz. Höher = flüssiger aber mehr Netzwerklast.</div></div></div></div>
+
+  <div class="help-card"><div class="help-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">🛡️ Fahrhilfen & Regeln <span>▾</span></div><div class="help-card-body"><div class="help-row"><div class="help-key">ABS_ALLOWED</div><div class="help-val">Anti-Blockier-System erlauben. Empfehlung: 1 für öffentliche Server.</div></div><div class="help-row"><div class="help-key">TC_ALLOWED</div><div class="help-val">Traktionskontrolle erlauben.</div></div><div class="help-row"><div class="help-key">STABILITY_ALLOWED</div><div class="help-val">Elektronisches Stabilitätsprogramm (ESP). Für realistische Server oft deaktiviert.</div></div><div class="help-row"><div class="help-key">FUEL_RATE</div><div class="help-val">Kraftstoffverbrauch in %. 100 = realistisch, 0 = unendlich, 200 = doppelt so schnell leer.</div></div><div class="help-row"><div class="help-key">DAMAGE_MULTIPLIER</div><div class="help-val">Schadensrate. 0 = kein Schaden, 100 = realistisch, >100 = erhöhter Schaden.</div></div><div class="help-row"><div class="help-key">ALLOWED_TYRES_OUT</div><div class="help-val">Wie viele Reifen außerhalb der Strecke erlaubt sind. 2 = Standard, 4 = alle (kein Limit), 0 = strikt.</div></div><div class="help-row"><div class="help-key">LEGAL_TYRES</div><div class="help-val">Erlaubte Reifentypen als Kommaliste (z.B. "SV,SM"). Leer = alle Reifen erlaubt.</div></div></div></div>
+
+  <div class="help-card"><div class="help-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">📅 Sessions <span>▾</span></div><div class="help-card-body"><div class="help-row"><div class="help-key">PRACTICE TIME</div><div class="help-val">Dauer der Practice-Session in Minuten. 9999 = unbegrenzt (empfohlen für Trackdays).</div></div><div class="help-row"><div class="help-key">IS_OPEN</div><div class="help-val">1 = Spieler können jederzeit joinen. 0 = Kein Beitritt nach Session-Start.</div></div><div class="help-row"><div class="help-key">RACE LAPS</div><div class="help-val">Rundenanzahl für das Rennen. 0 = zeitbasiertes Rennen (dann TIME setzen).</div></div><div class="help-row"><div class="help-key">RACE_OVER_TIME</div><div class="help-val">Sekunden nach dem Zieleinlauf des ersten Fahrers bis die Session endet. Standard: 180s.</div></div><div class="help-row"><div class="help-key">WAIT_TIME</div><div class="help-val">Wartezeit in Sekunden vor Race-Start nach dem Ende des Qualifyings.</div></div></div></div>
+
+  <div class="help-card"><div class="help-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">🌤️ Wetter & Strecke <span>▾</span></div><div class="help-card-body"><div class="help-row"><div class="help-key">GRAPHICS (Wetter)</div><div class="help-val">Setzt das visuelle Wetter-Preset. Presets: 3_clear (sonnig), 2_light_clouds (leicht bewölkt), 7_heavy_clouds (stark bewölkt), 8_drizzle (Nieselregen), 11_practice_storm (Gewitter).</div></div><div class="help-row"><div class="help-key">BASE_TEMPERATURE_AMBIENT</div><div class="help-val">Lufttemperatur in °C. Beeinflusst Motortemperatur und Reifenverhalten.</div></div><div class="help-row"><div class="help-key">BASE_TEMPERATURE_ROAD</div><div class="help-val">Streckentemperatur in °C. Wärmer = mehr Grip bei Slicks, kälter = weniger.</div></div><div class="help-row"><div class="help-key">SESSION_START (Dynamic Track)</div><div class="help-val">Anfangsgripniveau in %. 95 = fast ideal, 80 = grüne Strecke. Steigt durch Runden.</div></div><div class="help-row"><div class="help-key">LAP_GAIN</div><div class="help-val">Wie stark der Grip pro Runde zunimmt. 132 = Standard-Nordschleife.</div></div></div></div>
+
+  <div class="help-card"><div class="help-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">🔧 AssettoServer (extra_cfg.yml) <span>▾</span></div><div class="help-card-body"><div class="help-row"><div class="help-key">EnableServerDetails</div><div class="help-val">Muss aktiviert sein damit Beschreibung, Logo und Details im Content Manager erscheinen.</div></div><div class="help-row"><div class="help-key">EnableAntiAfk</div><div class="help-val">Spieler die zu lange AFK sind werden automatisch gekickt.</div></div><div class="help-row"><div class="help-key">MaxPing</div><div class="help-val">Maximaler Ping in ms bevor ein Spieler automatisch gekickt wird. Standard: 500ms.</div></div><div class="help-row"><div class="help-key">EnableWeatherFx</div><div class="help-val">Aktiviert CSP WeatherFX für Regen und flüssige Wetterübergänge. Benötigt CSP 0.1.76+.</div></div><div class="help-row"><div class="help-key">MinimumCSPVersion</div><div class="help-val">Minimale CSP-Version zum Joinen (0 = kein Limit). Beispiel: 2144 für CSP 0.1.77.</div></div><div class="help-row"><div class="help-key">RconPort</div><div class="help-val">Port für RCON-Verbindungen. Standard: 9700. Wird auch vom Dashboard für Kick/Ban/Chat verwendet.</div></div></div></div>
+
+  <div class="help-card"><div class="help-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">📜 RCON-Befehle <span>▾</span></div><div class="help-card-body">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px">RCON-Befehle können im Logs-Tab eingegeben werden. Admin-Passwort aus server_cfg.ini wird automatisch verwendet.</p>
+    <div class="help-row"><div class="help-key"><span class="help-cmd">/say &lt;text&gt;</span></div><div class="help-val">Nachricht an alle Spieler senden (erscheint im Spiel-Chat).</div></div>
+    <div class="help-row"><div class="help-key"><span class="help-cmd">/kick_id &lt;id&gt;</span></div><div class="help-val">Spieler mit Slot-ID kicken (ID sichtbar in Fahrer-Tab).</div></div>
+    <div class="help-row"><div class="help-key"><span class="help-cmd">/ban_id &lt;id&gt;</span></div><div class="help-val">Spieler bannen und kicken.</div></div>
+    <div class="help-row"><div class="help-key"><span class="help-cmd">/next_session</span></div><div class="help-val">Zur nächsten Session springen.</div></div>
+    <div class="help-row"><div class="help-key"><span class="help-cmd">/restart_session</span></div><div class="help-val">Aktuelle Session neu starten.</div></div>
+    <div class="help-row"><div class="help-key"><span class="help-cmd">/set_ballast &lt;id&gt; &lt;kg&gt;</span></div><div class="help-val">Ballast für einen Spieler live setzen.</div></div>
+  </div></div>
+
+  <div class="help-card"><div class="help-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">🔔 Discord Webhook <span>▾</span></div><div class="help-card-body"><div class="help-row"><div class="help-key">Webhook URL</div><div class="help-val">In Discord: Server-Einstellungen → Integrationen → Webhooks → Neuen Webhook erstellen → URL kopieren.</div></div><div class="help-row"><div class="help-key">Benachrichtigungen</div><div class="help-val">Server-Absturz/Neustart: immer. Fahrer Join/Leave: optional aktivierbar.</div></div></div></div>
+</div>
+
 </div><!-- /page -->
+</div><!-- /content -->
+</div><!-- /layout -->
 
 <!-- MODALS -->
 <div class="modal" id="up-modal">
@@ -1007,21 +1037,7 @@ const COLORS = ['#e8150c','#3498db','#27ae60','#f39c12','#9b59b6','#e67e22','#1a
 
 function autoRestart() { return document.getElementById('auto-restart').checked; }
 
-// ═══ TABS ═════════════════════════════════════════════════════════════════
-document.querySelectorAll(".tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-    tab.classList.add("active");
-    document.getElementById("p-" + tab.dataset.tab).classList.add("active");
-    if (tab.dataset.tab === "logs") loadLogs();
-    if (tab.dataset.tab === "settings") loadServerProfile();
-    if (tab.dataset.tab === "players") { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
-    if (tab.dataset.tab === "advanced") { loadExtraCfg(); loadDiscord(); }
-    if (tab.dataset.tab === "content") loadInstalledContent();
-    if (tab.dataset.tab === "records") { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
-  });
-});
+// Tab-System entfernt — Navigation läuft jetzt über navTo() / Sidebar
 
 // ═══ LANGUAGE SYSTEM ════════════════════════════════════════════════════
 const LANG = {
@@ -1866,8 +1882,89 @@ function saveTrackParams() {
     .then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));
 }
 
+// ═══ NAVIGATION (SIDEBAR) ════════════════════════════════════════════════
+function navTo(id) {
+  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
+  const target = document.getElementById('p-' + id);
+  if (target) { target.classList.add('active'); }
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll(`.nav-item[data-nav="${id}"]`).forEach(n => n.classList.add('active'));
+  // Scroll content to top
+  document.querySelector('.content').scrollTop = 0;
+  // Side effects
+  if (id === 'logs') loadLogs();
+  if (id === 'settings-profile') loadServerProfile();
+  if (id === 'players') { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
+  if (id === 'advanced') { loadExtraCfg(); loadDiscord(); }
+  if (id === 'content') loadInstalledContent();
+  if (id === 'records') { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
+  // Close mobile sidebar
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-overlay').classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sb-overlay').classList.toggle('open');
+}
+
+// ═══ COMBINED SAVE FUNCTIONS ══════════════════════════════════════════════
+function saveAllServerSettings() {
+  const bool = id => document.getElementById(id).checked ? '1' : '0';
+  const val  = id => document.getElementById(id).value;
+  const data = {
+    NAME: val('sv-name'),
+    REGISTER_TO_LOBBY: bool('sv-lobby'),
+    SUN_ANGLE: val('sv-sun'),
+    UDP_PORT: val('sv-udp'), TCP_PORT: val('sv-udp'),
+    HTTP_PORT: val('sv-http'),
+    PICKUP_MODE_ENABLED: bool('sv-pickup'),
+    LOOP_MODE: bool('sv-loop'),
+    BLACKLIST_MODE: bool('sv-blacklist'),
+    KICK_QUORUM: val('sv-kickq'),
+    VOTING_QUORUM: val('sv-voteq'),
+    VOTE_DURATION: val('sv-vdur'),
+    RACE_OVER_TIME: val('sv-raceover'),
+    CLIENT_SEND_INTERVAL_HZ: val('sv-hz'),
+    LEGAL_TYRES: val('sv-tyres'),
+    restart: autoRestart()
+  };
+  const pass = document.getElementById('sv-pass').value;
+  if (pass) data.PASSWORD = pass;
+  const ap = document.getElementById('sv-adminpass').value;
+  if (ap) data.ADMIN_PASSWORD = ap;
+  apiFetch('/save_server_settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>toast(d.ok?'✓ Server-Einstellungen gespeichert':'✗ '+d.msg, d.ok?'ok':'err'));
+}
+
+function saveWeatherPage() {
+  const wd = {
+    weather_0_graphics: document.getElementById('w0-graphics').value,
+    weather_0_ambient: document.getElementById('w0-amb').value,
+    weather_0_road: document.getElementById('w0-road').value,
+    weather_1_graphics: document.getElementById('w1-graphics').value,
+    weather_1_ambient: document.getElementById('w1-amb').value,
+    weather_1_road: document.getElementById('w1-road').value,
+    restart: autoRestart()
+  };
+  const dd = {
+    SESSION_START: document.getElementById('dt-start').value,
+    RANDOMNESS: document.getElementById('dt-rand').value,
+    SESSION_TRANSFER: document.getElementById('dt-transfer').value,
+    LAP_GAIN: document.getElementById('dt-lap').value,
+    restart: autoRestart()
+  };
+  Promise.all([
+    apiFetch('/save_weather', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(wd)}).then(r=>r.json()),
+    apiFetch('/save_dynamic_track', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dd)}).then(r=>r.json())
+  ]).then(([w, d]) => {
+    toast((w.ok && d.ok) ? '✓ Wetter & Strecke gespeichert' : '✗ Fehler beim Speichern', (w.ok && d.ok) ? 'ok' : 'err');
+  });
+}
+
 // ═══ INIT ═════════════════════════════════════════════════════════════════
 applyLang();
+navTo('dashboard');
 updateLayouts();
 loadTrackPreview();
 refreshLive();
@@ -1880,7 +1977,11 @@ refreshQuickStats();
 setInterval(refreshLive, 3000);
 setInterval(refreshUptime, 30000);
 setInterval(refreshQuickStats, 60000);
-setInterval(()=>{if(document.getElementById("log-auto").checked&&document.getElementById("p-logs").classList.contains("active"))loadLogs();},3000);
+setInterval(()=>{
+  const logsPanel = document.getElementById('p-logs');
+  if(document.getElementById('log-auto').checked && logsPanel && logsPanel.classList.contains('active'))
+    loadLogs();
+}, 3000);
 </script>
 </body>
 </html>

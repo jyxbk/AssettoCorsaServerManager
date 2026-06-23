@@ -225,15 +225,16 @@ threading.Thread(target=_discord_monitor, daemon=True).start()
 _lt_lock    = threading.Lock()
 _lt_session = {}  # driver_name -> {guid, car, skin, track}
 
-# Fixed regexes — car names may contain hyphens so capture greedily up to last '-'
-_RE_CONNECT = re.compile(
-    r'\[[\d:]+\] INF\] (.+?) \((\d{17}),\s*\d+ \((.+)-([^)]+)\)\) has connected'
+# AS log format: [HH:MM:SS INF] message  (time + level inside ONE bracket)
+# Car IDs use underscores only; split car-skin on the FIRST hyphen.
+_RE_CONNECT    = re.compile(
+    r'\[[\d:]+ INF\] (.+?) \((\d{17}),\s*\d+ \(([^)]+)\)\) has connected'
 )
-_RE_LAP = re.compile(
-    r'\[(\d{2}:\d{2}:\d{2})\] INF\] Lap completed by (.+?), (\d+) cuts?, laptime (\d+)'
+_RE_LAP        = re.compile(
+    r'\[(\d{2}:\d{2}:\d{2}) INF\] Lap completed by (.+?), (\d+) cuts?, laptime (\d+)'
 )
-_RE_DISCONNECT = re.compile(r'\[[\d:]+\] INF\] (.+?) has disconnected')
-_RE_DATE      = re.compile(r'^(\d{4}-\d{2}-\d{2})')
+_RE_DISCONNECT = re.compile(r'\[[\d:]+ INF\] (.+?) has disconnected')
+_RE_ISO_DATE   = re.compile(r'^(\d{4}-\d{2}-\d{2})')
 
 def _load_laptimes():
     if LAPTIMES_FILE.exists():
@@ -259,18 +260,33 @@ def _append_laptime(entry):
         entries.append(entry)
         _save_laptimes(entries)
 
+def _split_car_skin(car_skin):
+    """Split 'car_model-skin_name' on the first hyphen (AC car IDs never contain hyphens)."""
+    if '-' in car_skin:
+        return car_skin.split('-', 1)
+    return car_skin, ''
+
 def _parse_journal_block(lines, known_ts_set):
-    """Parse a list of journal lines and return new lap entries."""
+    """Parse a list of journal lines (short-iso format) and return new lap entries."""
     session = {}
     new_entries = []
-    cur_date = time.strftime("%Y-%m-%d")
+    cur_date = time.strftime("%Y-%m-%d")  # fallback for lines without ISO prefix
 
     for line in lines:
+        # short-iso lines start with: 2026-06-22T22:37:18+0200 hostname svc[pid]: <message>
+        iso_m = _RE_ISO_DATE.match(line)
+        if iso_m:
+            cur_date = iso_m.group(1)
+            # Strip the syslog prefix to get the AC log message
+            colon_pos = line.find(': ')
+            line = line[colon_pos + 2:].strip() if colon_pos != -1 else line
+
         line = line.strip()
         m = _RE_CONNECT.search(line)
         if m:
-            name, guid, car = m.group(1), m.group(2), m.group(3)
-            session[name] = {"guid": guid, "car": car, "skin": m.group(4)}
+            name, guid, car_skin = m.group(1), m.group(2), m.group(3)
+            car, skin = _split_car_skin(car_skin)
+            session[name] = {"guid": guid, "car": car, "skin": skin}
             continue
         m = _RE_DISCONNECT.search(line)
         if m:
@@ -303,7 +319,7 @@ def _preload_journal_history():
     """On startup: parse recent journal and import any laps not yet in laptimes.json."""
     try:
         r = subprocess.run(
-            ["journalctl", "-u", SERVICE_NAME, "-n", "5000", "--no-pager", "-o", "cat"],
+            ["journalctl", "-u", SERVICE_NAME, "-n", "5000", "--no-pager", "-o", "short-iso"],
             capture_output=True, text=True, timeout=15)
         lines = r.stdout.splitlines()
     except Exception:
@@ -330,11 +346,12 @@ def _laptime_monitor():
         line = line.strip()
         m = _RE_CONNECT.search(line)
         if m:
-            name, guid, car = m.group(1), m.group(2), m.group(3)
+            name, guid, car_skin = m.group(1), m.group(2), m.group(3)
+            car, skin = _split_car_skin(car_skin)
             cfg = read_server_cfg()
             track = cfg.get("TRACK", ""); layout = cfg.get("TRACK_LAYOUT", "")
             _lt_session[name] = {
-                "guid": guid, "car": car, "skin": m.group(4),
+                "guid": guid, "car": car, "skin": skin,
                 "track": f"{track}-{layout}" if layout else track,
             }
             # Discord: player joined (if enabled)
@@ -652,9 +669,13 @@ def load_spline_points(track, layout):
 def rcon_send(cmd):
     admin_pw = read_server_cfg().get("ADMIN_PASSWORD", "")
     try:
+        port = int(read_extra_cfg().get("RconPort", RCON_PORT))
+    except (ValueError, TypeError):
+        port = RCON_PORT
+    try:
         s = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
         s.settimeout(3)
-        s.connect(("127.0.0.1", RCON_PORT))
+        s.connect(("127.0.0.1", port))
         def _pack(rid, rtype, body):
             b = body.encode("utf-8") + b"\x00\x00"
             return struct.pack("<iii", 4+4+len(b), rid, rtype) + b
@@ -880,10 +901,7 @@ def write_extra_cfg(updates):
             i += 1
             while i < len(lines):
                 nxt = lines[i].strip()
-                # A top-level YAML key starts with a word char followed by ':'
-                # or is a comment — stop skipping
-                import re as _re
-                if _re.match(r'^[A-Za-z#]', nxt):
+                if re.match(r'^[A-Za-z#]', nxt):
                     break
                 i += 1
             continue
@@ -1441,15 +1459,25 @@ def api_laptimes_clear():
 def api_laptimes_export():
     import io
     entries = _load_laptimes()
+    driver = request.args.get("driver", "").strip().lower()
+    track  = request.args.get("track",  "").strip().lower()
+    car    = request.args.get("car",    "").strip().lower()
+    if driver: entries = [e for e in entries if driver in e.get("driver","").lower()]
+    if track:  entries = [e for e in entries if track  in e.get("track", "").lower()]
+    if car:    entries = [e for e in entries if car    in e.get("car",   "").lower()]
+    entries = sorted(entries, key=lambda x: x.get("ts",""))
     buf = io.StringIO()
     buf.write("Datum,Fahrer,GUID,Auto,Strecke,Rundenzeit,Rundenzeit_ms,Cuts\n")
-    for e in sorted(entries, key=lambda x: x.get("ts","")):
+    for e in entries:
         ms   = e.get("laptime", 0)
         mins = ms // 60000
         secs = (ms % 60000) / 1000
         fmt  = f"{mins}:{secs:06.3f}"
-        buf.write(f"{e.get('ts','')},{e.get('driver','')},{e.get('guid','')},{e.get('car','')},"
-                  f"{e.get('track','')},{fmt},{ms},{e.get('cuts',0)}\n")
+        # Escape commas in fields
+        def csv_field(v): return f'"{v}"' if ',' in str(v) else str(v)
+        buf.write(f"{csv_field(e.get('ts',''))},{csv_field(e.get('driver',''))},"
+                  f"{csv_field(e.get('guid',''))},{csv_field(e.get('car',''))},"
+                  f"{csv_field(e.get('track',''))},{fmt},{ms},{e.get('cuts',0)}\n")
     from flask import Response
     return Response(
         buf.getvalue(),

@@ -816,8 +816,8 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
           <div><label class="lbl">Longitude</label><input class="inp" type="number" id="tp-lon" step="0.0001" value="0"></div>
         </div>
         <div class="fg" style="margin-top:8px">
-          <label class="lbl">Timezone (z.B. Europe/Berlin)</label>
-          <input class="inp" id="tp-tz" value="Europe/Berlin">
+          <label class="lbl">Timezone (UTC-Offset, z.B. 1 für CET, 2 für CEST)</label>
+          <input class="inp" type="number" id="tp-tz" min="-12" max="14" step="1" value="1">
         </div>
         <button class="btn btn-red" onclick="saveTrackParams()" data-i18n="btn_save">💾 Speichern</button>
       </div>
@@ -1725,7 +1725,7 @@ function saveTrackParams() {
   const track = document.getElementById('tp-track').value;
   const lat   = parseFloat(document.getElementById('tp-lat').value)||0;
   const lon   = parseFloat(document.getElementById('tp-lon').value)||0;
-  const tz    = document.getElementById('tp-tz').value.trim()||'UTC';
+  const tz    = parseInt(document.getElementById('tp-tz').value) || 1;
   apiFetch('/api/add_track_params',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({track,lat,lon,tz,city:track})})
     .then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));

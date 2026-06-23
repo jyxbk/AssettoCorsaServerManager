@@ -10,6 +10,7 @@ import threading
 import time
 import zipfile
 import subprocess
+import io
 import functools
 import urllib.request
 from pathlib import Path
@@ -315,8 +316,34 @@ def _parse_journal_block(lines, known_ts_set):
             })
     return new_entries
 
+def _preload_session_from_http():
+    """Pre-populate _lt_session from AS HTTP API so already-connected players
+    get correct guid/car even if acweb was restarted while they were online."""
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:8081/api/details", timeout=3) as r:
+            data = json.loads(r.read())
+        cfg    = read_server_cfg()
+        track  = cfg.get("TRACK", "")
+        layout = cfg.get("TRACK_LAYOUT", "")
+        track_str = f"{track}-{layout}" if layout else track
+        for car in data.get("players", {}).get("Cars", []):
+            if not car.get("IsConnected"):
+                continue
+            name = car.get("DriverName", "")
+            guid = car.get("ID", "")
+            model = car.get("Model", "")
+            skin  = car.get("Skin", "")
+            if name:
+                _lt_session[name] = {
+                    "guid": guid, "car": model, "skin": skin, "track": track_str
+                }
+    except Exception:
+        pass
+
 def _preload_journal_history():
     """On startup: parse recent journal and import any laps not yet in laptimes.json."""
+    # First try to populate current session from HTTP (handles restarts mid-session)
+    _preload_session_from_http()
     try:
         r = subprocess.run(
             ["journalctl", "-u", SERVICE_NAME, "-n", "5000", "--no-pager", "-o", "short-iso"],
@@ -951,10 +978,11 @@ TRACK_PARAMS_FILE = SERVER_DIR / "data" / "data_track_params.ini"
 
 def _auto_add_track_params(track):
     section = f"[{track.lower()}]"
+    TRACK_PARAMS_FILE.parent.mkdir(parents=True, exist_ok=True)
     existing = TRACK_PARAMS_FILE.read_text() if TRACK_PARAMS_FILE.exists() else ""
     if section in existing:
         return
-    lat, lon, tz = 0.0, 0.0, "UTC"
+    lat, lon, tz = 0.0, 0.0, 0
     ui_path = TRACKS_DIR / track / "ui" / "ui_track.json"
     if not ui_path.exists():
         for d in ((TRACKS_DIR / track).iterdir() if (TRACKS_DIR / track).exists() else []):
@@ -1293,19 +1321,38 @@ def save_dynamic_track():
 @app.route("/api/add_track_params", methods=["POST"])
 @login_required
 def add_track_params():
-    data = request.json or {}
+    data  = request.json or {}
     track = data.get("track", "").strip()
-    city  = data.get("city", "Unknown").strip()
-    lat   = data.get("lat", 0)
-    lon   = data.get("lon", 0)
-    tz    = data.get("tz", 0)
+    city  = data.get("city", track).strip() or track
+    lat   = float(data.get("lat", 0) or 0)
+    lon   = float(data.get("lon", 0) or 0)
+    tz    = int(float(data.get("tz", 0) or 0))   # UTC offset as integer, e.g. 1 for CET
     if not track:
         return jsonify({"ok": False, "msg": "track required"}), 400
     section = f"[{track.lower()}]"
-    entry = f"\n{section}\nCITY={city}\nLATITUDE={lat}\nLONGITUDE={lon}\nTIMEZONE={tz}\n"
+    TRACK_PARAMS_FILE.parent.mkdir(parents=True, exist_ok=True)
     existing = TRACK_PARAMS_FILE.read_text() if TRACK_PARAMS_FILE.exists() else ""
     if section in existing:
-        return jsonify({"ok": True, "msg": "already exists"})
+        # Update existing entry
+        lines = existing.splitlines()
+        new_lines, in_sect = [], False
+        for line in lines:
+            if line.strip().lower() == section.lower():
+                in_sect = True
+                new_lines.append(line)
+                continue
+            if in_sect and line.strip().startswith("[") and line.strip().endswith("]"):
+                in_sect = False
+            if in_sect:
+                k = line.split("=", 1)[0].strip().upper()
+                if k == "CITY":       new_lines.append(f"CITY={city}"); continue
+                if k == "LATITUDE":   new_lines.append(f"LATITUDE={lat}"); continue
+                if k == "LONGITUDE":  new_lines.append(f"LONGITUDE={lon}"); continue
+                if k == "TIMEZONE":   new_lines.append(f"TIMEZONE={tz}"); continue
+            new_lines.append(line)
+        TRACK_PARAMS_FILE.write_text("\n".join(new_lines) + "\n")
+        return jsonify({"ok": True, "msg": f"Updated params for {track}"})
+    entry = f"\n{section}\nCITY={city}\nLATITUDE={lat}\nLONGITUDE={lon}\nTIMEZONE={tz}\n"
     with open(TRACK_PARAMS_FILE, "a") as f:
         f.write(entry)
     return jsonify({"ok": True, "msg": f"Added params for {track}"})
@@ -1457,7 +1504,6 @@ def api_laptimes_clear():
 @app.route("/api/laptimes/export")
 @login_required
 def api_laptimes_export():
-    import io
     entries = _load_laptimes()
     driver = request.args.get("driver", "").strip().lower()
     track  = request.args.get("track",  "").strip().lower()
@@ -1534,7 +1580,6 @@ def api_laptimes_today():
 @app.route("/api/backup")
 @login_required
 def config_backup():
-    import io
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for fname in ["server_cfg.ini", "entry_list.ini", "extra_cfg.yml", "welcome.txt"]:

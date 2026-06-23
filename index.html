@@ -188,7 +188,8 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 <div class="tabs">
   <div class="tab active" data-tab="dash">Dashboard</div>
   <div class="tab" data-tab="drivers">Fahrer</div>
-  <div class="tab" data-tab="laps">Rundenzeiten</div>
+  <div class="tab" data-tab="laps">Live Zeiten</div>
+  <div class="tab" data-tab="records">Rekorde</div>
   <div class="tab" data-tab="settings">Einstellungen</div>
   <div class="tab" data-tab="content">Content</div>
   <div class="tab" data-tab="players">Players</div>
@@ -326,6 +327,74 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
         </tr></thead>
         <tbody id="lap-tbody">
           <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:48px">Keine Daten – warte auf Fahrer</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RECORDS ════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-records">
+  <!-- Bestzeiten -->
+  <div class="card gap">
+    <div class="sh">
+      <div class="sh-t">🏆 Bestzeiten (pro Fahrer &amp; Strecke)</div>
+      <button class="btn btn-gray btn-sm" onclick="loadBestLaps()">↻</button>
+    </div>
+    <div class="tbl-wrap">
+      <table id="best-table">
+        <thead><tr>
+          <th>Pos.</th><th>Fahrer</th><th>Auto</th><th>Strecke</th>
+          <th>Bestzeit</th><th>Cuts</th><th>Datum</th>
+        </tr></thead>
+        <tbody id="best-tbody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Alle Rundenzeiten mit Filter -->
+  <div class="card">
+    <div class="sh">
+      <div class="sh-t">📋 Alle Rundenzeiten</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="rec-count" style="font-size:11px;color:var(--muted)"></span>
+        <a id="rec-export-btn" href="/api/laptimes/export" class="btn btn-blue btn-sm">⬇ CSV</a>
+        <button class="btn btn-danger btn-sm" onclick="clearLaptimes()">🗑 Alles löschen</button>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+      <div>
+        <label class="lbl">Fahrer</label>
+        <select class="sel" id="rec-filter-driver" onchange="loadAllLaps()">
+          <option value="">Alle Fahrer</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Strecke</label>
+        <select class="sel" id="rec-filter-track" onchange="loadAllLaps()">
+          <option value="">Alle Strecken</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Auto</label>
+        <select class="sel" id="rec-filter-car" onchange="loadAllLaps()">
+          <option value="">Alle Autos</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Pos.</th><th>Fahrer</th><th>GUID</th><th>Auto</th><th>Strecke</th>
+          <th>Zeit</th><th>Cuts</th><th>Datum</th>
+        </tr></thead>
+        <tbody id="all-tbody">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
         </tbody>
       </table>
     </div>
@@ -780,6 +849,7 @@ document.querySelectorAll(".tab").forEach(tab => {
     if (tab.dataset.tab === "players") { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
     if (tab.dataset.tab === "advanced") { loadExtraCfg(); loadDiscord(); }
     if (tab.dataset.tab === "content") loadInstalledContent();
+    if (tab.dataset.tab === "records") { loadRecordFilters(); loadBestLaps(); loadAllLaps(); }
   });
 });
 
@@ -1266,6 +1336,98 @@ function fmt(ms){if(!ms||ms<=0)return"—";const m=Math.floor(ms/60000),s=Math.f
 function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function copy(text){navigator.clipboard.writeText(text).then(()=>toast("📋 Kopiert: "+text,"info"));}
 function copyPub(){const ip=document.getElementById("pub-ip").textContent;if(ip&&ip!=="—")copy(ip+":9600");}
+
+// ═══ RECORDS TAB ══════════════════════════════════════════════════════════
+function fmtMs(ms) {
+  if (!ms || ms <= 0) return '—';
+  const m = Math.floor(ms / 60000), s = (ms % 60000) / 1000;
+  return `${m}:${s.toFixed(3).padStart(6,'0')}`;
+}
+
+async function loadRecordFilters() {
+  const d = await apiFetch('/api/laptimes/drivers').then(r => r.json()).catch(() => null);
+  if (!d) return;
+  const fill = (id, items) => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">Alle</option>` + items.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    if (cur) sel.value = cur;
+  };
+  fill('rec-filter-driver', d.drivers);
+  fill('rec-filter-track',  d.tracks);
+  fill('rec-filter-car',    d.cars);
+}
+
+async function loadBestLaps() {
+  const d = await apiFetch('/api/laptimes/best').then(r => r.json()).catch(() => null);
+  const tb = document.getElementById('best-tbody');
+  if (!d || !d.entries.length) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Noch keine Rundenzeiten gespeichert</td></tr>`;
+    return;
+  }
+  tb.innerHTML = d.entries.map((e, i) => {
+    const pc = ['pos-1','pos-2','pos-3'][i] || '';
+    const medal = ['🥇','🥈','🥉'][i] || `#${i+1}`;
+    return `<tr>
+      <td class="${pc}">${medal}</td>
+      <td><strong>${esc(e.driver)}</strong></td>
+      <td style="color:var(--muted);font-size:11px">${esc(e.car)}</td>
+      <td style="font-size:11px">${esc(e.track)}</td>
+      <td class="${pc} best-t" style="font-family:monospace;font-weight:800">${fmtMs(e.laptime)}</td>
+      <td style="color:${e.cuts>0?'var(--yellow)':'var(--muted)'};">${e.cuts}</td>
+      <td style="color:var(--muted);font-size:11px">${esc(e.ts||'')}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadAllLaps() {
+  const driver = document.getElementById('rec-filter-driver').value;
+  const track  = document.getElementById('rec-filter-track').value;
+  const car    = document.getElementById('rec-filter-car').value;
+  const params = new URLSearchParams();
+  if (driver) params.set('driver', driver);
+  if (track)  params.set('track',  track);
+  if (car)    params.set('car',    car);
+
+  const d = await apiFetch('/api/laptimes?' + params).then(r => r.json()).catch(() => null);
+  const tb = document.getElementById('all-tbody');
+  const cnt = document.getElementById('rec-count');
+  if (!d || !d.entries.length) {
+    tb.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Keine Einträge</td></tr>`;
+    cnt.textContent = '0 Einträge';
+    return;
+  }
+  cnt.textContent = d.total + ' Einträge';
+
+  // Export link with filters
+  const expUrl = '/api/laptimes/export?' + params;
+  document.getElementById('rec-export-btn').href = expUrl;
+
+  tb.innerHTML = d.entries.map((e, i) => {
+    const pc = ['pos-1','pos-2','pos-3'][i] || '';
+    const guidShort = e.guid ? e.guid.slice(-8) : '—';
+    return `<tr>
+      <td class="${pc}">${i+1}</td>
+      <td><strong>${esc(e.driver)}</strong></td>
+      <td style="font-size:10px;color:var(--muted);font-family:monospace" title="${esc(e.guid)}">${guidShort}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(e.car)}</td>
+      <td style="font-size:11px">${esc(e.track)}</td>
+      <td class="${i===0?'best-t':''}" style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
+      <td style="color:${e.cuts>0?'var(--yellow)':'var(--muted)'};">${e.cuts}</td>
+      <td style="color:var(--muted);font-size:11px">${esc(e.ts||'')}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearLaptimes() {
+  if (!confirm('Alle gespeicherten Rundenzeiten löschen? Dies kann nicht rückgängig gemacht werden!')) return;
+  apiFetch('/api/laptimes', {method: 'DELETE'})
+    .then(r => r.json())
+    .then(d => {
+      toast(d.ok ? '✓ Rundenzeiten gelöscht' : '✗ ' + d.msg, d.ok ? 'ok' : 'err');
+      if (d.ok) { loadBestLaps(); loadAllLaps(); }
+    });
+}
 
 // ═══ INIT ═════════════════════════════════════════════════════════════════
 updateLayouts();

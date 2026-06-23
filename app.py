@@ -28,8 +28,9 @@ CONTENT_DIR  = SERVER_DIR / "content"
 CARS_DIR     = CONTENT_DIR / "cars"
 TRACKS_DIR   = CONTENT_DIR / "tracks"
 CFG_DIR      = SERVER_DIR / "cfg"
-PRESETS_FILE = Path("/opt/acweb/presets.json")
-DISCORD_FILE = Path("/opt/acweb/discord.json")
+PRESETS_FILE  = Path("/opt/acweb/presets.json")
+DISCORD_FILE  = Path("/opt/acweb/discord.json")
+LAPTIMES_FILE = Path("/opt/acweb/laptimes.json")
 WELCOME_FILE    = CFG_DIR / "welcome.txt"
 EXTRA_CFG_FILE  = CFG_DIR / "extra_cfg.yml"
 LOGO_FILE       = SERVER_DIR / "logo.png"
@@ -215,6 +216,90 @@ def _load_discord_url():
     return ""
 
 threading.Thread(target=_discord_monitor, daemon=True).start()
+
+# ── Lap time tracker ──────────────────────────────────────────────────────────
+_lt_lock       = threading.Lock()
+_lt_session    = {}   # driver_name -> {guid, car, track}
+
+def _load_laptimes():
+    if LAPTIMES_FILE.exists():
+        try:
+            return json.loads(LAPTIMES_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return []
+
+def _save_laptimes(entries):
+    LAPTIMES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    LAPTIMES_FILE.write_text(json.dumps(entries, ensure_ascii=False), encoding="utf-8")
+
+def _append_laptime(entry):
+    with _lt_lock:
+        entries = _load_laptimes()
+        entries.append(entry)
+        _save_laptimes(entries)
+
+# Regex patterns for journal lines
+_RE_CONNECT = re.compile(
+    r'\[[\d:]+\] INF\] (\S.*?) \((\d{17}),\s*\d+ \(([^-]+)-([^)]+)\)\) has connected'
+)
+_RE_LAP = re.compile(
+    r'\[(\d{2}:\d{2}:\d{2})\] INF\] Lap completed by (.+?), (\d+) cuts?, laptime (\d+)'
+)
+_RE_DISCONNECT = re.compile(r'\[[\d:]+\] INF\] (.+?) has disconnected')
+
+def _laptime_monitor():
+    """Tail journalctl and persist lap completions."""
+    try:
+        proc = subprocess.Popen(
+            ["journalctl", "-u", SERVICE_NAME, "-f", "-n", "0", "--no-pager", "-o", "cat"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
+        )
+    except Exception:
+        return
+
+    for line in proc.stdout:
+        line = line.strip()
+        # Track connected driver → guid + car
+        m = _RE_CONNECT.search(line)
+        if m:
+            name, guid, car, skin = m.group(1), m.group(2), m.group(3), m.group(4)
+            cfg = read_server_cfg()
+            track = cfg.get("TRACK", "")
+            layout = cfg.get("TRACK_LAYOUT", "")
+            _lt_session[name] = {
+                "guid": guid,
+                "car":  car,
+                "skin": skin,
+                "track": f"{track}-{layout}" if layout else track,
+            }
+            continue
+
+        m = _RE_DISCONNECT.search(line)
+        if m:
+            _lt_session.pop(m.group(1), None)
+            continue
+
+        m = _RE_LAP.search(line)
+        if m:
+            ts_str, name, cuts, laptime_ms = m.group(1), m.group(2), int(m.group(3)), int(m.group(4))
+            info = _lt_session.get(name, {})
+            cfg  = read_server_cfg()
+            track = cfg.get("TRACK", "")
+            layout = cfg.get("TRACK_LAYOUT", "")
+            entry = {
+                "ts":       time.strftime("%Y-%m-%d ") + ts_str,
+                "driver":   name,
+                "guid":     info.get("guid", ""),
+                "car":      info.get("car", ""),
+                "skin":     info.get("skin", ""),
+                "track":    f"{track}-{layout}" if layout else track,
+                "laptime":  laptime_ms,
+                "cuts":     cuts,
+            }
+            _append_laptime(entry)
+
+threading.Thread(target=_laptime_monitor, daemon=True).start()
 
 # ── System helpers ────────────────────────────────────────────────────────────
 def run_systemctl(action):
@@ -1233,6 +1318,71 @@ def del_blacklist(guid):
     removed = _remove_guid(BLACKLIST_FILE, guid)
     return jsonify({"ok": removed, "msg": "Removed" if removed else "Not found"})
 
+
+# ── Lap times API ────────────────────────────────────────────────────────────
+@app.route("/api/laptimes")
+@login_required
+def api_laptimes():
+    entries = _load_laptimes()
+    driver  = request.args.get("driver", "").strip().lower()
+    track   = request.args.get("track",  "").strip().lower()
+    car     = request.args.get("car",    "").strip().lower()
+    if driver: entries = [e for e in entries if driver in e.get("driver","").lower()]
+    if track:  entries = [e for e in entries if track  in e.get("track", "").lower()]
+    if car:    entries = [e for e in entries if car    in e.get("car",   "").lower()]
+    # Sort fastest first
+    entries_sorted = sorted(entries, key=lambda e: e.get("laptime", 99999999))
+    return jsonify({"ok": True, "entries": entries_sorted, "total": len(entries_sorted)})
+
+@app.route("/api/laptimes/best")
+@login_required
+def api_laptimes_best():
+    """Best lap per driver per track."""
+    entries = _load_laptimes()
+    best = {}
+    for e in entries:
+        key = (e.get("driver",""), e.get("track",""))
+        if key not in best or e.get("laptime", 99999999) < best[key].get("laptime", 99999999):
+            best[key] = e
+    result = sorted(best.values(), key=lambda e: (e.get("track",""), e.get("laptime", 99999999)))
+    return jsonify({"ok": True, "entries": result})
+
+@app.route("/api/laptimes/drivers")
+@login_required
+def api_laptimes_drivers():
+    entries = _load_laptimes()
+    drivers = sorted({e.get("driver","") for e in entries if e.get("driver")})
+    tracks  = sorted({e.get("track","")  for e in entries if e.get("track")})
+    cars    = sorted({e.get("car","")    for e in entries if e.get("car")})
+    return jsonify({"drivers": drivers, "tracks": tracks, "cars": cars})
+
+@app.route("/api/laptimes", methods=["DELETE"])
+@login_required
+def api_laptimes_clear():
+    with _lt_lock:
+        _save_laptimes([])
+    return jsonify({"ok": True})
+
+@app.route("/api/laptimes/export")
+@login_required
+def api_laptimes_export():
+    import io
+    entries = _load_laptimes()
+    buf = io.StringIO()
+    buf.write("Datum,Fahrer,GUID,Auto,Strecke,Rundenzeit,Rundenzeit_ms,Cuts\n")
+    for e in sorted(entries, key=lambda x: x.get("ts","")):
+        ms   = e.get("laptime", 0)
+        mins = ms // 60000
+        secs = (ms % 60000) / 1000
+        fmt  = f"{mins}:{secs:06.3f}"
+        buf.write(f"{e.get('ts','')},{e.get('driver','')},{e.get('guid','')},{e.get('car','')},"
+                  f"{e.get('track','')},{fmt},{ms},{e.get('cuts',0)}\n")
+    from flask import Response
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=laptimes.csv"}
+    )
 
 # ── Config backup/restore ─────────────────────────────────────────────────────
 @app.route("/api/backup")

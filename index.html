@@ -246,38 +246,38 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   <div class="sb-ctrl">
     <button class="btn btn-green btn-sm" onclick="ctrl('start')">▶</button>
     <button class="btn btn-gray btn-sm" onclick="ctrl('stop')">■</button>
-    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ Neustart</button>
+    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')" data-i18n="btn_restart">↻ Neustart</button>
   </div>
   <div class="sb-restart">
-    <label><input type="checkbox" id="auto-restart" style="accent-color:var(--red)"> Nach Speichern neu starten</label>
+    <label><input type="checkbox" id="auto-restart" style="accent-color:var(--red)"> <span data-i18n="sb_auto_restart">Nach Speichern neu starten</span></label>
   </div>
 
   <!-- Navigation -->
-  <div class="nav-sep">Live</div>
-  <div class="nav-item active" data-nav="dashboard" onclick="navTo('dashboard')"><span class="nav-icon">🏠</span> Dashboard</div>
-  <div class="nav-item" data-nav="drivers" onclick="navTo('drivers')"><span class="nav-icon">🚗</span> Live Fahrer</div>
-  <div class="nav-item" data-nav="laps" onclick="navTo('laps')"><span class="nav-icon">⏱️</span> Live Zeiten</div>
-  <div class="nav-item" data-nav="records" onclick="navTo('records')"><span class="nav-icon">🏆</span> Rekorde</div>
+  <div class="nav-sep" data-i18n="nav_sec_live">Live</div>
+  <div class="nav-item active" data-nav="dashboard" onclick="navTo('dashboard')"><span class="nav-icon">🏠</span> <span data-i18n="nav_dashboard">Dashboard</span></div>
+  <div class="nav-item" data-nav="drivers" onclick="navTo('drivers')"><span class="nav-icon">🚗</span> <span data-i18n="nav_drivers">Live Fahrer</span></div>
+  <div class="nav-item" data-nav="laps" onclick="navTo('laps')"><span class="nav-icon">⏱️</span> <span data-i18n="nav_laps">Live Zeiten</span></div>
+  <div class="nav-item" data-nav="records" onclick="navTo('records')"><span class="nav-icon">🏆</span> <span data-i18n="nav_records">Rekorde</span></div>
 
-  <div class="nav-sep">Einstellungen</div>
-  <div class="nav-item" data-nav="settings-server" onclick="navTo('settings-server')"><span class="nav-icon">⚙️</span> Server</div>
-  <div class="nav-item" data-nav="settings-track" onclick="navTo('settings-track')"><span class="nav-icon">🗺️</span> Strecke & Autos</div>
-  <div class="nav-item" data-nav="settings-assists" onclick="navTo('settings-assists')"><span class="nav-icon">🛡️</span> Fahrhilfen</div>
-  <div class="nav-item" data-nav="settings-sessions" onclick="navTo('settings-sessions')"><span class="nav-icon">📅</span> Sessions</div>
-  <div class="nav-item" data-nav="settings-weather" onclick="navTo('settings-weather')"><span class="nav-icon">🌤️</span> Wetter</div>
-  <div class="nav-item" data-nav="settings-profile" onclick="navTo('settings-profile')"><span class="nav-icon">🎨</span> Serverprofil</div>
+  <div class="nav-sep" data-i18n="nav_sec_settings">Einstellungen</div>
+  <div class="nav-item" data-nav="settings-server" onclick="navTo('settings-server')"><span class="nav-icon">⚙️</span> <span data-i18n="nav_server">Server</span></div>
+  <div class="nav-item" data-nav="settings-track" onclick="navTo('settings-track')"><span class="nav-icon">🗺️</span> <span data-i18n="nav_track">Strecke & Autos</span></div>
+  <div class="nav-item" data-nav="settings-assists" onclick="navTo('settings-assists')"><span class="nav-icon">🛡️</span> <span data-i18n="nav_assists">Fahrhilfen</span></div>
+  <div class="nav-item" data-nav="settings-sessions" onclick="navTo('settings-sessions')"><span class="nav-icon">📅</span> <span data-i18n="nav_sessions">Sessions</span></div>
+  <div class="nav-item" data-nav="settings-weather" onclick="navTo('settings-weather')"><span class="nav-icon">🌤️</span> <span data-i18n="nav_weather">Wetter</span></div>
+  <div class="nav-item" data-nav="settings-profile" onclick="navTo('settings-profile')"><span class="nav-icon">🎨</span> <span data-i18n="nav_profile">Serverprofil</span></div>
 
-  <div class="nav-sep">Tools</div>
-  <div class="nav-item" data-nav="content" onclick="navTo('content')"><span class="nav-icon">📦</span> Inhalte</div>
-  <div class="nav-item" data-nav="players" onclick="navTo('players')"><span class="nav-icon">👥</span> Spieler</div>
-  <div class="nav-item" data-nav="advanced" onclick="navTo('advanced')"><span class="nav-icon">🔧</span> Erweitert</div>
-  <div class="nav-item" data-nav="logs" onclick="navTo('logs')"><span class="nav-icon">📜</span> Logs</div>
-  <div class="nav-item" data-nav="help" onclick="navTo('help')"><span class="nav-icon">❓</span> Hilfe</div>
+  <div class="nav-sep" data-i18n="nav_sec_tools">Tools</div>
+  <div class="nav-item" data-nav="content" onclick="navTo('content')"><span class="nav-icon">📦</span> <span data-i18n="nav_content">Inhalte</span></div>
+  <div class="nav-item" data-nav="players" onclick="navTo('players')"><span class="nav-icon">👥</span> <span data-i18n="nav_players">Spieler</span></div>
+  <div class="nav-item" data-nav="advanced" onclick="navTo('advanced')"><span class="nav-icon">🔧</span> <span data-i18n="nav_advanced">Erweitert</span></div>
+  <div class="nav-item" data-nav="logs" onclick="navTo('logs')"><span class="nav-icon">📜</span> <span data-i18n="nav_logs">Logs</span></div>
+  <div class="nav-item" data-nav="help" onclick="navTo('help')"><span class="nav-icon">❓</span> <span data-i18n="nav_help">Hilfe</span></div>
 
   <!-- Bottom: Lang + Logout -->
   <div class="sb-bottom">
     <button class="lang-btn btn btn-gray btn-sm" id="lang-toggle" onclick="toggleLang()" style="flex:1">EN</button>
-    <a href="/logout" class="btn btn-gray btn-sm" style="flex:1;justify-content:center">Abmelden</a>
+    <a href="/logout" class="btn btn-gray btn-sm" style="flex:1;justify-content:center" data-i18n="btn_logout">Abmelden</a>
   </div>
 </nav>
 
@@ -537,7 +537,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 
 <!-- ══ SETTINGS: SERVER ════════════════════════════════════════════════════ -->
 <div class="panel" id="p-settings-server">
-  <div class="sec-hdr"><h2>⚙️ Server</h2></div>
+  <div class="sec-hdr"><h2>⚙️ <span data-i18n="nav_server">Server</span></h2></div>
   <div class="g2 gap">
     <div class="card">
       <div class="card-ttl">Allgemein</div>
@@ -573,7 +573,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 
 <!-- ══ SETTINGS: STRECKE & AUTOS ═══════════════════════════════════════════ -->
 <div class="panel" id="p-settings-track">
-  <div class="sec-hdr"><h2>🗺️ Strecke & Autos</h2></div>
+  <div class="sec-hdr"><h2>🗺️ <span data-i18n="nav_track">Strecke & Autos</span></h2></div>
   <div class="g2 gap">
     <div class="card">
       <div class="card-ttl">Strecke</div>
@@ -616,7 +616,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 
 <!-- ══ SETTINGS: FAHRHILFEN ════════════════════════════════════════════════ -->
 <div class="panel" id="p-settings-assists">
-  <div class="sec-hdr"><h2>🛡️ Fahrhilfen & Regeln</h2></div>
+  <div class="sec-hdr"><h2>🛡️ <span data-i18n="nav_assists">Fahrhilfen</span> & <span data-i18n="sec_rules">Regeln</span></h2></div>
   <div class="g2 gap">
     <div class="card">
       <div class="card-ttl">Fahrhilfen</div>
@@ -644,7 +644,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 
 <!-- ══ SETTINGS: SESSIONS ══════════════════════════════════════════════════ -->
 <div class="panel" id="p-settings-sessions">
-  <div class="sec-hdr"><h2>📅 Sessions</h2></div>
+  <div class="sec-hdr"><h2>📅 <span data-i18n="nav_sessions">Sessions</span></h2></div>
   {% set practice = full_cfg.get('PRACTICE', {}) %}
   {% set qualify  = full_cfg.get('QUALIFY',  {}) %}
   {% set race     = full_cfg.get('RACE',     {}) %}
@@ -673,7 +673,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 
 <!-- ══ SETTINGS: WETTER ════════════════════════════════════════════════════ -->
 <div class="panel" id="p-settings-weather">
-  <div class="sec-hdr"><h2>🌤️ Wetter & Strecke</h2></div>
+  <div class="sec-hdr"><h2>🌤️ <span data-i18n="nav_weather">Wetter</span> & <span data-i18n="sec_track">Strecke</span></h2></div>
   {% set w0 = full_cfg.get('WEATHER_0', {}) %}
   {% set w1 = full_cfg.get('WEATHER_1', {}) %}
   {% set dt = full_cfg.get('DYNAMIC_TRACK', {}) %}
@@ -704,7 +704,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 
 <!-- ══ SETTINGS: PROFIL ════════════════════════════════════════════════════ -->
 <div class="panel" id="p-settings-profile">
-  <div class="sec-hdr"><h2>🎨 Serverprofil</h2></div>
+  <div class="sec-hdr"><h2>🎨 <span data-i18n="nav_profile">Serverprofil</span></h2></div>
   <div class="card gap">
     <div class="card-ttl">Server-Logo</div>
     <div style="display:flex;gap:1rem;align-items:flex-start">
@@ -1078,6 +1078,14 @@ const LANG = {
     discord_test:'Test senden', discord_hint:'Benachrichtigung bei Server-Ausfall oder Neustart.',
     track_params:'Track Parameter', track_params_hint:'Koordinaten für Real Time setzen.',
     best_no_data:'Noch keine Rundenzeiten gespeichert',
+    btn_restart:'↻ Neustart', btn_logout:'Abmelden', sb_auto_restart:'Nach Speichern neu starten',
+    nav_sec_live:'Live', nav_sec_settings:'Einstellungen', nav_sec_tools:'Tools',
+    nav_dashboard:'Dashboard', nav_drivers:'Live Fahrer', nav_laps:'Live Zeiten',
+    nav_records:'Rekorde', nav_server:'Server', nav_track:'Strecke & Autos',
+    nav_assists:'Fahrhilfen', nav_sessions:'Sessions', nav_weather:'Wetter',
+    nav_profile:'Serverprofil', nav_content:'Inhalte', nav_players:'Spieler',
+    nav_advanced:'Erweitert', nav_logs:'Logs', nav_help:'Hilfe',
+    sec_rules:'Regeln', sec_track:'Strecke',
   },
   en: {
     btn_start:'▶ Start', btn_stop:'■ Stop', btn_restart:'↻ Restart', btn_logout:'Logout',
@@ -1116,6 +1124,14 @@ const LANG = {
     discord_test:'Send Test', discord_hint:'Notify on server crash or restart.',
     track_params:'Track Parameters', track_params_hint:'Set coordinates for Real Time.',
     best_no_data:'No lap times recorded yet',
+    btn_restart:'↻ Restart', btn_logout:'Logout', sb_auto_restart:'Restart after saving',
+    nav_sec_live:'Live', nav_sec_settings:'Settings', nav_sec_tools:'Tools',
+    nav_dashboard:'Dashboard', nav_drivers:'Live Drivers', nav_laps:'Live Times',
+    nav_records:'Records', nav_server:'Server', nav_track:'Track & Cars',
+    nav_assists:'Assists', nav_sessions:'Sessions', nav_weather:'Weather',
+    nav_profile:'Server Profile', nav_content:'Content', nav_players:'Players',
+    nav_advanced:'Advanced', nav_logs:'Logs', nav_help:'Help',
+    sec_rules:'Rules', sec_track:'Track',
   }
 };
 

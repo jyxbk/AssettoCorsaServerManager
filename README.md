@@ -2,7 +2,8 @@
 
 A modern, browser-based dashboard for managing an [AssettoServer](https://github.com/compujuckel/AssettoServer) dedicated server. Built with Python & Flask — no external dependencies beyond the standard stack.
 
-<img width="1892" height="939" alt="image" src="https://github.com/user-attachments/assets/ece58cd5-0c0c-4958-b144-751eb83b29fb" />
+<img width="1901" height="1008" alt="image" src="https://github.com/user-attachments/assets/cf7378f0-0727-4ff9-b2e8-79313efdedb0" />
+
 
 ---
 

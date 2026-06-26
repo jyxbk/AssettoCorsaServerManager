@@ -46,6 +46,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
   {% endif %}
 
   <form method="POST" action="/login">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <div class="fg">
       <label class="lbl" for="username">Username</label>
       <input class="inp" id="username" name="username" type="text"

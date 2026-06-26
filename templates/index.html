@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>AC Server Dashboard</title>
 <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
@@ -58,6 +59,7 @@
 
   <div class="nav-sep" data-i18n="nav_sec_tools">Tools</div>
   <div class="nav-item" data-nav="content" onclick="navTo('content')"><span class="nav-icon">📦</span> <span data-i18n="nav_content">Inhalte</span></div>
+  <div class="nav-item" data-nav="entry-list" onclick="navTo('entry-list')"><span class="nav-icon">📋</span> Entry List</div>
   <div class="nav-item" data-nav="players" onclick="navTo('players')"><span class="nav-icon">👥</span> <span data-i18n="nav_players">Spieler</span></div>
   <div class="nav-item" data-nav="advanced" onclick="navTo('advanced')"><span class="nav-icon">🔧</span> <span data-i18n="nav_advanced">Erweitert</span></div>
   <div class="nav-item" data-nav="logs" onclick="navTo('logs')"><span class="nav-icon">📜</span> <span data-i18n="nav_logs">Logs</span></div>
@@ -682,59 +684,163 @@
 
 <!-- ══ CONTENT ════════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-content">
-  <div class="g2 gap">
-    <div class="card" style="max-width:660px">
-      <div class="card-ttl" data-i18n="card_folder_upload">Ordner hochladen</div>
-      <div style="display:flex;gap:10px;margin-bottom:14px">
-        <button class="btn btn-gray" id="type-car-btn" onclick="setFolderType('car')" style="flex:1" data-i18n="btn_type_car">🚗 Auto</button>
-        <button class="btn btn-gray" id="type-track-btn" onclick="setFolderType('track')" style="flex:1" data-i18n="btn_type_track">🏁 Strecke</button>
-      </div>
-      <div class="dropzone" id="folder-dz" onclick="document.getElementById('folder-inp').click()"
-           ondragover="event.preventDefault();this.classList.add('dz-over')"
-           ondragleave="this.classList.remove('dz-over')"
-           ondrop="event.preventDefault();this.classList.remove('dz-over');handleFolderDrop(event)"
-           style="opacity:0.4;pointer-events:none">
-        <div style="font-size:36px;margin-bottom:8px">📁</div>
-        <div style="font-size:14px;font-weight:700;margin-bottom:4px" id="folder-dz-hint" data-i18n="folder_hint_choose">Zuerst Auto oder Strecke wählen</div>
-        <div style="font-size:12px;color:var(--muted)" data-i18n="folder_hint_drag">Ordner auswählen oder hierher ziehen</div>
-        <input type="file" id="folder-inp" webkitdirectory multiple style="display:none" onchange="analyzeFolder(this.files)">
-      </div>
-      <div style="height:1px;background:var(--border);margin:20px 0"></div>
-      <div class="card-ttl" data-i18n="card_zip_upload">ZIP hochladen</div>
-      <div class="dropzone" onclick="document.getElementById('zip-inp').click()" id="dz"
-           ondragover="event.preventDefault();this.classList.add('dz-over')"
-           ondragleave="this.classList.remove('dz-over')"
-           ondrop="event.preventDefault();this.classList.remove('dz-over');handleDrop(event)">
-        <div style="font-size:40px;margin-bottom:10px">📦</div>
-        <div style="font-size:15px;font-weight:700;margin-bottom:4px" data-i18n="zip_hint_drag">ZIP auswählen oder hierher ziehen</div>
-        <div style="font-size:12px;color:var(--muted)" data-i18n="zip_hint_size">Autos und/oder Strecken als ZIP · Max 2 GB</div>
-        <input type="file" id="zip-inp" accept=".zip" style="display:none" onchange="uploadZip(this.files[0])">
-      </div>
-      <div id="up-prog" style="display:none;margin-top:14px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-          <span style="font-size:12px;color:var(--muted)" id="up-msg">Uploading...</span>
-          <span style="font-size:12px;font-weight:700" id="up-pct">0%</span>
-        </div>
-        <div class="bar"><div class="bar-fill bar-cpu" id="up-bar" style="width:0%"></div></div>
-      </div>
-    </div>
 
-    <!-- Installierte Inhalte -->
-    <div class="card">
-      <div class="sh">
-        <div class="sh-t" data-i18n="card_installed">Installierte Inhalte</div>
-        <button class="btn btn-gray btn-sm" onclick="loadInstalledContent()">↻</button>
+  <!-- Disk Usage -->
+  <div class="du-bar" id="du-bar" style="display:none">
+    <div class="du-item"><div class="du-val" id="du-cars">—</div><div class="du-lbl" data-i18n="lbl_cars_section">Autos</div></div>
+    <div class="du-divider"></div>
+    <div class="du-item"><div class="du-val" id="du-tracks">—</div><div class="du-lbl" data-i18n="lbl_tracks_section">Strecken</div></div>
+    <div class="du-divider"></div>
+    <div class="du-freebar">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px">
+        <span data-i18n="lbl_disk_free">Freier Speicher</span>
+        <span id="du-free-lbl">—</span>
       </div>
-      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase" data-i18n="lbl_cars_section">Autos</div>
-      <div id="installed-cars" style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px">
-        <div style="color:var(--muted);font-size:12px" data-i18n="loading">Lade...</div>
+      <div class="bar"><div class="bar-fill bar-green" id="du-free-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="cl-toolbar">
+    <input class="inp cl-search" id="cl-search" placeholder="🔍 Suchen..." oninput="filterContentLibrary()">
+    <div class="cl-tabs">
+      <button class="cl-tab active" data-tab="all" onclick="setContentTab(this,'all')">Alle</button>
+      <button class="cl-tab" data-tab="cars" onclick="setContentTab(this,'cars')" data-i18n="btn_type_car">Autos</button>
+      <button class="cl-tab" data-tab="tracks" onclick="setContentTab(this,'tracks')" data-i18n="btn_type_track">Strecken</button>
+    </div>
+    <button class="btn btn-gray btn-sm" onclick="loadInstalledContent()" title="Aktualisieren">↻</button>
+  </div>
+
+  <!-- Batch ops bar -->
+  <div class="cl-batch" id="cl-batch">
+    <span class="cl-batch-count" id="cl-batch-count">0 ausgewählt</span>
+    <button class="btn btn-danger btn-sm" onclick="batchDelete()">🗑 Löschen</button>
+    <button class="btn btn-gray btn-sm" onclick="clearBatchSelection()">✕ Abbrechen</button>
+  </div>
+
+  <!-- Library: Autos -->
+  <div id="cl-cars-section">
+    <div class="cl-section-hdr"><span data-i18n="lbl_cars_section">Autos</span> <span id="cl-cars-count" style="font-weight:400;letter-spacing:0;text-transform:none;font-size:11px"></span></div>
+    <div class="cl-grid" id="cl-cars-grid">
+      <div class="cl-empty" data-i18n="loading">Lade...</div>
+    </div>
+  </div>
+
+  <!-- Library: Strecken -->
+  <div id="cl-tracks-section">
+    <div class="cl-section-hdr"><span data-i18n="lbl_tracks_section">Strecken</span> <span id="cl-tracks-count" style="font-weight:400;letter-spacing:0;text-transform:none;font-size:11px"></span></div>
+    <div class="cl-grid" id="cl-tracks-grid">
+      <div class="cl-empty" data-i18n="loading">Lade...</div>
+    </div>
+  </div>
+
+  <!-- Upload (kompakt, unten) -->
+  <div style="border-top:1px solid var(--border);padding-top:20px;margin-top:8px">
+    <div class="card-ttl" data-i18n="lbl_add_content">Inhalte hinzufügen</div>
+    <div class="upload-compact">
+      <!-- Ordner -->
+      <div class="card">
+        <div class="card-ttl" data-i18n="card_folder_upload">Ordner hochladen</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button class="btn btn-gray btn-sm" id="type-car-btn" onclick="setFolderType('car')" style="flex:1" data-i18n="btn_type_car">🚗 Auto</button>
+          <button class="btn btn-gray btn-sm" id="type-track-btn" onclick="setFolderType('track')" style="flex:1" data-i18n="btn_type_track">🏁 Strecke</button>
+        </div>
+        <div class="dropzone" id="folder-dz" onclick="document.getElementById('folder-inp').click()"
+             ondragover="event.preventDefault();this.classList.add('dz-over')"
+             ondragleave="this.classList.remove('dz-over')"
+             ondrop="event.preventDefault();this.classList.remove('dz-over');handleFolderDrop(event)"
+             style="opacity:0.4;pointer-events:none;padding:24px 16px">
+          <div style="font-size:28px;margin-bottom:6px">📁</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:3px" id="folder-dz-hint" data-i18n="folder_hint_choose">Zuerst Auto oder Strecke wählen</div>
+          <div style="font-size:11px;color:var(--muted)" data-i18n="folder_hint_drag">Ordner hierher ziehen oder klicken</div>
+          <input type="file" id="folder-inp" webkitdirectory multiple style="display:none" onchange="analyzeFolder(this.files)">
+        </div>
       </div>
-      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase" data-i18n="lbl_tracks_section">Strecken</div>
-      <div id="installed-tracks" style="display:flex;flex-direction:column;gap:4px">
-        <div style="color:var(--muted);font-size:12px" data-i18n="loading">Lade...</div>
+      <!-- ZIP -->
+      <div class="card">
+        <div class="card-ttl" data-i18n="card_zip_upload">ZIP hochladen</div>
+        <div class="dropzone" onclick="document.getElementById('zip-inp').click()" id="dz"
+             ondragover="event.preventDefault();this.classList.add('dz-over')"
+             ondragleave="this.classList.remove('dz-over')"
+             ondrop="event.preventDefault();this.classList.remove('dz-over');handleDrop(event)"
+             style="padding:24px 16px">
+          <div style="font-size:32px;margin-bottom:6px">📦</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:3px" data-i18n="zip_hint_drag">ZIP hierher ziehen oder klicken</div>
+          <div style="font-size:11px;color:var(--muted)" data-i18n="zip_hint_size">Autos und/oder Strecken · Max 2 GB</div>
+          <input type="file" id="zip-inp" accept=".zip" style="display:none" onchange="uploadZip(this.files[0])">
+        </div>
+        <div id="up-prog" style="display:none;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <span style="font-size:12px;color:var(--muted)" id="up-msg">Uploading...</span>
+            <span style="font-size:12px;font-weight:700" id="up-pct">0%</span>
+          </div>
+          <div class="bar"><div class="bar-fill bar-cpu" id="up-bar" style="width:0%"></div></div>
+        </div>
       </div>
     </div>
   </div>
+</div>
+
+<!-- ══ ENTRY LIST EDITOR ══════════════════════════════════════════════════ -->
+<div class="panel" id="p-entry-list">
+
+  <!-- Toolbar -->
+  <div class="el-toolbar">
+    <div class="el-stats">
+      <span class="el-stat-item">Slots: <strong id="el-slot-count">0</strong></span>
+      <span class="el-stat-sep"></span>
+      <span class="el-stat-item" id="el-maxclients-info"></span>
+    </div>
+    <div class="el-toolbar-actions">
+      <!-- Quick Add -->
+      <div class="el-quickadd">
+        <select class="sel el-qa-car" id="el-qa-car" style="min-width:160px"></select>
+        <select class="sel el-qa-skin" id="el-qa-skin" style="min-width:130px"></select>
+        <input class="inp num-inp" type="number" id="el-qa-count" value="1" min="1" max="20" style="width:54px" title="Anzahl Slots">
+        <button class="btn btn-gray btn-sm" onclick="elQuickAdd()">+ Hinzufügen</button>
+      </div>
+      <span class="el-toolbar-sep"></span>
+      <!-- Presets -->
+      <select class="sel" id="el-preset-sel" style="min-width:130px">
+        <option value="">Preset laden…</option>
+      </select>
+      <button class="btn btn-gray btn-sm" onclick="elLoadPreset()">Laden</button>
+      <button class="btn btn-gray btn-sm" onclick="elSavePreset()">Speichern als…</button>
+      <span class="el-toolbar-sep"></span>
+      <!-- Import / Export -->
+      <button class="btn btn-gray btn-sm" onclick="elImportClick()">⬆ Import</button>
+      <input type="file" id="el-import-file" accept=".ini" style="display:none" onchange="elImportFile(this)">
+      <a class="btn btn-gray btn-sm" id="el-export-btn" href="/api/entry_list/export">⬇ Export</a>
+      <!-- Save -->
+      <button class="btn btn-red" onclick="elSave()">💾 Speichern</button>
+    </div>
+  </div>
+
+  <!-- Validation Banner (hidden by default) -->
+  <div class="el-banner" id="el-banner" style="display:none"></div>
+
+  <!-- Multi-Edit Bar (hidden until selection) -->
+  <div class="el-multiedit" id="el-multiedit" style="display:none">
+    <span id="el-sel-count">0 ausgewählt</span>
+    <span class="el-toolbar-sep"></span>
+    <label class="lbl" style="color:var(--muted)">Ballast:</label>
+    <input class="inp num-inp" type="number" id="el-me-ballast" min="0" max="150" placeholder="—" style="width:60px">
+    <label class="lbl" style="color:var(--muted)">Restrictor:</label>
+    <input class="inp num-inp" type="number" id="el-me-restrictor" min="0" max="400" placeholder="—" style="width:60px">
+    <button class="btn btn-gray btn-sm" onclick="elMultiApply()">Anwenden</button>
+    <span class="el-toolbar-sep"></span>
+    <button class="btn btn-gray btn-sm" onclick="elMultiDelete()">🗑 Löschen</button>
+    <button class="btn btn-gray btn-sm" onclick="elClearSelection()">✕ Abwählen</button>
+  </div>
+
+  <!-- Slot Grid -->
+  <div class="el-grid" id="el-grid">
+    <div class="el-empty" id="el-empty">
+      <div style="font-size:32px;margin-bottom:8px">📋</div>
+      <div>Keine Slots. Quick-Add verwenden oder <strong>Import</strong> klicken.</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ══ PLAYERS ════════════════════════════════════════════════════════════ -->
@@ -959,6 +1065,28 @@
       <button class="btn btn-green" id="fm-confirm-btn" onclick="uploadFolder()" data-i18n="btn_confirm_upload">✓ Hochladen bestätigen</button>
       <button class="btn btn-gray" onclick="closeFolderModal()" data-i18n="btn_cancel">Abbrechen</button>
     </div>
+  </div>
+</div>
+
+<!-- Content Detail Modal -->
+<div class="modal" id="detail-modal">
+  <div class="modal-box" style="max-width:680px;width:94%">
+    <!-- Hero -->
+    <div class="dm-hero">
+      <div id="dm-img-wrap"></div>
+      <div class="dm-hero-info">
+        <div class="dm-title" id="dm-title">—</div>
+        <div class="dm-brand" id="dm-brand"></div>
+        <div class="dm-badges" id="dm-badges"></div>
+      </div>
+      <button class="btn btn-gray btn-sm" onclick="closeDetailModal()" style="flex-shrink:0;align-self:flex-start">✕</button>
+    </div>
+    <!-- Tabs -->
+    <div class="dm-tabs" id="dm-tabs"></div>
+    <!-- Panes -->
+    <div id="dm-panes"></div>
+    <!-- Actions -->
+    <div style="display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap" id="dm-actions"></div>
   </div>
 </div>
 

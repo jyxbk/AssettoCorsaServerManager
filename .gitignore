@@ -1,15 +1,26 @@
 # Sensitive files - never commit
 sever_infos.txt
+server_infos.txt
+deploy.py
 fix_yaml.py
+app_backup.py
+
+# Environment / secrets
+.env
+.env.*
+*.env
+!.env.example
 
 # Python
 __pycache__/
 *.py[cod]
 *.pyo
-.env
 venv/
 .venv/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Uploads / temp
+/tmp/

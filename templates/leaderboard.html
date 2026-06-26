@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ server_name }} – Bestzeiten</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0e0e0e;color:#e0e0e0;min-height:100vh}
+a{color:#e8150c;text-decoration:none}
+.header{background:#161616;border-bottom:1px solid #2a2a2a;padding:16px 24px;display:flex;align-items:center;gap:14px}
+.header h1{font-size:18px;font-weight:700;color:#fff}
+.header .sub{font-size:12px;color:#666;margin-top:2px}
+.badge{background:#e8150c;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px}
+.container{max-width:1100px;margin:0 auto;padding:24px 16px}
+.filters{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+select,input{background:#1e1e1e;border:1px solid #333;color:#e0e0e0;padding:8px 12px;border-radius:7px;font-size:13px;outline:none}
+select:focus,input:focus{border-color:#e8150c}
+.tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid #2a2a2a}
+.tab{padding:10px 18px;font-size:13px;font-weight:600;color:#666;cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
+.tab.active{color:#fff;border-bottom-color:#e8150c}
+.section{display:none}.section.active{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 12px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#555;border-bottom:1px solid #222}
+td{padding:10px 12px;border-bottom:1px solid #1a1a1a}
+tr:hover td{background:#1a1a1a}
+.pos-1 td:first-child{color:#ffd700;font-weight:700}
+.pos-2 td:first-child{color:#c0c0c0;font-weight:700}
+.pos-3 td:first-child{color:#cd7f32;font-weight:700}
+.best-t{color:#27ae60;font-weight:700;font-family:monospace}
+.time{font-family:monospace}
+.cut{color:#e8150c;font-size:11px}
+.track-group{background:#161616;border-radius:8px;margin-bottom:16px;overflow:hidden;border:1px solid #222}
+.track-hdr{padding:10px 14px;font-weight:700;font-size:13px;background:#1a1a1a;border-bottom:1px solid #222;display:flex;align-items:center;gap:8px}
+.track-hdr .cnt{font-size:11px;color:#555;font-weight:400}
+.empty{text-align:center;padding:64px;color:#444;font-size:14px}
+.stats-bar{display:flex;gap:20px;background:#161616;border:1px solid #222;border-radius:8px;padding:14px 20px;margin-bottom:20px;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat-v{font-size:22px;font-weight:700;color:#fff}
+.stat-l{font-size:11px;color:#555;text-transform:uppercase;letter-spacing:.5px}
+.refresh{font-size:11px;color:#444;margin-left:auto;align-self:center}
+@media(max-width:600px){.filters{flex-direction:column}td,th{padding:8px 8px}th{font-size:9px}.header h1{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <h1>🏁 {{ server_name }}</h1>
+      <span class="badge">BESTZEITEN</span>
+    </div>
+    <div class="sub">Öffentliche Rundenzeiten-Bestenliste · {{ total }} Runden gespeichert</div>
+  </div>
+  <button onclick="reload()" style="margin-left:auto;background:#1e1e1e;border:1px solid #333;color:#aaa;padding:7px 14px;border-radius:7px;cursor:pointer;font-size:12px">↻ Aktualisieren</button>
+</div>
+
+<div class="container">
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-v" id="s-total">{{ total }}</div><div class="stat-l">Runden gesamt</div></div>
+    <div class="stat"><div class="stat-v" id="s-drivers">{{ best_list | map(attribute='driver') | list | unique | list | length }}</div><div class="stat-l">Fahrer</div></div>
+    <div class="stat"><div class="stat-v" id="s-tracks">{{ tracks | length }}</div><div class="stat-l">Strecken</div></div>
+    <div class="refresh" id="last-update">—</div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <select id="f-track" onchange="applyFilters()">
+      <option value="">Alle Strecken</option>
+      {% for t in tracks %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+    </select>
+    <select id="f-car" onchange="applyFilters()">
+      <option value="">Alle Autos</option>
+      {% for c in cars %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+    </select>
+    <input id="f-driver" placeholder="Fahrer suchen..." oninput="applyFilters()" style="min-width:180px">
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('best')">🏆 Bestzeiten</div>
+    <div class="tab" onclick="showTab('all')">📋 Alle Runden</div>
+  </div>
+
+  <!-- Best laps per driver per track -->
+  <div class="section active" id="sec-best">
+    <div id="best-content"></div>
+  </div>
+
+  <!-- All laps -->
+  <div class="section" id="sec-all">
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Fahrer</th><th>Auto</th><th>Strecke</th>
+          <th>Zeit</th><th>Cuts</th><th>Datum</th>
+        </tr></thead>
+        <tbody id="all-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const ALL_DATA  = {{ all_laps  | tojson }};
+const BEST_DATA = {{ best_list | tojson }};
+let filtered = { best: BEST_DATA, all: ALL_DATA };
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['best','all'][i]===id));
+  document.querySelectorAll('.section').forEach((s,i)=>s.classList.toggle('active',['best','all'][i]===id));
+}
+
+function applyFilters() {
+  const track  = document.getElementById('f-track').value.toLowerCase();
+  const car    = document.getElementById('f-car').value.toLowerCase();
+  const driver = document.getElementById('f-driver').value.toLowerCase();
+  filtered.all  = ALL_DATA.filter(e =>
+    (!track  || e.track.toLowerCase().includes(track)) &&
+    (!car    || e.car.toLowerCase().includes(car)) &&
+    (!driver || e.driver.toLowerCase().includes(driver))
+  );
+  filtered.best = BEST_DATA.filter(e =>
+    (!track  || e.track.toLowerCase().includes(track)) &&
+    (!car    || e.car.toLowerCase().includes(car)) &&
+    (!driver || e.driver.toLowerCase().includes(driver))
+  );
+  renderBest();
+  renderAll();
+}
+
+function renderBest() {
+  const el = document.getElementById('best-content');
+  if (!filtered.best.length) {
+    el.innerHTML = '<div class="empty">Keine Bestzeiten gefunden</div>';
+    return;
+  }
+  // Group by track
+  const byTrack = {};
+  filtered.best.forEach(e => { (byTrack[e.track] = byTrack[e.track]||[]).push(e); });
+  el.innerHTML = Object.entries(byTrack).map(([track, rows]) => {
+    rows.sort((a,b)=>a.laptime-b.laptime);
+    const rowsHtml = rows.map((r,i) => {
+      const medal = ['🥇','🥈','🥉'][i] || `P${i+1}`;
+      const cls   = ['pos-1','pos-2','pos-3'][i] || '';
+      const cutBadge = r.cuts > 0 ? `<span class="cut">${r.cuts}✂</span>` : '';
+      return `<tr class="${cls}">
+        <td>${medal}</td>
+        <td><strong>${esc(r.driver)}</strong></td>
+        <td style="color:#666">${esc(r.car)}</td>
+        <td class="${i===0?'best-t':'time'}">${esc(r.fmt)}</td>
+        <td>${cutBadge}</td>
+        <td style="color:#555;font-size:11px">${esc(r.ts.slice(0,16))}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="track-group">
+      <div class="track-hdr">🗺️ ${esc(track)} <span class="cnt">${rows.length} Fahrer</span></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>#</th><th>Fahrer</th><th>Auto</th><th>Zeit</th><th></th><th>Datum</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+}
+
+function renderAll() {
+  const tbody = document.getElementById('all-tbody');
+  if (!filtered.all.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:48px;color:#444">Keine Runden gefunden</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.all.map((r,i) => {
+    const cutBadge = r.cuts > 0 ? `<span class="cut">${r.cuts}✂</span>` : '—';
+    return `<tr>
+      <td style="color:#555">${i+1}</td>
+      <td><strong>${esc(r.driver)}</strong></td>
+      <td style="color:#666">${esc(r.car)}</td>
+      <td style="color:#666">${esc(r.track)}</td>
+      <td class="time">${esc(r.fmt)}</td>
+      <td>${cutBadge}</td>
+      <td style="color:#555;font-size:11px">${esc(r.ts.slice(0,16))}</td>
+    </tr>`;
+  }).join('');
+}
+
+function reload() {
+  // Bug fix #6 + #7: AJAX-Refresh statt window.location.reload(),
+  // damit gesetzte Filter erhalten bleiben und der Zeitstempel korrekt gesetzt wird.
+  const track  = document.getElementById('f-track').value;
+  const car    = document.getElementById('f-car').value;
+  const driver = document.getElementById('f-driver').value.toLowerCase();
+  fetch('/leaderboard/data?track='+encodeURIComponent(track)+'&car='+encodeURIComponent(car))
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) return;
+      // Rebuild filtered views from fresh data
+      filtered.all  = d.entries.filter(e => !driver || e.driver.toLowerCase().includes(driver));
+      filtered.best = buildBest(d.entries).filter(e => !driver || e.driver.toLowerCase().includes(driver));
+      document.getElementById('s-total').textContent   = d.total;
+      document.getElementById('s-drivers').textContent = new Set(d.entries.map(e=>e.driver)).size;
+      document.getElementById('last-update').textContent = 'Aktualisiert: ' + new Date().toLocaleTimeString();
+      renderBest();
+      renderAll();
+    })
+    .catch(() => {});
+}
+
+function buildBest(entries) {
+  const best = {};
+  entries.forEach(e => {
+    const key = e.driver + '|' + e.track;
+    if (!best[key] || e.laptime < best[key].laptime) best[key] = e;
+  });
+  return Object.values(best);
+}
+
+// Initial render
+renderBest();
+renderAll();
+document.getElementById('last-update').textContent = 'Stand: ' + new Date().toLocaleTimeString();
+
+// Auto-refresh every 60s via AJAX (Bug fix #7: kein Verlust der Filtereinstellungen)
+setInterval(reload, 60000);
+</script>
+</body>
+</html>

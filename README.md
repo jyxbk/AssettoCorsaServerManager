@@ -4,8 +4,6 @@ A modern, browser-based dashboard for managing an [AssettoServer](https://github
 
 <img width="1838" height="1017" alt="image" src="https://github.com/user-attachments/assets/297b6db8-92c4-4ceb-ac8b-e615fb15d55c" />
 
-
-
 ---
 
 ## Features
@@ -23,7 +21,7 @@ A modern, browser-based dashboard for managing an [AssettoServer](https://github
 ### Drivers & Lap Times
 - **Live Drivers tab** — real-time positions on track map, kick/ban buttons
 - **Live Times tab** — live leaderboard for the current session
-- **Records tab** — persistent lap time history (survives server restarts and browser logouts)
+- **Records tab** — persistent lap time history (survives server restarts)
   - Best laps leaderboard per driver & track
   - Full history with filter by driver, track, car
   - Pagination (50 entries per page)
@@ -36,7 +34,6 @@ A modern, browser-based dashboard for managing an [AssettoServer](https://github
 
 ### Settings
 - **Track & Car selection** — browse with preview images, track length and pit box info
-- **Per-slot configuration** — skin, ballast, and restrictor per car model
 - **Session settings** — Practice, Qualify, Race duration, laps, wait time
 - **Driving assists** — ABS, TC, ESP, auto clutch, tyre blankets, fuel/damage/tyre rates
 - **Weather** — two weather slots with graphics preset and temperature settings
@@ -44,11 +41,27 @@ A modern, browser-based dashboard for managing an [AssettoServer](https://github
 - **Server general** — name, password, admin password, ports, sun angle, lobby registration
 - **Server profile** — welcome message (shown in Content Manager) and server logo
 
-### Content Management
+### Content Manager
+- **Card grid library** — all installed cars and tracks as visual cards with thumbnails
+- **Active content marking** — currently configured car/track highlighted with green border
+- **Detail modal** — per-car: skin gallery (lazy-loaded thumbnails), spec table, validation issues; per-track: layout list, validation issues
+- **Disk usage bar** — cars / tracks size in MB, free disk space
+- **Batch operations** — select multiple items and delete in one click
 - **ZIP upload** — drag-and-drop, up to 2 GB, selective import
 - **Folder upload** — drag a car or track folder directly into the browser
-- **Installed content** — list all cars and tracks with one-click delete
 - **Auto-registration** — imported cars are automatically added to `server_cfg.ini` and `entry_list.ini`
+- **Validation** — flags missing `ui_car.json`, missing `collider.kn5`, missing `surfaces.ini` etc.
+
+### Entry List Editor
+- **Per-slot editor** — every slot is its own card with individual model, skin, ballast, restrictor, driver name, and Steam GUID
+- **Drag & drop** — reorder slots by dragging (native HTML5, no libraries)
+- **Skin thumbnails** — live thumbnail preview next to every skin dropdown (lazy-loaded)
+- **Quick-Add** — add N slots of a chosen car/skin combination in one step
+- **Multi-edit** — select multiple slots via checkboxes and apply ballast/restrictor to all at once
+- **Live validation** — duplicate GUID detection, missing car model warning, MAX_CLIENTS mismatch notice
+- **INI import** — upload an existing `entry_list.ini`, parsed client-side, no page reload
+- **INI export** — download the current server `entry_list.ini` directly
+- **Presets** — save and load named entry list configurations (stored in `entry_list_presets.json`)
 
 ### Player Management
 - **Whitelist** — add/remove Steam GUIDs
@@ -73,9 +86,10 @@ A modern, browser-based dashboard for managing an [AssettoServer](https://github
 
 ### Security
 - **Session-based login** with rate limiting (max 10 attempts / IP / 5 min)
-- **Credentials via environment variables** — `ACWEB_USER` / `ACWEB_PASS`
+- **CSRF protection** on all state-changing endpoints (custom token, no external library)
+- **API rate limiting** on all write-endpoints (per-IP, in-memory)
+- **All credentials via environment variables** — nothing hardcoded, startup fails loudly if vars are missing
 - **HTTPS** via nginx reverse proxy with TLS (self-signed or custom certificate)
-- No credentials stored in JavaScript
 
 ### UX
 - Dark theme with Assetto Corsa red accent
@@ -91,28 +105,30 @@ Browser
     │
     │  HTTPS :443  (nginx reverse proxy)
     ▼
-┌──────────────────────────────────────┐
-│          Flask Web App               │  ← app.py
-│                                      │
-│  ┌──────────┐   ┌──────────────────┐ │
-│  │ REST API │   │  Jinja2 Template │ │  ← templates/index.html
-│  └──────────┘   └──────────────────┘ │
-│          │                           │
-│  ┌───────▼───────────────────────┐   │
-│  │        Backend Logic          │   │
-│  │                               │   │
-│  │ • INI read/write (cfg/)       │──►│ /opt/assettoserver/cfg/
-│  │ • YAML read/write (extra_cfg) │──►│ extra_cfg.yml
-│  │ • systemctl start/stop        │──►│ acserver.service
-│  │ • RCON TCP :9700              │──►│ AssettoServer RCON
-│  │ • HTTP polling :8081          │◄──│ AssettoServer HTTP API
-│  │ • UDP telemetry :12000        │◄──│ AssettoServer UDP RT
-│  │ • journalctl tail             │◄──│ systemd journal
-│  │ • Lap time tracker thread     │──►│ /opt/acweb/laptimes.json
-│  │ • Discord monitor thread      │──►│ Discord Webhook
-│  │ • ZIP / folder import         │──►│ /opt/assettoserver/content/
-│  └───────────────────────────────┘   │
-└──────────────────────────────────────┘
+┌────────────────────────────────────────────────┐
+│              Flask Web App (app.py)             │
+│                                                 │
+│  routes/                   helpers/             │
+│  ├── main.py               ├── auth.py          │
+│  ├── settings.py           ├── config_io.py     │
+│  ├── content_mgmt.py       ├── content.py       │
+│  ├── entry_list.py         ├── system.py        │
+│  ├── players.py            ├── laptimes.py      │
+│  └── laptimes_routes.py    └── discord.py       │
+│                                                 │
+│  constants.py  ← all shared paths & env vars   │
+│  templates/index.html  ← Jinja2 + vanilla JS   │
+└────────────────────────────────────────────────┘
+         │
+         ├──► /opt/assettoserver/cfg/     (INI / YAML read-write)
+         ├──► acserver.service            (systemctl)
+         ├──► AssettoServer RCON :9700   (TCP)
+         ├──► AssettoServer HTTP :8081   (status polling)
+         ├──► AssettoServer UDP :12000   (Real-Time telemetry)
+         ├──► systemd journal            (log tailing)
+         ├──► /opt/acweb/laptimes.json   (lap time persistence)
+         ├──► /opt/acweb/presets.json    (track/car presets)
+         └──► Discord Webhook            (notifications)
 ```
 
 ### Lap Time Tracking
@@ -123,7 +139,7 @@ The lap tracker runs as a background thread that tails `journalctl` for the `acs
 - **Disconnect** — clears the driver from the in-memory session
 - **Lap completed** — saves driver, GUID, car, track, time, cuts and timestamp to `laptimes.json`
 
-On startup, the last 5000 journal lines are parsed in `short-iso` format (which includes the actual date) to import any laps that happened before acweb was running. Already-stored laps are deduplicated. Players already connected when acweb restarts are pre-populated from the AssettoServer HTTP API so their next laps have correct metadata.
+On startup, the last 5000 journal lines are parsed in `short-iso` format to import any laps that happened before acweb was running. Already-stored laps are deduplicated.
 
 ---
 
@@ -131,14 +147,14 @@ On startup, the last 5000 journal lines are parsed in `short-iso` format (which 
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3.9+, Flask |
-| Auth | Session-based login, rate limiting |
+| Backend | Python 3.9+, Flask (Blueprint architecture) |
+| Auth | Session-based login, CSRF tokens, rate limiting |
 | System info | psutil |
 | Live telemetry | UDP listener (AC Real-Time protocol) |
 | Server control | systemd via `systemctl` |
 | Reverse proxy / TLS | nginx |
 | Frontend | Vanilla JS, CSS Grid, Canvas API |
-| Persistent data | JSON files (`laptimes.json`, `presets.json`, `discord.json`) |
+| Persistent data | JSON files (`laptimes.json`, `presets.json`, `discord.json`, `entry_list_presets.json`) |
 
 ---
 
@@ -160,10 +176,19 @@ git clone https://github.com/jyxbk/AssettoCorsaServerManager.git /opt/acweb
 cd /opt/acweb
 python3 -m venv venv
 source venv/bin/activate
-pip install flask werkzeug psutil
+pip install flask werkzeug psutil paramiko
 ```
 
-### 2. Run as a systemd service
+### 2. Create environment file
+
+```bash
+cp .env.example .env
+nano .env   # fill in your values
+```
+
+All three `ACWEB_*` variables are **required** — the app exits on startup if any are missing.
+
+### 3. Run as a systemd service
 
 ```ini
 # /etc/systemd/system/acweb.service
@@ -175,12 +200,10 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/acweb
+EnvironmentFile=/opt/acweb/.env
 ExecStart=/opt/acweb/venv/bin/python3 /opt/acweb/app.py
 Restart=on-failure
 RestartSec=5
-Environment=ACWEB_USER=admin
-Environment=ACWEB_PASS=your-secure-password
-Environment=ACWEB_SECRET=your-random-secret-key
 
 [Install]
 WantedBy=multi-user.target
@@ -190,7 +213,7 @@ WantedBy=multi-user.target
 systemctl enable --now acweb
 ```
 
-### 3. Set up HTTPS with nginx
+### 4. Set up HTTPS with nginx
 
 ```bash
 apt install nginx openssl
@@ -231,9 +254,9 @@ systemctl enable --now nginx
 
 The dashboard is now accessible at `https://<server-ip>`.
 
-### 4. Configure paths (optional)
+### 5. Configure paths (optional)
 
-If your AssettoServer is not at `/opt/assettoserver`, edit the constants at the top of `app.py`:
+If your AssettoServer is not at `/opt/assettoserver`, edit the paths in `constants.py`:
 
 ```python
 SERVER_DIR   = Path("/opt/assettoserver")
@@ -244,11 +267,23 @@ SERVICE_NAME = "acserver"
 
 ## Environment Variables
 
+### Required (app won't start without these)
+
+| Variable | Description |
+|---|---|
+| `ACWEB_SECRET` | Flask session secret key — generate with `python3 -c "import secrets; print(secrets.token_hex(32))"` |
+| `ACWEB_USER` | Dashboard login username |
+| `ACWEB_PASS` | Dashboard login password |
+
+### Optional (for `deploy.py` only)
+
 | Variable | Default | Description |
 |---|---|---|
-| `ACWEB_USER` | `admin` | Dashboard login username |
-| `ACWEB_PASS` | `acserver` | Dashboard login password |
-| `ACWEB_SECRET` | *(hardcoded)* | Flask session secret — **change this** |
+| `ACWEB_HOST` | — | SSH host to deploy to |
+| `ACWEB_SSH_USER` | — | SSH username |
+| `ACWEB_SSH_PASS` | — | SSH password |
+| `ACWEB_SSH_PORT` | `22` | SSH port |
+| `ACWEB_REMOTE_PATH` | `/opt/acweb` | Remote deploy path |
 
 ---
 
@@ -256,20 +291,43 @@ SERVICE_NAME = "acserver"
 
 ```
 /opt/acweb/
-├── app.py                  # Entire backend
+├── app.py                      # Flask app, blueprint registration
+├── constants.py                # Shared paths & env var validation
+├── helpers/
+│   ├── auth.py                 # login_required, csrf_protect, rate limiting
+│   ├── config_io.py            # INI / YAML read-write helpers
+│   ├── content.py              # Cars, tracks, ZIP, entry list helpers
+│   ├── system.py               # systemctl, psutil, UDP, RCON, chat
+│   ├── laptimes.py             # Lap tracker background thread
+│   └── discord.py              # Discord webhook monitor thread
+├── routes/
+│   ├── main.py                 # Index, live API, images, login, logs
+│   ├── settings.py             # /save_* endpoints
+│   ├── content_mgmt.py         # Upload, import, delete, backup
+│   ├── entry_list.py           # Entry List Editor API
+│   ├── players.py              # Whitelist, admins, blacklist, kick/ban
+│   └── laptimes_routes.py      # /api/laptimes/* endpoints
+├── static/
+│   ├── css/dashboard.css
+│   └── js/
+│       ├── dashboard.js
+│       └── lang.js
 ├── templates/
-│   ├── index.html          # Entire frontend (Jinja2 + vanilla JS)
-│   └── login.html          # Login page
-├── presets.json            # Saved track/car presets
-├── laptimes.json           # Persistent lap time history
-└── discord.json            # Discord webhook config
+│   ├── index.html              # Main dashboard (Jinja2 + vanilla JS)
+│   ├── leaderboard.html        # Public leaderboard page
+│   └── login.html
+├── .env.example                # Template for environment variables
+├── presets.json                # Saved track/car presets (auto-created)
+├── laptimes.json               # Persistent lap time history (auto-created)
+├── discord.json                # Discord webhook config (auto-created)
+└── entry_list_presets.json     # Entry list presets (auto-created)
 
 /opt/assettoserver/
 ├── cfg/
-│   ├── server_cfg.ini      # Main server configuration
-│   ├── entry_list.ini      # Car slot configuration
-│   ├── extra_cfg.yml       # AssettoServer-specific config
-│   └── welcome.txt         # Server description (shown in CM)
+│   ├── server_cfg.ini
+│   ├── entry_list.ini
+│   ├── extra_cfg.yml
+│   └── welcome.txt
 ├── content/
 │   ├── cars/
 │   └── tracks/
@@ -282,10 +340,11 @@ SERVICE_NAME = "acserver"
 
 ## Security Notes
 
-- Change `ACWEB_PASS` and `ACWEB_SECRET` before exposing to any network
+- Generate a strong `ACWEB_SECRET`: `python3 -c "import secrets; print(secrets.token_hex(32))"`
+- All state-changing endpoints are protected by CSRF tokens
+- Write endpoints are rate-limited per IP
 - The self-signed certificate will show a browser warning on first visit — click through once and it will be remembered
-- The `ADMIN_PASSWORD` in `server_cfg.ini` is used automatically for RCON (kick/ban/chat)
-- Never commit `sever_infos.txt` or any file with credentials — it is listed in `.gitignore`
+- Never commit `.env` or any file with credentials — it is listed in `.gitignore`
 
 ---
 

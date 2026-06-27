@@ -83,10 +83,13 @@ def set_discord():
     data = request.json or {}
     url  = data.get("url", "").strip()
     cfg  = _load_discord_config()
-    cfg["url"]         = url
-    cfg["notify_join"] = bool(data.get("notify_join", cfg.get("notify_join", False)))
+    cfg["url"]           = url
+    cfg["notify_crash"]  = bool(data.get("notify_crash",  cfg.get("notify_crash",  True)))
+    cfg["notify_join"]   = bool(data.get("notify_join",   cfg.get("notify_join",   False)))
+    cfg["notify_record"] = bool(data.get("notify_record", cfg.get("notify_record", True)))
+    cfg["notify_pb"]     = bool(data.get("notify_pb",     cfg.get("notify_pb",     False)))
     DISCORD_FILE.parent.mkdir(parents=True, exist_ok=True)
-    DISCORD_FILE.write_text(json.dumps(cfg), encoding="utf-8")
+    DISCORD_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     return jsonify({"ok": True})
 
 
@@ -94,14 +97,39 @@ def set_discord():
 @login_required
 @csrf_protect
 def test_discord():
-    from helpers.discord import _load_discord_url, discord_notify
-    from constants import SERVICE_NAME
+    from helpers.discord import _load_discord_url, discord_embed, _build, _COL_BLUE, SERVICE_NAME
     url = _load_discord_url()
     if not url:
         return jsonify({"ok": False, "msg": "Keine Webhook URL konfiguriert"}), 400
     try:
-        discord_notify(url, f"🔔 Test-Nachricht vom AC Server Dashboard (`{SERVICE_NAME}`)")
-        return jsonify({"ok": True, "msg": "Test-Nachricht gesendet"})
+        embed = _build("🔔 Test-Embed", _COL_BLUE, fields=[
+            {"name": "Service",  "value": f"`{SERVICE_NAME}`", "inline": True},
+            {"name": "Status",   "value": "Verbindung OK ✓",  "inline": True},
+        ])
+        discord_embed(url, embed, raise_on_error=True)
+        return jsonify({"ok": True, "msg": "Test-Embed gesendet"})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@bp.route("/api/discord/summary", methods=["POST"])
+@login_required
+@csrf_protect
+def discord_summary():
+    from helpers.discord import _load_discord_url, discord_embed, embed_summary
+    from helpers.laptimes import load_laptimes
+    from helpers.config_io import read_server_cfg
+    import time as _time
+    url = _load_discord_url()
+    if not url:
+        return jsonify({"ok": False, "msg": "Keine Webhook URL konfiguriert"}), 400
+    today   = _time.strftime("%Y-%m-%d")
+    entries = [e for e in load_laptimes() if e.get("ts", "").startswith(today)]
+    cfg     = read_server_cfg()
+    track   = cfg.get("TRACK", "")
+    try:
+        discord_embed(url, embed_summary(entries, track), raise_on_error=True)
+        return jsonify({"ok": True, "msg": f"Summary gesendet ({len(entries)} Runden heute)"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 

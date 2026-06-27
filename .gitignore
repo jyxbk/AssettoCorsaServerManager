@@ -1,9 +1,16 @@
 # Sensitive files - never commit
 sever_infos.txt
 server_infos.txt
+server-infos.txt
 deploy.py
 fix_yaml.py
 app_backup.py
+
+# Internal scripts & runtime state
+.claude/
+_fix_sessions.py
+_test_chat.py
+chat_notify.json
 
 # Environment / secrets
 .env

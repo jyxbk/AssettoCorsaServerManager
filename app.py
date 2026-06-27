@@ -30,6 +30,9 @@ from routes.content_mgmt    import bp as content_mgmt_bp
 from routes.players         import bp as players_bp
 from routes.laptimes_routes import bp as laptimes_bp
 from routes.entry_list      import bp as entry_list_bp
+from routes.results         import bp as results_bp
+from routes.championship    import bp as championship_bp
+from routes.scheduler       import bp as scheduler_bp
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -46,12 +49,19 @@ app.register_blueprint(content_mgmt_bp)
 app.register_blueprint(players_bp)
 app.register_blueprint(laptimes_bp)
 app.register_blueprint(entry_list_bp)
+app.register_blueprint(results_bp)
+app.register_blueprint(championship_bp)
+app.register_blueprint(scheduler_bp)
 
 # ── Background threads ────────────────────────────────────────────────────────
-from helpers.discord  import start_discord_monitor
-from helpers.laptimes import start_lap_tracker
+from helpers.discord   import start_discord_monitor
+from helpers.laptimes  import start_lap_tracker
+from helpers.telegram  import start_telegram_monitor
+from helpers.scheduler import start_scheduler
 
 start_discord_monitor()
+start_telegram_monitor()
+start_scheduler()
 start_lap_tracker()
 
 # ── Run ───────────────────────────────────────────────────────────────────────

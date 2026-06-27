@@ -2,9 +2,11 @@
 from flask import Blueprint, jsonify, request
 
 from helpers.auth import api_rate_limit, csrf_protect, login_required
-from helpers.config_io import read_server_cfg, update_section_cfg, update_server_cfg
+from helpers.config_io import read_server_cfg, remove_cfg_section, update_section_cfg, update_server_cfg
 from helpers.content import get_current_slots_per_car, regen_entry_list
+from helpers.laptimes import _load_chat_notify_config, _load_cut_actions_config, save_chat_notify_config, save_cut_actions_config
 from helpers.system import load_spline_points, maybe_restart
+from helpers.telegram import _load_telegram_config, save_telegram_config, telegram_notify
 
 bp = Blueprint("settings", __name__)
 
@@ -34,7 +36,9 @@ def save_config():
         spc_clamped = max(1, min(5, spc))
         regen_entry_list(data["cars"], spc_clamped, car_config)
         total_slots = len(data["cars"]) * spc_clamped
-        update_server_cfg({"MAX_CLIENTS": total_slots})
+        ok2, msg2 = update_server_cfg({"MAX_CLIENTS": total_slots})
+        if not ok2:
+            ok, msg = ok2, msg2
     maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})
 
@@ -44,6 +48,7 @@ def save_config():
 @bp.route("/save_assists", methods=["POST"])
 @login_required
 @csrf_protect
+@api_rate_limit(max_calls=20, window=60)
 def save_assists():
     data = request.json or {}
     allowed = {
@@ -62,6 +67,7 @@ def save_assists():
 @bp.route("/save_server_settings", methods=["POST"])
 @login_required
 @csrf_protect
+@api_rate_limit(max_calls=20, window=60)
 def save_server_settings():
     data = request.json or {}
     allowed = {
@@ -82,23 +88,42 @@ def save_server_settings():
 @bp.route("/save_session", methods=["POST"])
 @login_required
 @csrf_protect
+@api_rate_limit(max_calls=20, window=60)
 def save_session():
     data = request.json or {}
-    section_updates = {}
-    for sess in ("PRACTICE", "QUALIFY", "RACE"):
-        key = sess.lower()
-        upd = {}
-        if f"{key}_time" in data: upd["TIME"]      = data[f"{key}_time"]
-        if f"{key}_laps" in data: upd["LAPS"]      = data[f"{key}_laps"]
-        if f"{key}_open" in data: upd["IS_OPEN"]   = 1 if data[f"{key}_open"] else 0
-        if f"{key}_wait" in data: upd["WAIT_TIME"] = data[f"{key}_wait"]
-        if upd:
-            section_updates[sess] = upd
-    if not section_updates:
-        return jsonify({"ok": False, "msg": "No data"})
-    ok, msg = update_section_cfg(section_updates)
+
+    # QUALIFY: Sektion entfernen wenn TIME=0 (Content Manager zeigt sonst Icon)
+    qualify_time = int(data.get("qualify_time", 0) or 0)
+    if "qualify_time" in data and qualify_time == 0:
+        remove_cfg_section("QUALIFY")
+    elif "qualify_time" in data and qualify_time > 0:
+        upd = {"TIME": qualify_time, "IS_OPEN": 1 if data.get("qualify_open") else 0}
+        update_section_cfg({"QUALIFY": upd})
+
+    # RACE: Sektion entfernen wenn LAPS=0 (Content Manager zeigt sonst Icon)
+    race_laps = int(data.get("race_laps", 0) or 0)
+    if "race_laps" in data and race_laps == 0:
+        remove_cfg_section("RACE")
+    elif "race_laps" in data and race_laps > 0:
+        upd = {
+            "LAPS":      race_laps,
+            "WAIT_TIME": int(data.get("race_wait", 60) or 60),
+            "IS_OPEN":   1 if data.get("race_open") else 0,
+        }
+        update_section_cfg({"RACE": upd})
+
+    # PRACTICE immer aktualisieren
+    practice_upd: dict = {}
+    if "practice_time" in data: practice_upd["TIME"]    = data["practice_time"]
+    if "practice_open" in data: practice_upd["IS_OPEN"] = 1 if data["practice_open"] else 0
+    if practice_upd:
+        ok_p, msg_p = update_section_cfg({"PRACTICE": practice_upd})
+        if not ok_p:
+            maybe_restart(data)
+            return jsonify({"ok": False, "msg": msg_p})
+
     maybe_restart(data)
-    return jsonify({"ok": ok, "msg": msg})
+    return jsonify({"ok": True, "msg": "Saved"})
 
 
 # ── Weather ───────────────────────────────────────────────────────────────────
@@ -106,6 +131,7 @@ def save_session():
 @bp.route("/save_weather", methods=["POST"])
 @login_required
 @csrf_protect
+@api_rate_limit(max_calls=20, window=60)
 def save_weather():
     data = request.json or {}
     section_updates = {}
@@ -132,6 +158,7 @@ def save_weather():
 @bp.route("/save_dynamic_track", methods=["POST"])
 @login_required
 @csrf_protect
+@api_rate_limit(max_calls=20, window=60)
 def save_dynamic_track():
     data    = request.json or {}
     allowed = {"SESSION_START", "RANDOMNESS", "SESSION_TRANSFER", "LAP_GAIN"}
@@ -143,6 +170,204 @@ def save_dynamic_track():
     return jsonify({"ok": ok, "msg": msg})
 
 
+# ── Chat Lap-Notifications ────────────────────────────────────────────────────
+
+@bp.route("/api/chat_notify", methods=["GET"])
+@login_required
+def get_chat_notify():
+    return jsonify(_load_chat_notify_config())
+
+
+@bp.route("/api/chat_notify", methods=["POST"])
+@login_required
+@csrf_protect
+def set_chat_notify():
+    data = request.json or {}
+    cfg = {
+        "enabled":    bool(data.get("enabled", False)),
+        "show_delta": bool(data.get("show_delta", True)),
+        "show_cuts":  bool(data.get("show_cuts",  True)),
+        "prefix":     str(data.get("prefix",  ">> ")),
+    }
+    try:
+        save_chat_notify_config(cfg)
+        return jsonify({"ok": True, "cfg": cfg})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+# ── Plugin-Status + LiveWeatherPlugin Toggle ──────────────────────────────────
+
+import re as _re
+from constants import EXTRA_CFG_FILE
+
+
+def _read_yaml() -> str:
+    return EXTRA_CFG_FILE.read_text(encoding="utf-8") if EXTRA_CFG_FILE.exists() else ""
+
+
+def _write_yaml(content: str):
+    EXTRA_CFG_FILE.write_text(content, encoding="utf-8")
+
+
+def _active_plugins(content: str) -> list:
+    """Gibt die Liste der aktiven Plugins aus EnablePlugins zurück."""
+    m = _re.search(r'EnablePlugins:\s*\n((?:[ \t]+-[ \t]+\S+\n?)*)', content)
+    if not m:
+        return []
+    return _re.findall(r'[ \t]+-[ \t]+(\S+)', m.group(1))
+
+
+@bp.route("/api/plugin_status", methods=["GET"])
+@login_required
+def get_plugin_status():
+    """Gibt aktive Plugins + LiveWeatherPlugin-Details zurück."""
+    content = _read_yaml()
+    active  = _active_plugins(content)
+
+    # LiveWeatherPlugin API-Key und Interval auslesen
+    m_key = _re.search(r'^\s*OpenWeatherMapApiKey:\s*"?([^"\n]+)"?', content, _re.MULTILINE)
+    api_key_raw = m_key.group(1).strip() if m_key else ""
+    api_key_set = bool(api_key_raw)
+    api_key_hint = ("•" * 8 + api_key_raw[-4:]) if len(api_key_raw) > 4 else ("" if not api_key_raw else "gesetzt")
+
+    m_int = _re.search(r'^\s*RefreshIntervalMinutes:\s*(\d+)', content, _re.MULTILINE)
+    interval = int(m_int.group(1)) if m_int else 10
+
+    return jsonify({
+        "active":       active,
+        "lwp_enabled":  "LiveWeatherPlugin" in active,
+        "lwp_key_set":  api_key_set,
+        "lwp_key_hint": api_key_hint,
+        "lwp_interval": interval,
+    })
+
+
+@bp.route("/api/live_weather_plugin", methods=["POST"])
+@login_required
+@csrf_protect
+def set_live_weather_plugin():
+    data    = request.json or {}
+    enabled = bool(data.get("enabled", False))
+    api_key = data.get("api_key", "").strip()
+    interval = int(data.get("interval", 10) or 10)
+
+    if not EXTRA_CFG_FILE.exists():
+        return jsonify({"ok": False, "msg": "extra_cfg.yml nicht gefunden"}), 500
+
+    try:
+        content = _read_yaml()
+
+        if enabled:
+            if not api_key:
+                return jsonify({"ok": False, "msg": "API-Key fehlt"}), 400
+
+            # In EnablePlugins eintragen (falls noch nicht drin)
+            if "LiveWeatherPlugin" not in _active_plugins(content):
+                content = _re.sub(
+                    r'(EnablePlugins:\s*\n)((?:[ \t]+-[ \t]+\S+\n?)*)',
+                    lambda m: m.group(1) + m.group(2) + "  - LiveWeatherPlugin\n",
+                    content,
+                )
+
+            # Kommentare entfernen und Werte setzen
+            content = _re.sub(r'^#LiveWeatherPlugin:', 'LiveWeatherPlugin:', content, flags=_re.MULTILINE)
+            content = _re.sub(r'^#\s*OpenWeatherMapApiKey:.*', f'  OpenWeatherMapApiKey: "{api_key}"', content, flags=_re.MULTILINE)
+            content = _re.sub(r'^#\s*RefreshIntervalMinutes:.*', f'  RefreshIntervalMinutes: {interval}', content, flags=_re.MULTILINE)
+
+            # Falls Plugin-Config noch nicht in der Datei: anfügen
+            if "OpenWeatherMapApiKey" not in content:
+                content += f"\nLiveWeatherPlugin:\n  OpenWeatherMapApiKey: \"{api_key}\"\n  RefreshIntervalMinutes: {interval}\n"
+            else:
+                content = _re.sub(
+                    r'(OpenWeatherMapApiKey:\s*)"?[^"\n]+"?',
+                    f'\\1"{api_key}"',
+                    content,
+                )
+                content = _re.sub(
+                    r'(RefreshIntervalMinutes:\s*)\d+',
+                    f'\\g<1>{interval}',
+                    content,
+                )
+        else:
+            # Aus EnablePlugins entfernen
+            content = _re.sub(r'[ \t]+-[ \t]+LiveWeatherPlugin\n?', '', content)
+
+        _write_yaml(content)
+        maybe_restart({"restart": True})
+        return jsonify({"ok": True, "enabled": enabled})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+# ── Telegram ─────────────────────────────────────────────────────────────────
+
+@bp.route("/api/telegram", methods=["GET"])
+@login_required
+def get_telegram():
+    return jsonify(_load_telegram_config())
+
+
+@bp.route("/api/telegram", methods=["POST"])
+@login_required
+@csrf_protect
+def set_telegram():
+    data = request.json or {}
+    cfg = {
+        "token":       str(data.get("token", "")),
+        "chat_id":     str(data.get("chat_id", "")),
+        "notify_join": bool(data.get("notify_join", False)),
+    }
+    try:
+        save_telegram_config(cfg)
+        return jsonify({"ok": True, "cfg": cfg})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@bp.route("/api/telegram/test", methods=["POST"])
+@login_required
+@csrf_protect
+def test_telegram():
+    cfg     = _load_telegram_config()
+    token   = cfg.get("token", "")
+    chat_id = cfg.get("chat_id", "")
+    if not token or not chat_id:
+        return jsonify({"ok": False, "msg": "Token und Chat-ID fehlen"})
+    try:
+        telegram_notify(token, chat_id, "🧪 Test\\-Nachricht vom AC Server Dashboard", raise_on_error=True)
+        return jsonify({"ok": True, "msg": "Test-Nachricht gesendet"})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)})
+
+
+# ── Cut Actions ───────────────────────────────────────────────────────────────
+
+@bp.route("/api/cut_actions", methods=["GET"])
+@login_required
+def get_cut_actions():
+    return jsonify(_load_cut_actions_config())
+
+
+@bp.route("/api/cut_actions", methods=["POST"])
+@login_required
+@csrf_protect
+def set_cut_actions():
+    data = request.json or {}
+    cfg = {
+        "enabled":           bool(data.get("enabled", False)),
+        "warn_cuts_per_lap": int(data.get("warn_cuts_per_lap", 2) or 0),
+        "warn_message":      str(data.get("warn_message", "⚠️ {driver}: {cuts} Cuts!")),
+        "kick_session_cuts": int(data.get("kick_session_cuts", 0) or 0),
+        "kick_message":      str(data.get("kick_message", "Kick: Zu viele Cuts ({cuts} gesamt)")),
+    }
+    try:
+        save_cut_actions_config(cfg)
+        return jsonify({"ok": True, "cfg": cfg})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
 # ── Track params ──────────────────────────────────────────────────────────────
 
 @bp.route("/api/add_track_params", methods=["POST"])
@@ -150,13 +375,19 @@ def save_dynamic_track():
 @csrf_protect
 def add_track_params():
     data  = request.json or {}
+    import re as _re
     track = data.get("track", "").strip()
-    city  = data.get("city", track).strip() or track
-    lat   = float(data.get("lat", 0) or 0)
-    lon   = float(data.get("lon", 0) or 0)
-    tz    = int(float(data.get("tz", 0) or 0))
     if not track:
         return jsonify({"ok": False, "msg": "track required"}), 400
+    if not _re.match(r'^[a-zA-Z0-9_\-]+$', track):
+        return jsonify({"ok": False, "msg": "Ungültiger Track-Name"}), 400
+    city = data.get("city", track).strip() or track
+    try:
+        lat = float(data.get("lat", 0) or 0)
+        lon = float(data.get("lon", 0) or 0)
+        tz  = int(float(data.get("tz", 0) or 0))
+    except (ValueError, TypeError):
+        return jsonify({"ok": False, "msg": "Ungültige Koordinaten"}), 400
     from constants import TRACK_PARAMS_FILE
     section = f"[{track.lower()}]"
     TRACK_PARAMS_FILE.parent.mkdir(parents=True, exist_ok=True)

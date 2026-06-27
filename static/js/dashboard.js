@@ -28,7 +28,52 @@ let mapImg = null, _mapLoading = false;
 let _lapBases = {};
 const COLORS = ['#e8150c','#3498db','#27ae60','#f39c12','#9b59b6','#e67e22','#1abc9c','#e91e63'];
 
-function autoRestart() { return document.getElementById('auto-restart').checked; }
+function autoRestart() {
+  const el = document.getElementById('auto-restart');
+  return el ? el.checked : false;  // Bug fix: Null-Check
+}
+
+// ─── NAV TRACKER + RESTART MODAL ───────────────────────────────────────────
+let _currentNav = 'dashboard';
+
+function _showRestartModal(lines) {
+  const modal = document.getElementById('restart-modal');
+  if (!modal) return;
+  const ul = document.getElementById('restart-modal-items');
+  if (ul) ul.innerHTML = (lines && lines.length)
+    ? lines.map(l => `<li style="font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)">${esc(l)}</li>`).join('')
+    : '<li style="color:var(--muted);font-size:12px">—</li>';
+  const st = document.getElementById('restart-modal-status');
+  if (st) { st.textContent = '⧗ Server startet neu…'; st.style.color = 'var(--muted)'; }
+  const btn = document.getElementById('restart-modal-close');
+  if (btn) btn.disabled = true;
+  modal.classList.add('show');
+  _pollRestart(0);
+}
+function _pollRestart(n) {
+  if (n > 40) {
+    // Bug fix: Nach Timeout Modal freigeben statt User einzusperren
+    const st = document.getElementById('restart-modal-status');
+    if (st) { st.textContent = '⚠ Timeout – Server antwortet nicht. Bitte manuell prüfen.'; st.style.color = 'var(--warn, #f59e0b)'; }
+    const btn = document.getElementById('restart-modal-close');
+    if (btn) btn.disabled = false;
+    return;
+  }
+  // Erst nach 3s anfangen zu pollen, damit Server Zeit hat runterzugehen
+  const delay = n === 0 ? 3000 : n < 4 ? 2000 : 3500;
+  setTimeout(() => {
+    apiFetch('/api/live').then(r => r.json()).then(d => {
+      if (d.status === 'active') {
+        const st = document.getElementById('restart-modal-status');
+        if (st) { st.textContent = '✓ Server läuft wieder'; st.style.color = 'var(--green)'; }
+        const btn = document.getElementById('restart-modal-close');
+        if (btn) btn.disabled = false;
+        refreshLive();
+      } else _pollRestart(n + 1);
+    }).catch(() => _pollRestart(n + 1));
+  }, delay);
+}
+function _closeRestartModal() { document.getElementById('restart-modal')?.classList.remove('show'); }
 
 // Tab-System entfernt — Navigation läuft jetzt über navTo() / Sidebar
 
@@ -109,6 +154,13 @@ function refreshLive() {
     }).catch(e => { if (e !== 'Unauthorized') console.warn("refreshLive:", e); });
 }
 
+const _WEATHER_ICONS = {
+  '1_heavy_clouds':'☁️','2_light_clouds':'🌥️','3_clear':'☀️','4_mid_clear':'🌤️',
+  '5_light_clouds':'🌤️','6_light_clouds':'🌤️','7_heavy_clouds':'☁️',
+  '8_drizzle':'🌦️','9_light_drizzle':'🌦️','10_drizzle_race':'🌧️',
+  '11_practice_storm':'⛈️',
+};
+
 function updateHeader(d) {
   const active = d.status === "active";
   document.getElementById("h-dot").className = "dot " + (active?"on":d.status==="failed"?"fail":"");
@@ -117,6 +169,17 @@ function updateHeader(d) {
   if (d.info) {
     document.getElementById("h-maxp").textContent = d.info.maxclients || "?";
     document.getElementById("h-track").textContent = d.info.track || "";
+  }
+  // Live-Wetter in der Sidebar
+  const hw = document.getElementById("h-weather");
+  if (hw && d.weather) {
+    const w    = d.weather;
+    const ico  = _WEATHER_ICONS[w.graphics] || '🌡️';
+    const wind = w.wind_speed > 0 ? ` · 💨 ${w.wind_speed} km/h` : '';
+    const grip = (w.grip != null && w.grip < 100) ? ` · 🛞 ${w.grip}%` : '';
+    const liveTag = w.live ? '' : ' ·'; // live = kein Tag nötig
+    hw.textContent = `${ico} ${w.ambient}°C · ${w.road}°C Str.${wind}${grip}`;
+    hw.style.display = '';
   }
 }
 
@@ -158,11 +221,17 @@ function renderCards(id, drivers, showAct) {
     el.innerHTML = `<div class="empty"><div class="empty-ico">🏁</div><div>${t('no_drivers')}</div></div>`;
     return;
   }
-  el.innerHTML = drivers.map((d,i) => `
-    <div class="dc">
+  el.innerHTML = drivers.map((d,i) => {
+    const pos     = d.race_pos || (i + 1);
+    const posBadge= pos === 1 ? `<span style="color:var(--red);font-weight:700;font-size:13px">P1</span>`
+                  : pos === 2 ? `<span style="color:#aaa;font-weight:700;font-size:13px">P2</span>`
+                  : pos === 3 ? `<span style="color:#cd7f32;font-weight:700;font-size:13px">P3</span>`
+                  : `<span style="color:var(--muted);font-size:12px">P${pos}</span>`;
+    const gapTxt  = d.gap_str && d.gap_str !== "—" ? `<span style="font-size:10px;color:var(--muted)">${esc(d.gap_str)}</span>` : "";
+    return `<div class="dc">
       <div class="dc-head">
-        <div><div class="dc-name" title="${esc(d.name)}">${esc(d.name)}</div><div class="dc-car">${esc(d.model)} · #${d.id}</div></div>
-        <div class="dc-laps">Rnd ${d.lapCount||0}</div>
+        <div style="display:flex;align-items:center;gap:6px">${posBadge}<div><div class="dc-name" title="${esc(d.name)}">${esc(d.name)}</div><div class="dc-car">${esc(d.model)} · #${d.id}</div></div></div>
+        <div style="text-align:right"><div class="dc-laps">Rnd ${d.lapCount||0}</div>${gapTxt}</div>
       </div>
       <div class="sp-bar"><div class="sp-fill" style="width:${((d.spLine||0)*100).toFixed(1)}%"></div></div>
       <div class="sp-txt">${((d.spLine||0)*100).toFixed(1)}% Strecke</div>
@@ -175,16 +244,29 @@ function renderCards(id, drivers, showAct) {
         <button class="btn btn-danger btn-sm" onclick="kick(${d.id},'${esc(d.name)}')">⊘ Kick</button>
         <button class="btn btn-warn btn-sm" onclick="ban(${d.id},'${esc(d.guid)}','${esc(d.name)}')">⛔ Ban</button>
       </div>` : ""}
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 function updateLaps(d) {
   const tb = document.getElementById("lap-tbody");
-  if (!d.drivers?.length) { tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:48px">Keine Daten</td></tr>`; return; }
-  const sorted = [...d.drivers].sort((a,b) => a.bestLap&&b.bestLap?a.bestLap-b.bestLap:a.bestLap?-1:b.bestLap?1:b.lapCount-a.lapCount);
-  tb.innerHTML = sorted.map((r,i) => {
-    const pc = ["pos-1","pos-2","pos-3"][i]||"";
-    return `<tr><td class="${pc}">${["🥇","🥈","🥉"][i]||"P"+(i+1)}</td><td><strong>${esc(r.name)}</strong></td><td style="color:var(--muted)">${esc(r.model)}</td><td>${r.lapCount||0}</td><td class="${i===0&&r.bestLap?"best-t":""}">${fmt(r.bestLap)}</td><td>${fmt(r.lastLap)}</td><td style="color:var(--muted)" id="clt-${r.id}">${fmt(r.lapTime)}</td></tr>`;
+  if (!d.drivers?.length) { tb.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:48px">Keine Daten</td></tr>`; return; }
+  // Drivers kommen vom Backend bereits nach Race-Position sortiert (total_progress desc)
+  tb.innerHTML = d.drivers.map((r, i) => {
+    const pos  = r.race_pos || (i + 1);
+    const pc   = ["pos-1","pos-2","pos-3"][pos-1] || "";
+    const medal= ["🥇","🥈","🥉"][pos-1] || "P"+pos;
+    const gapCls = r.gap_ms > 0 ? "style='color:var(--muted);font-size:11px'" : "style='color:var(--green);font-size:11px'";
+    return `<tr>
+      <td class="${pc}">${medal}</td>
+      <td><strong>${esc(r.name)}</strong></td>
+      <td style="color:var(--muted)">${esc(r.model)}</td>
+      <td>${r.lapCount||0}</td>
+      <td class="${pos===1&&r.bestLap?"best-t":""}">${fmt(r.bestLap)}</td>
+      <td>${fmt(r.lastLap)}</td>
+      <td style="color:var(--muted)" id="clt-${r.id}">${fmt(r.lapTime)}</td>
+      <td ${gapCls}>${r.gap_str||"—"}</td>
+    </tr>`;
   }).join("");
 }
 
@@ -477,7 +559,10 @@ function saveServerSettings() {
   const pass=document.getElementById("sv-pass").value; if(pass) data.PASSWORD=pass;
   const ap=document.getElementById("sv-adminpass").value; if(ap) data.ADMIN_PASSWORD=ap;
   apiFetch("/save_server_settings",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-    .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err');
+      if(d.ok&&autoRestart()) _showRestartModal(['⚙️ '+document.getElementById('sv-name').value,'Sun Angle: '+data.SUN_ANGLE+'°']);
+    });
 }
 
 function saveTrackCars() {
@@ -485,9 +570,14 @@ function saveTrackCars() {
   if(!cars.length){toast(t('t_select_car'),"err");return;}
   const spc=parseInt(document.getElementById("slots-per-car").value)||2;
   const car_config=getCarConfig();
+  const track=document.getElementById('s-track').value;
+  const layout=document.getElementById('s-layout').value;
   apiFetch("/save_config",{method:"POST",headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({track:document.getElementById("s-track").value, layout:document.getElementById("s-layout").value, cars, slots_per_car:spc, car_config, restart:autoRestart()})})
-    .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
+    body:JSON.stringify({track, layout, cars, slots_per_car:spc, car_config, restart:autoRestart()})})
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err');
+      if(d.ok&&autoRestart()) _showRestartModal(['🗺️ '+(layout?track+' / '+layout:track),'🚗 Autos ('+cars.length+'): '+cars.slice(0,3).join(', ')+(cars.length>3?' …':'')]);
+    });
 }
 
 function saveAssists() {
@@ -506,17 +596,24 @@ function saveAssists() {
     restart:autoRestart()
   };
   apiFetch("/save_assists",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-    .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err');
+      if(d.ok&&autoRestart()) _showRestartModal(['🛡️ ABS='+data.ABS_ALLOWED+' TC='+data.TC_ALLOWED+' ESP='+data.STABILITY_ALLOWED,'Schaden='+data.DAMAGE_MULTIPLIER+'% Reifenversch.='+data.TYRE_WEAR_RATE+'%']);
+    });
 }
 
 function saveSessions() {
-  const data={practice_time:document.getElementById("prc-time").value,practice_open:document.getElementById("prc-open").checked,qualify_time:document.getElementById("qlf-time").value,qualify_open:document.getElementById("qlf-open").checked,race_laps:document.getElementById("race-laps").value,race_wait:document.getElementById("race-wait").value,restart:autoRestart()};
+  const data={practice_time:document.getElementById("prc-time").value,practice_open:document.getElementById("prc-open").checked,qualify_time:document.getElementById("qlf-time").value,qualify_open:document.getElementById("qlf-open").checked,race_laps:document.getElementById("race-laps").value,race_wait:document.getElementById("race-wait").value,race_open:document.getElementById("race-open")?.checked||false,restart:autoRestart()};
   apiFetch("/save_session",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-    .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err');
+      if(d.ok&&autoRestart()) _showRestartModal(['🏃 Practice: '+data.practice_time+' min','🏁 Qualifying: '+data.qualify_time+' min','🚩 Race: '+data.race_laps+' Runden']);
+    });
 }
 
 function saveWeather() {
-  const data={weather_0_graphics:document.getElementById("w0-graphics").value,weather_0_ambient:document.getElementById("w0-amb").value,weather_0_road:document.getElementById("w0-road").value,weather_1_graphics:document.getElementById("w1-graphics").value,weather_1_ambient:document.getElementById("w1-amb").value,weather_1_road:document.getElementById("w1-road").value,restart:autoRestart()};
+  const _w0amb=parseInt(document.getElementById("w0-amb").value)||0;const _w1amb=parseInt(document.getElementById("w1-amb").value)||0;
+  const data={weather_0_graphics:document.getElementById("w0-graphics").value,weather_0_ambient:_w0amb,weather_0_road:(parseInt(document.getElementById("w0-road").value)||0)-_w0amb,weather_1_graphics:document.getElementById("w1-graphics").value,weather_1_ambient:_w1amb,weather_1_road:(parseInt(document.getElementById("w1-road").value)||0)-_w1amb,restart:autoRestart()};
   apiFetch("/save_weather",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
     .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
 }
@@ -571,7 +668,7 @@ function saveExtendedSettings() {
   const bool = id => document.getElementById(id).checked ? '1' : '0';
   const val  = id => document.getElementById(id).value;
   const data = {
-    UDP_PORT: val('sv-udp'), TCP_PORT: val('sv-udp'), HTTP_PORT: val('sv-http'),
+    UDP_PORT: val('sv-udp'), TCP_PORT: val('sv-udp'), HTTP_PORT: val('sv-http'),  // UDP & TCP teilen Port in AC
     PICKUP_MODE_ENABLED: bool('sv-pickup'), LOOP_MODE: bool('sv-loop'),
     BLACKLIST_MODE: bool('sv-blacklist'),
     KICK_QUORUM: val('sv-kickq'), VOTING_QUORUM: val('sv-voteq'),
@@ -582,7 +679,10 @@ function saveExtendedSettings() {
     restart: autoRestart()
   };
   apiFetch('/save_server_settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-    .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err');
+      if(d.ok&&autoRestart()) _showRestartModal(['⚙️ Server-Einstellungen: Ports & Modus aktualisiert']);
+    });
 }
 
 // ═══ PRESETS ══════════════════════════════════════════════════════════════
@@ -1023,13 +1123,13 @@ function saveExtraCfg(){
   apiFetch("/api/extra_cfg",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
     .then(r=>r.json()).then(d=>{
       toast(d.ok?t('t_extra_cfg_saved'):'✗ '+d.msg,d.ok?'ok':'err');
-      if(d.ok)ctrl('restart');
+      // Bug fix: erst Restart triggern (ctrl), DANN Modal anzeigen (nicht gleichzeitig)
+      if(d.ok&&autoRestart()) { ctrl('restart'); setTimeout(()=>_showRestartModal(['🔧 WeatherFX='+data.EnableWeatherFx+' AntiAFK='+data.EnableAntiAfk,'CSP min: '+data.MinimumCSPVersion+' | Max Ping: '+data.MaxPing+'ms']),500); }
     });
 }
 
-function loadDiscord(){apiFetch("/api/discord").then(r=>r.json()).then(d=>{document.getElementById("discord-url").value=d.url||"";}).catch(()=>{});}
-function saveDiscord(){const url=document.getElementById("discord-url").value.trim();apiFetch("/api/discord",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}).then(r=>r.json()).then(d=>toast(d.ok?t('t_webhook_saved'):'✗ '+d.msg,d.ok?'ok':'err'));}
-function testDiscord(){apiFetch("/api/discord/test",{method:"POST"}).then(r=>r.json()).then(d=>toast(d.ok?"✓ "+d.msg:"✗ "+d.msg,d.ok?"ok":"err"));}
+// Dead code: loadDiscord/saveDiscord/testDiscord waren hier doppelt definiert.
+// Echte Versionen weiter unten (p-advanced Sektion).
 
 async function restoreBackup(){
   const inp=document.getElementById("restore-inp");
@@ -1068,7 +1168,7 @@ function doImport(){
   if(!cars.length&&!tracks.length){toast(t('t_nothing_selected'),"err");return;}
   toast(t('t_importing'),"info");
   apiFetch("/import_zip",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:currentZip,cars,tracks})})
-    .then(r=>r.json()).then(d=>{if(d.ok){toast("✓ Importiert: "+d.imported.join(", "));closeModal();setTimeout(()=>location.reload(),2500);}else toast("✗ "+d.msg,"err");});
+    .then(r=>r.json()).then(d=>{if(d.ok){toast("✓ Importiert: "+d.imported.join(", "));closeModal();sessionStorage.setItem('_restoreNav',_currentNav);setTimeout(()=>location.reload(),2500);}else toast("✗ "+d.msg,"err");});
 }
 function closeModal(){document.getElementById("up-modal").classList.remove("show");}
 
@@ -1093,8 +1193,8 @@ function uploadFolder(){
   const prog=document.getElementById("fm-upload-prog"),msg=document.getElementById("fm-up-msg"),pct=document.getElementById("fm-up-pct"),bar=document.getElementById("fm-up-bar");
   prog.style.display="block";document.getElementById("fm-confirm-btn").disabled=true;
   let done=0,failed=[];
-  function uploadOne(file){return new Promise(resolve=>{const rel=(file.webkitRelativePath||file.name).split("/").slice(1).join("/")||file.name;const fd=new FormData();fd.append("type",_folderType);fd.append("root_name",rootName);fd.append("rel_path",rel);fd.append("file",file);const xhr=new XMLHttpRequest();xhr.open("POST","/upload_file");xhr.upload.onprogress=e=>{if(!e.lengthComputable)return;const overall=Math.round((done+e.loaded/e.total)/total*100);bar.style.width=overall+"%";pct.textContent=overall+"%";msg.textContent=`${done+1}/${total}: ${rel.split("/").pop()}`;};xhr.onload=()=>{done++;try{const d=JSON.parse(xhr.responseText);if(!d.ok)failed.push(rel);}catch(e){failed.push(rel);}bar.style.width=Math.round(done/total*100)+"%";pct.textContent=Math.round(done/total*100)+"%";resolve();};xhr.onerror=()=>{done++;failed.push(rel);resolve();};xhr.send(fd);});}
-  (async()=>{for(const f of files)await uploadOne(f);const doneResp=await fetch("/upload_folder_done",{method:"POST",credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:_folderType,root_name:rootName})}).then(r=>r.json()).catch(()=>({ok:false}));prog.style.display="none";closeFolderModal();if(failed.length){toast(`⚠ ${failed.length} Datei(en) fehlgeschlagen`,"err");return;}if(confirm(`✓ ${rootName} importiert (${total} Dateien).\n\nServer jetzt neu starten?`)){apiFetch("/control/restart",{method:"POST"}).then(()=>toast("Server wird neu gestartet...","info"));}else{toast(`✓ ${esc(rootName)} importiert`,"ok");}setTimeout(()=>location.reload(),2500);})();
+  function uploadOne(file){return new Promise(resolve=>{const rel=(file.webkitRelativePath||file.name).split("/").slice(1).join("/")||file.name;const fd=new FormData();fd.append("type",_folderType);fd.append("root_name",rootName);fd.append("rel_path",rel);fd.append("file",file);const xhr=new XMLHttpRequest();xhr.open("POST","/upload_file");xhr.setRequestHeader("X-CSRF-Token",_csrfToken);xhr.upload.onprogress=e=>{if(!e.lengthComputable)return;const overall=Math.round((done+e.loaded/e.total)/total*100);bar.style.width=overall+"%";pct.textContent=overall+"%";msg.textContent=`${done+1}/${total}: ${rel.split("/").pop()}`;};xhr.onload=()=>{done++;try{const d=JSON.parse(xhr.responseText);if(!d.ok)failed.push(rel);}catch(e){failed.push(rel);}bar.style.width=Math.round(done/total*100)+"%";pct.textContent=Math.round(done/total*100)+"%";resolve();};xhr.onerror=()=>{done++;failed.push(rel);resolve();};xhr.send(fd);});}
+  (async()=>{for(const f of files)await uploadOne(f);const doneResp=await apiFetch("/upload_folder_done",{method:"POST",body:JSON.stringify({type:_folderType,root_name:rootName})}).then(r=>r.json()).catch(()=>({ok:false}));prog.style.display="none";closeFolderModal();if(failed.length){toast(`⚠ ${failed.length} Datei(en) fehlgeschlagen`,"err");return;}if(confirm(`✓ ${rootName} importiert (${total} Dateien).\n\nServer jetzt neu starten?`)){apiFetch("/control/restart",{method:"POST"}).then(()=>toast("Server wird neu gestartet...","info"));}else{toast(`✓ ${esc(rootName)} importiert`,"ok");}sessionStorage.setItem('_restoreNav',_currentNav);setTimeout(()=>location.reload(),2500);})();
 }
 
 // ═══ UTILS ════════════════════════════════════════════════════════════════
@@ -1268,17 +1368,479 @@ async function loadDriverStats() {
 function loadDiscord() {
   apiFetch('/api/discord').then(r=>r.json()).then(d=>{
     document.getElementById('discord-url').value = d.url||'';
-    const cb = document.getElementById('discord-notify-join');
-    if (cb) cb.checked = !!d.notify_join;
+    const set = (id, val, def) => { const el = document.getElementById(id); if (el) el.checked = val !== undefined ? val : def; };
+    set('discord-notify-crash',  d.notify_crash,  true);
+    set('discord-notify-join',   d.notify_join,   false);
+    set('discord-notify-record', d.notify_record, true);
+    set('discord-notify-pb',     d.notify_pb,     false);
   }).catch(()=>{});
 }
 function saveDiscord() {
-  const url  = document.getElementById('discord-url').value.trim();
-  const nj   = document.getElementById('discord-notify-join')?.checked || false;
-  apiFetch('/api/discord',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,notify_join:nj})})
+  const url           = document.getElementById('discord-url').value.trim();
+  const notify_crash  = document.getElementById('discord-notify-crash')?.checked  ?? true;
+  const notify_join   = document.getElementById('discord-notify-join')?.checked   ?? false;
+  const notify_record = document.getElementById('discord-notify-record')?.checked ?? true;
+  const notify_pb     = document.getElementById('discord-notify-pb')?.checked     ?? false;
+  apiFetch('/api/discord',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({url, notify_crash, notify_join, notify_record, notify_pb})})
     .then(r=>r.json()).then(d=>toast(d.ok?t('t_webhook_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
 }
-function testDiscord(){apiFetch('/api/discord/test',{method:'POST'}).then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));}
+function testDiscord(){
+  apiFetch('/api/discord/test',{method:'POST'})
+    .then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));
+}
+function sendDiscordSummary(){
+  toast('📊 Sende Summary…','info');
+  apiFetch('/api/discord/summary',{method:'POST'})
+    .then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));
+}
+
+// ═══ CHAMPIONSHIP ═════════════════════════════════════════════════════════
+let _champPointsPresets = {};
+let _currentChampId     = null;
+
+function applyPointsPreset() {
+  const preset = document.getElementById('champ-preset').value;
+  if (preset === 'custom') return;
+  const pts = _champPointsPresets[preset];
+  if (pts) document.getElementById('champ-points').value = pts.join(',');
+}
+
+function loadChampionships() {
+  apiFetch('/api/championships').then(r=>r.json()).then(d=>{
+    if (d.points_presets) _champPointsPresets = d.points_presets;
+    const el = document.getElementById('champ-list');
+    if (!d.championships?.length) {
+      el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('champ_empty')}</div>`;
+      return;
+    }
+    el.innerHTML = d.championships.map(c => `
+      <div style="cursor:pointer;padding:10px 12px;border:1px solid var(--border);border-radius:8px;transition:border-color .15s"
+           onclick="loadChampStandings('${esc(c.id)}')"
+           onmouseenter="this.style.borderColor='var(--red)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:700">🏆 ${esc(c.name)}</div>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteChampionship('${esc(c.id)}','${esc(c.name)}')">✕</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">${c.rounds} Runden · ${t('champ_created')}: ${esc(c.created||'')}</div>
+      </div>`).join('');
+  });
+}
+
+function createChampionship() {
+  const name = document.getElementById('champ-name').value.trim();
+  if (!name) { toast(t('t_enter_name'), 'err'); return; }
+  const rawPts = document.getElementById('champ-points').value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  if (!rawPts.length) { toast('Ungültiges Punkte-Schema', 'err'); return; }
+  apiFetch('/api/championships', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, points: rawPts})})
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok ? '✓ ' + name + ' erstellt' : '✗ '+d.msg, d.ok?'ok':'err');
+      if (d.ok) { document.getElementById('champ-name').value=''; loadChampionships(); loadChampStandings(d.championship.id); }
+    });
+}
+
+function deleteChampionship(id, name) {
+  if (!confirm(`Meisterschaft "${name}" löschen?`)) return;
+  apiFetch(`/api/championships/${id}`, {method:'DELETE'})
+    .then(r=>r.json()).then(d=>{ toast(d.ok?t('t_deleted'):'✗ '+d.msg,d.ok?'ok':'err'); if(d.ok) loadChampionships(); });
+}
+
+function loadChampStandings(cid) {
+  _currentChampId = cid;
+  const det = document.getElementById('champ-detail');
+  det.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('loading')}</div>`;
+  Promise.all([
+    apiFetch(`/api/championships/${cid}/standings`).then(r=>r.json()),
+    apiFetch('/api/championships/results_list').then(r=>r.json()),
+  ]).then(([d, rd]) => {
+    if (!d.ok) { det.innerHTML = `<div style="color:var(--muted);padding:32px">${t('res_error')}</div>`; return; }
+    const c        = d.championship;
+    const rounds   = d.round_meta || [];
+    const standing = d.standings  || [];
+
+    // Standings-Tabelle Header: Pos | Fahrer | Pts | R1 | R2 ... | Siege | Podien | Gap
+    const rHeaders = rounds.map(r => `<th style="font-size:10px;white-space:nowrap">${esc(r.label)}</th>`).join('');
+    const rows = standing.map(s => {
+      const medal = ['🥇','🥈','🥉'][s.standing-1] || `P${s.standing}`;
+      const rCells = rounds.map(r => {
+        const rd = s.rounds?.[r.num];
+        return rd ? `<td style="text-align:center;font-size:11px"><span style="color:var(--muted)">P${rd.pos}</span><br><strong>${rd.pts}</strong></td>`
+                  : `<td style="text-align:center;color:var(--border);font-size:11px">—</td>`;
+      }).join('');
+      const gapTxt = s.gap > 0 ? `-${s.gap}` : '—';
+      return `<tr>
+        <td>${medal}</td>
+        <td><strong>${esc(s.driver)}</strong></td>
+        <td style="font-weight:700;color:var(--red)">${s.points}</td>
+        ${rCells}
+        <td style="color:var(--muted);font-size:11px">${s.wins}</td>
+        <td style="color:var(--muted);font-size:11px">${s.podiums}</td>
+        <td style="color:var(--muted);font-size:11px">${gapTxt}</td>
+      </tr>`;
+    }).join('');
+
+    // Runden hinzufügen — Dropdown aus results_list, die noch nicht in c.rounds sind
+    const existingRounds = new Set(c.rounds || []);
+    const availableResults = (rd.results || []).filter(r => !existingRounds.has(r.filename));
+    const addOptions = availableResults.map(r => {
+      const label = `${r.type} · ${r.track}${r.config?'/'+r.config:''} · ${r.date?.slice(0,10)||''}`;
+      return `<option value="${esc(r.filename)}">${esc(label)}</option>`;
+    }).join('');
+
+    const roundsList = rounds.map(r => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span><strong>R${r.num}</strong> ${esc(r.label)}</span>
+        <button class="btn btn-danger btn-sm" onclick="removeChampRound('${esc(cid)}','${esc(r.filename)}')">✕</button>
+      </div>`).join('');
+
+    det.innerHTML = `
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">🏆 ${esc(c.name)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${t('champ_points_schema')}: ${(c.points||[]).join(' · ')}</div>
+
+      ${standing.length ? `
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">${t('champ_standings')}</div>
+      <div class="tbl-wrap" style="margin-bottom:16px">
+        <table>
+          <thead><tr><th>${t('col_pos')}</th><th>${t('col_driver')}</th><th>Pts</th>${rHeaders}<th>🏆</th><th>🥉</th><th>Gap</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>` : `<div style="color:var(--muted);font-size:13px;margin-bottom:16px">${t('champ_no_rounds_yet')}</div>`}
+
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">${t('champ_rounds')}</div>
+      ${roundsList || `<div style="color:var(--muted);font-size:12px;margin-bottom:8px">${t('champ_no_rounds_yet')}</div>`}
+
+      ${availableResults.length ? `
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <select class="sel" id="champ-add-round-sel" style="flex:1;min-width:0;font-size:11px">${addOptions}</select>
+        <button class="btn btn-gray btn-sm" onclick="addChampRound('${esc(cid)}')">+ ${t('champ_add_round')}</button>
+      </div>` : `<div style="color:var(--muted);font-size:11px;margin-top:8px">${t('champ_all_rounds_added')}</div>`}
+    `;
+  });
+}
+
+function addChampRound(cid) {
+  const sel = document.getElementById('champ-add-round-sel');
+  if (!sel?.value) return;
+  apiFetch(`/api/championships/${cid}/rounds`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({filename: sel.value})})
+    .then(r=>r.json()).then(d=>{ toast(d.ok?'✓ Runde hinzugefügt':'✗ '+d.msg, d.ok?'ok':'err'); if(d.ok) loadChampStandings(cid); });
+}
+
+function removeChampRound(cid, filename) {
+  apiFetch(`/api/championships/${cid}/rounds/${encodeURIComponent(filename)}`, {method:'DELETE'})
+    .then(r=>r.json()).then(d=>{ toast(d.ok?t('t_deleted'):'✗ '+d.msg, d.ok?'ok':'err'); if(d.ok) loadChampStandings(cid); });
+}
+
+// ═══ SCHEDULER ════════════════════════════════════════════════════════════
+function toggleSchedPreset() {
+  const action = document.getElementById('sched-action').value;
+  const row    = document.getElementById('sched-preset-row');
+  if (row) row.style.display = action === 'apply_preset' ? '' : 'none';
+}
+
+function loadScheduledEvents() {
+  apiFetch('/api/scheduled_events').then(r=>r.json()).then(d=>{
+    const el = document.getElementById('sched-list');
+    if (!d.events?.length) {
+      el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('sched_empty')}</div>`;
+      return;
+    }
+    const now = new Date().toISOString().slice(0,16).replace('T',' ');
+    el.innerHTML = d.events.map(e => {
+      const done    = e.executed;
+      const overdue = !done && e.datetime <= now;
+      const badge   = done    ? `<span style="color:var(--green);font-size:10px;font-weight:700">✓ ${t('sched_done')}</span>`
+                    : overdue ? `<span style="color:var(--warn,#f59e0b);font-size:10px;font-weight:700">⧗ ${t('sched_pending')}</span>`
+                    :           `<span style="color:var(--muted);font-size:10px;font-weight:700">⏳ ${t('sched_scheduled')}</span>`;
+      const actionLbl = e.action === 'apply_preset'
+        ? `${t('sched_action_preset')}: <strong>${esc(e.preset)}</strong>`
+        : t('sched_action_restart');
+      return `<div style="padding:10px 12px;border:1px solid ${done?'var(--border)':overdue?'var(--warn,#f59e0b)':'var(--border)'};border-radius:8px;opacity:${done?.6:1}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div style="font-size:13px;font-weight:700">${esc(e.name)} ${badge}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">📅 ${esc(e.datetime)} · ${actionLbl}</div>
+            ${done && e.executed_at ? `<div style="font-size:10px;color:var(--muted)">Ausgeführt: ${esc(e.executed_at)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            ${done ? `<button class="btn btn-gray btn-sm" onclick="resetScheduledEvent('${esc(e.id)}')">↻</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="deleteScheduledEvent('${esc(e.id)}')">✕</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function _loadSchedPresets() {
+  apiFetch('/api/presets').then(r=>r.json()).then(d=>{
+    const sel = document.getElementById('sched-preset');
+    if (!sel) return;
+    const keys = Object.keys(d.presets || {});
+    sel.innerHTML = keys.length
+      ? keys.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('')
+      : `<option value="">${t('t_no_presets')}</option>`;
+  }).catch(()=>{});
+}
+
+function createScheduledEvent() {
+  const name   = document.getElementById('sched-name').value.trim();
+  const dtRaw  = document.getElementById('sched-dt').value;          // "YYYY-MM-DDTHH:MM"
+  const action = document.getElementById('sched-action').value;
+  const preset = document.getElementById('sched-preset')?.value || '';
+  if (!name || !dtRaw) { toast(t('t_please_wait'), 'err'); return; }
+  const dtStr  = dtRaw.replace('T', ' ').slice(0, 16);
+  apiFetch('/api/scheduled_events', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, datetime: dtStr, action, preset})})
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok ? '✓ Event geplant' : '✗ '+d.msg, d.ok?'ok':'err');
+      if (d.ok) { document.getElementById('sched-name').value=''; loadScheduledEvents(); }
+    });
+}
+
+function deleteScheduledEvent(id) {
+  apiFetch(`/api/scheduled_events/${id}`, {method:'DELETE'})
+    .then(r=>r.json()).then(d=>{ toast(d.ok?t('t_deleted'):'✗ '+d.msg, d.ok?'ok':'err'); if(d.ok) loadScheduledEvents(); });
+}
+
+function resetScheduledEvent(id) {
+  apiFetch(`/api/scheduled_events/${id}/reset`, {method:'POST'})
+    .then(r=>r.json()).then(d=>{ toast(d.ok?'✓ Zurückgesetzt':'✗ '+d.msg, d.ok?'ok':'err'); if(d.ok) loadScheduledEvents(); });
+}
+
+// ═══ RESULTS ══════════════════════════════════════════════════════════════
+const _TYPE_COLOR = { RACE: 'var(--red)', QUALIFY: '#3498db', PRACTICE: '#27ae60' };
+const _TYPE_LABEL = { RACE: '🏆 Race', QUALIFY: '⏱ Quali', PRACTICE: '🔄 Practice' };
+
+function loadResults() {
+  document.getElementById('results-list').innerHTML =
+    `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_loading')}</div>`;
+  apiFetch('/api/results').then(r=>r.json()).then(d=>{
+    const el = document.getElementById('results-list');
+    if (!d.ok || !d.results.length) {
+      el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_empty')}</div>`;
+      return;
+    }
+    el.innerHTML = d.results.map(r => {
+      const typeCol = _TYPE_COLOR[r.type] || 'var(--muted)';
+      const typeLbl = _TYPE_LABEL[r.type] || r.type;
+      const track   = r.config ? `${r.track} / ${r.config}` : r.track;
+      const date    = r.date ? r.date.slice(0, 16) : '—';
+      return `<div class="result-card" onclick="showResult('${esc(r.filename)}')" style="cursor:pointer;padding:10px 12px;border:1px solid var(--border);border-radius:8px;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--red)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:700;color:${typeCol};text-transform:uppercase">${typeLbl}</span>
+          <span style="font-size:10px;color:var(--muted)">${date}</span>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:2px">${esc(track)||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);display:flex;gap:12px">
+          <span>🏎 ${r.driver_count} Fahrer</span>
+          <span>📋 ${r.lap_count} Runden</span>
+          ${r.winner && r.winner !== '?' ? `<span>🥇 ${esc(r.winner)}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }).catch(()=>{
+    document.getElementById('results-list').innerHTML =
+      `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_error')}</div>`;
+  });
+}
+
+function showResult(filename) {
+  const det = document.getElementById('result-detail');
+  det.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('loading')}</div>`;
+  apiFetch(`/api/results/${encodeURIComponent(filename)}`).then(r=>r.json()).then(d=>{
+    if (!d.ok) { det.innerHTML = `<div style="color:var(--muted);padding:32px">${t('res_error')}</div>`; return; }
+    const r        = d.result;
+    const typeCol  = _TYPE_COLOR[r.type] || 'var(--muted)';
+    const typeLbl  = _TYPE_LABEL[r.type] || r.type;
+    const track    = r.config ? `${r.track} / ${r.config}` : r.track;
+    const date     = r.date ? r.date.slice(0, 16) : '—';
+
+    // Finish positions table
+    const rows = (r.result || []).map(e => {
+      const medal = ['🥇','🥈','🥉'][e.position-1] || `P${e.position}`;
+      const posCls= ['pos-1','pos-2','pos-3'][e.position-1] || '';
+      return `<tr>
+        <td class="${posCls}">${medal}</td>
+        <td><strong>${esc(e.DriverName||'?')}</strong></td>
+        <td style="color:var(--muted);font-size:11px">${esc(e.CarModel||'?')}</td>
+        <td class="best-t">${e.best_fmt||'—'}</td>
+        <td>${e.total_fmt||'—'}</td>
+        <td style="color:var(--muted)">${e.gap_fmt||'—'}</td>
+        <td style="color:var(--muted);font-size:11px">${e.BallastKG||0} kg</td>
+      </tr>`;
+    }).join('');
+
+    // Lap-Zeiten pro Fahrer (beste 10)
+    const bests = Object.entries(r.driver_bests || {})
+      .sort((a,b) => a[1]-b[1])
+      .slice(0,10)
+      .map(([name, ms], i) => {
+        const medal = ['🥇','🥈','🥉'][i] || '';
+        const mins = Math.floor(ms/60000), secs = (ms%60000)/1000;
+        return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span>${medal} ${esc(name)}</span>
+          <span class="best-t">${mins}:${secs.toFixed(3).padStart(6,'0')}</span>
+        </div>`;
+      }).join('');
+
+    det.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div>
+          <span style="font-size:11px;font-weight:700;color:${typeCol};text-transform:uppercase">${typeLbl}</span>
+          <div style="font-size:16px;font-weight:700;margin-top:2px">${esc(track)||'—'}</div>
+          <div style="font-size:11px;color:var(--muted)">${date}${r.collision_count?' &nbsp;·&nbsp; 💥 '+r.collision_count+' Kollisionen':''}</div>
+        </div>
+      </div>
+
+      ${r.result?.length ? `
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">${t('res_finish_order')}</div>
+      <div class="tbl-wrap" style="margin-bottom:16px">
+        <table>
+          <thead><tr>
+            <th>${t('col_pos')}</th><th>${t('col_driver')}</th><th>${t('col_vehicle')}</th>
+            <th>${t('col_best')}</th><th>${t('res_total_time')}</th><th>Gap</th><th>Ballast</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>` : ''}
+
+      ${bests ? `
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">${t('res_fastest_laps')}</div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px">${bests}</div>
+      ` : ''}
+    `;
+  }).catch(()=>{
+    det.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_error')}</div>`;
+  });
+}
+
+// ═══ PLUGIN STATUS ════════════════════════════════════════════════════════
+function loadPluginStatus() {
+  apiFetch('/api/plugin_status').then(r=>r.json()).then(d=>{
+    const active = d.active || [];
+    const dot = (id, on) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = on ? '●' : '○'; el.style.color = on ? 'var(--green)' : 'var(--muted)'; }
+    };
+    dot('dot-automod', active.includes('AutoModerationPlugin'));
+    dot('dot-voting',  active.includes('VotingWeatherPlugin'));
+    dot('dot-lwp',     d.lwp_enabled);
+
+    const tog = document.getElementById('lwp-toggle');
+    if (tog) tog.checked = !!d.lwp_enabled;
+
+    const cfg = document.getElementById('lwp-config');
+    if (cfg) cfg.style.display = d.lwp_enabled ? '' : 'none';
+
+    const txt = document.getElementById('lwp-status-txt');
+    if (txt) {
+      if (d.lwp_enabled && d.lwp_key_set) {
+        txt.textContent = `Aktiv · Key: ${d.lwp_key_hint} · alle ${d.lwp_interval} min`;
+        txt.style.color = 'var(--green)';
+      } else if (d.lwp_enabled && !d.lwp_key_set) {
+        txt.textContent = '⚠ Aktiviert aber kein API-Key gesetzt';
+        txt.style.color = 'var(--warn,#f59e0b)';
+      } else {
+        txt.textContent = 'Deaktiviert — braucht OpenWeatherMap API-Key';
+        txt.style.color = 'var(--muted)';
+      }
+    }
+    if (d.lwp_interval) {
+      const inv = document.getElementById('lwp-interval');
+      if (inv) inv.value = d.lwp_interval;
+    }
+  }).catch(()=>{});
+}
+
+function toggleLiveWeather(checked) {
+  const cfg = document.getElementById('lwp-config');
+  if (cfg) cfg.style.display = checked ? '' : 'none';
+  if (!checked) {
+    apiFetch('/api/live_weather_plugin', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({enabled: false})})
+      .then(r=>r.json()).then(d=>{
+        toast(d.ok ? '✓ LiveWeatherPlugin deaktiviert — Server wird neu gestartet' : '✗ '+d.msg, d.ok?'ok':'err');
+        if (d.ok) setTimeout(loadPluginStatus, 2000);
+      });
+  }
+}
+
+function saveLiveWeather() {
+  const key      = document.getElementById('lwp-apikey').value.trim();
+  const interval = parseInt(document.getElementById('lwp-interval').value) || 10;
+  if (!key) { toast('API-Key fehlt', 'err'); return; }
+  apiFetch('/api/live_weather_plugin', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({enabled: true, api_key: key, interval})})
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok ? '✓ LiveWeatherPlugin aktiviert — Server wird neu gestartet' : '✗ '+d.msg, d.ok?'ok':'err');
+      if (d.ok) setTimeout(loadPluginStatus, 3000);
+    });
+}
+
+// ═══ CHAT NOTIFY ══════════════════════════════════════════════════════════
+function loadChatNotify() {
+  apiFetch('/api/chat_notify').then(r=>r.json()).then(d=>{
+    document.getElementById('cn-enabled').checked = !!d.enabled;
+    document.getElementById('cn-delta').checked   = d.show_delta !== false;
+    document.getElementById('cn-cuts').checked    = d.show_cuts  !== false;
+    document.getElementById('cn-prefix').value    = d.prefix || '>> ';
+  }).catch(()=>{});
+}
+function saveChatNotify() {
+  const data = {
+    enabled:    document.getElementById('cn-enabled').checked,
+    show_delta: document.getElementById('cn-delta').checked,
+    show_cuts:  document.getElementById('cn-cuts').checked,
+    prefix:     document.getElementById('cn-prefix').value,
+  };
+  apiFetch('/api/chat_notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
+}
+
+// ═══ CUT ACTIONS ══════════════════════════════════════════════════════════
+function loadCutActions() {
+  apiFetch('/api/cut_actions').then(r=>r.json()).then(d=>{
+    document.getElementById('ca-enabled').checked    = !!d.enabled;
+    document.getElementById('ca-warn-per-lap').value = d.warn_cuts_per_lap ?? 2;
+    document.getElementById('ca-warn-msg').value     = d.warn_message || '⚠️ {driver}: {cuts} Cuts!';
+    document.getElementById('ca-kick-session').value = d.kick_session_cuts ?? 0;
+    document.getElementById('ca-kick-msg').value     = d.kick_message || 'Kick: Zu viele Cuts ({cuts} gesamt)';
+  }).catch(()=>{});
+}
+function saveCutActions() {
+  const data = {
+    enabled:           document.getElementById('ca-enabled').checked,
+    warn_cuts_per_lap: parseInt(document.getElementById('ca-warn-per-lap').value)||0,
+    warn_message:      document.getElementById('ca-warn-msg').value,
+    kick_session_cuts: parseInt(document.getElementById('ca-kick-session').value)||0,
+    kick_message:      document.getElementById('ca-kick-msg').value,
+  };
+  apiFetch('/api/cut_actions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
+}
+
+// ═══ TELEGRAM ═════════════════════════════════════════════════════════════
+function loadTelegram() {
+  apiFetch('/api/telegram').then(r=>r.json()).then(d=>{
+    document.getElementById('tg-token').value  = d.token   || '';
+    document.getElementById('tg-chatid').value = d.chat_id || '';
+    const cb = document.getElementById('tg-notify-join');
+    if (cb) cb.checked = !!d.notify_join;
+  }).catch(()=>{});
+}
+function saveTelegram() {
+  const data = {
+    token:       document.getElementById('tg-token').value.trim(),
+    chat_id:     document.getElementById('tg-chatid').value.trim(),
+    notify_join: document.getElementById('tg-notify-join')?.checked || false,
+  };
+  apiFetch('/api/telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));
+}
+function testTelegram() {
+  apiFetch('/api/telegram/test',{method:'POST'})
+    .then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));
+}
 
 // ═══ TRACK PARAMS ═════════════════════════════════════════════════════════
 function saveTrackParams() {
@@ -1293,22 +1855,27 @@ function saveTrackParams() {
 
 // ═══ NAVIGATION (SIDEBAR) ════════════════════════════════════════════════
 function navTo(id) {
+  _currentNav = id;
   document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   const target = document.getElementById('p-' + id);
   if (target) { target.classList.add('active'); }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll(`.nav-item[data-nav="${id}"]`).forEach(n => n.classList.add('active'));
-  // Scroll content to top
-  document.querySelector('.content').scrollTop = 0;
+  // Scroll content to top (Bug fix: Null-Check)
+  const _cnt = document.querySelector('.content');
+  if (_cnt) _cnt.scrollTop = 0;
   // Side effects
   if (id === 'logs') loadLogs();
   if (id === 'settings-profile') loadServerProfile();
   if (id === 'players') { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
-  if (id === 'advanced') { loadExtraCfg(); loadDiscord(); }
+  if (id === 'advanced') { loadExtraCfg(); loadDiscord(); loadChatNotify(); loadCutActions(); loadTelegram(); loadPluginStatus(); }
   if (id === 'content') loadInstalledContent();
   if (id === 'settings-overview') loadOverviewExtraCfg();
   if (id === 'records') { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
-  if (id === 'events') loadEvents();
+  if (id === 'results')      loadResults();
+  if (id === 'championship') { loadChampionships(); }
+  if (id === 'schedule')     { loadScheduledEvents(); _loadSchedPresets(); }
+  if (id === 'events')       loadEvents();
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('open');
@@ -1327,7 +1894,7 @@ function saveAllServerSettings() {
     NAME: val('sv-name'),
     REGISTER_TO_LOBBY: bool('sv-lobby'),
     SUN_ANGLE: val('sv-sun'),
-    UDP_PORT: val('sv-udp'), TCP_PORT: val('sv-udp'),
+    UDP_PORT: val('sv-udp'), TCP_PORT: val('sv-udp'),  // UDP & TCP teilen Port in AC
     HTTP_PORT: val('sv-http'),
     PICKUP_MODE_ENABLED: bool('sv-pickup'),
     LOOP_MODE: bool('sv-loop'),
@@ -1345,17 +1912,21 @@ function saveAllServerSettings() {
   const ap = document.getElementById('sv-adminpass').value;
   if (ap) data.ADMIN_PASSWORD = ap;
   apiFetch('/save_server_settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
-    .then(r=>r.json()).then(d=>toast(d.ok?t('t_server_saved'):'✗ '+d.msg, d.ok?'ok':'err'));
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok?t('t_server_saved'):'✗ '+d.msg, d.ok?'ok':'err');
+      if(d.ok&&autoRestart()) _showRestartModal(['⚙️ '+data.NAME,'UDP='+data.UDP_PORT+' TCP='+data.TCP_PORT+' HTTP='+data.HTTP_PORT]);
+    });
 }
 
 function saveWeatherPage() {
+  const _w0a=parseInt(document.getElementById('w0-amb').value)||0;const _w1a=parseInt(document.getElementById('w1-amb').value)||0;
   const wd = {
     weather_0_graphics: document.getElementById('w0-graphics').value,
-    weather_0_ambient: document.getElementById('w0-amb').value,
-    weather_0_road: document.getElementById('w0-road').value,
+    weather_0_ambient: _w0a,
+    weather_0_road: (parseInt(document.getElementById('w0-road').value)||0) - _w0a,
     weather_1_graphics: document.getElementById('w1-graphics').value,
-    weather_1_ambient: document.getElementById('w1-amb').value,
-    weather_1_road: document.getElementById('w1-road').value,
+    weather_1_ambient: _w1a,
+    weather_1_road: (parseInt(document.getElementById('w1-road').value)||0) - _w1a,
     restart: autoRestart()
   };
   const dd = {
@@ -1365,17 +1936,41 @@ function saveWeatherPage() {
     LAP_GAIN: document.getElementById('dt-lap').value,
     restart: autoRestart()
   };
-  Promise.all([
-    apiFetch('/save_weather', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(wd)}).then(r=>r.json()),
-    apiFetch('/save_dynamic_track', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dd)}).then(r=>r.json())
-  ]).then(([w, d]) => {
-    toast((w.ok && d.ok) ? t('t_weather_saved') : '✗ '+t('t_server_error'), (w.ok && d.ok) ? 'ok' : 'err');
-  });
+  // Sequenziell speichern (nicht parallel) – verhindert Race Condition beim
+  // gleichzeitigen Schreiben in dieselbe server_cfg.ini
+  apiFetch('/save_weather', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(wd)})
+    .then(r=>r.json())
+    .then(w => apiFetch('/save_dynamic_track', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(dd)})
+      .then(r=>r.json())
+      .then(d => {
+        toast((w.ok && d.ok) ? t('t_weather_saved') : '✗ '+t('t_server_error'), (w.ok && d.ok) ? 'ok' : 'err');
+        if (w.ok) {
+          // Übersicht-Karte live aktualisieren (kein Seiten-Reload nötig)
+          const w0road = parseInt(document.getElementById('w0-road').value) || 0;
+          const w1road = parseInt(document.getElementById('w1-road').value) || 0;
+          const upd = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+          upd('ov-w0-graphics', document.getElementById('w0-graphics').value);
+          upd('ov-w0-ambient',  _w0a + '\u00b0C');
+          upd('ov-w0-road',     w0road + '\u00b0C');
+          upd('ov-w1-graphics', document.getElementById('w1-graphics').value);
+          upd('ov-w1-ambient',  _w1a + '\u00b0C');
+          upd('ov-w1-road',     w1road + '\u00b0C');
+          // Bug fix: Modal nur wenn BEIDE Saves (Weather + DynamicTrack) ok
+          if (autoRestart() && d.ok) _showRestartModal([
+            '🌤️ Slot 1: '+document.getElementById('w0-graphics').value+' | '+_w0a+'°C Ambient | '+w0road+'°C Straße',
+            '🌤️ Slot 2: '+document.getElementById('w1-graphics').value+' | '+_w1a+'°C Ambient | '+w1road+'°C Straße'
+          ]);
+        }
+      })
+    );
 }
 
 // ═══ INIT ═════════════════════════════════════════════════════════════════
 applyLang();
-navTo('dashboard');
+// Nach Seiten-Reload (z.B. Content-Import): zuletzt aktive Seite wiederherstellen
+const _savedNav = sessionStorage.getItem('_restoreNav');
+if (_savedNav) { sessionStorage.removeItem('_restoreNav'); navTo(_savedNav); }
+else navTo('dashboard');
 updateLayouts();
 loadTrackPreview();
 refreshLive();

@@ -24,6 +24,7 @@ _udp_pkt        = [0]
 _udp_err        = ["none"]
 _udp_ready      = False
 _udp_lock       = threading.Lock()
+_udp_start_lock = threading.Lock()  # verhindert doppelten Listener-Start
 
 
 def _udp_listener():
@@ -34,6 +35,7 @@ def _udp_listener():
         s.bind(("127.0.0.1", 12000))
     except Exception as e:
         _udp_err[0] = f"bind: {e}"
+        s.close()  # Bug fix: Socket bei Bind-Fehler schließen
         return
     while True:
         try:
@@ -45,7 +47,7 @@ def _udp_listener():
             if pkt in (2, 53) and size >= 2:
                 cid = data[1]
                 with _udp_lock:
-                    entry = _car_data.get(cid, {})
+                    entry = dict(_car_data.get(cid, {}))  # Bug fix: Kopie, nicht Referenz
                 if size >= 33:
                     try:
                         sp = struct.unpack_from("<f", data, 29)[0]
@@ -88,9 +90,10 @@ def _udp_listener():
 
 def ensure_udp():
     global _udp_ready
-    if not _udp_ready:
-        _udp_ready = True
-        threading.Thread(target=_udp_listener, daemon=True).start()
+    with _udp_start_lock:  # Bug fix: thread-sicherer Start, kein doppelter Listener
+        if not _udp_ready:
+            _udp_ready = True
+            threading.Thread(target=_udp_listener, daemon=True).start()
 
 
 def get_car_data(car_id: int) -> dict:
@@ -291,18 +294,33 @@ def rcon_send(cmd: str) -> tuple[bool, str]:
 def get_recent_chat(n: int = 40) -> list:
     try:
         r = subprocess.run(
-            ["journalctl", "-u", SERVICE_NAME, "-n", "1000", "--no-pager", "-o", "cat"],
+            ["journalctl", "-u", SERVICE_NAME, "-n", "3000", "--no-pager", "-o", "cat"],
             capture_output=True, text=True, timeout=5,
         )
         msgs = []
         for line in r.stdout.split("\n"):
-            if "CHAT:" in line and "$CSP" not in line:
+            ts = line[1:9] if line.startswith("[") else ""
+            # Spieler-Chat: [HH:MM:SS INF] CHAT: Name: message
+            if "CHAT:" in line:
+                # CSP-Interna (Protokoll-Daten) herausfiltern
+                if re.search(r'CHAT:.*\$CSP[0-9A-Z]', line):
+                    continue
                 try:
-                    ts   = line[1:9] if line.startswith("[") else ""
                     text = line.split("CHAT: ", 1)[1].strip()
-                    msgs.append({"time": ts, "text": text})
+                    msgs.append({"time": ts, "text": text, "source": "player"})
                 except Exception:
                     pass
+            # Server-Nachrichten via RCON say / /say
+            elif "RCON" in line and re.search(r'/?say (.+)', line, re.IGNORECASE):
+                try:
+                    m = re.search(r'/?say (.+)', line, re.IGNORECASE)
+                    if m:
+                        text = m.group(1).strip()
+                        msgs.append({"time": ts, "text": f"(Server): {text}", "source": "server"})
+                except Exception:
+                    pass
+        # Zeitlich sortieren (Timestamp-String reicht da gleicher Tag)
+        msgs.sort(key=lambda x: x.get("time", ""))
         return msgs[-n:]
     except Exception:
         return []

@@ -6,13 +6,19 @@ import threading
 import time
 import urllib.request
 
-from constants import LAPTIMES_FILE, SERVICE_NAME
+from constants import CHAT_NOTIFY_FILE, CUT_ACTIONS_FILE, LAPTIMES_FILE, SERVICE_NAME
 from helpers.config_io import read_server_cfg
-from helpers.discord import _load_discord_config, discord_notify
+from helpers.discord import (
+    _load_discord_config, discord_embed, discord_notify,
+    embed_join, embed_leave, embed_pb, embed_record,
+)
 
 # ── Shared state ──────────────────────────────────────────────────────────────
-_lt_lock    = threading.Lock()
-_lt_session: dict = {}   # driver_name → {guid, car, skin, track}
+_lt_lock        = threading.Lock()
+_lt_session: dict   = {}   # driver_name → {guid, car, skin, track}
+_personal_bests: dict = {}   # (driver, track) → best laptime_ms
+_track_records: dict  = {}   # track → {laptime_ms, driver, car}
+_cut_sessions: dict   = {}   # driver_name → total cuts in current session
 
 # ── Regex patterns ────────────────────────────────────────────────────────────
 _RE_CONNECT    = re.compile(
@@ -66,6 +72,53 @@ def split_car_skin(car_skin: str) -> tuple[str, str]:
     if "-" in car_skin:
         return car_skin.split("-", 1)
     return car_skin, ""
+
+
+def _fmt_ms(ms: int) -> str:
+    """Formatiert Millisekunden als m:ss.mmm."""
+    ms = int(ms)
+    minutes = ms // 60000
+    seconds = (ms % 60000) // 1000
+    millis  = ms % 1000
+    return f"{minutes}:{seconds:02d}.{millis:03d}"
+
+
+def _fmt_delta_ms(ms: int) -> str:
+    """Formatiert Delta-Millisekunden als +/-s.mmm."""
+    sign   = "+" if ms >= 0 else "-"
+    total  = abs(ms)
+    secs   = total // 1000
+    millis = total % 1000
+    return f"{sign}{secs}.{millis:03d}s"
+
+
+def _load_chat_notify_config() -> dict:
+    """Laedt die Chat-Notification-Konfiguration."""
+    if CHAT_NOTIFY_FILE.exists():
+        try:
+            return json.loads(CHAT_NOTIFY_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def save_chat_notify_config(cfg: dict):
+    """Speichert die Chat-Notification-Konfiguration."""
+    CHAT_NOTIFY_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _load_cut_actions_config() -> dict:
+    if CUT_ACTIONS_FILE.exists():
+        try:
+            return json.loads(CUT_ACTIONS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def save_cut_actions_config(cfg: dict):
+    CUT_ACTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CUT_ACTIONS_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 # ── Journal-Parsing ───────────────────────────────────────────────────────────
@@ -144,6 +197,26 @@ def _preload_session_from_http():
         pass
 
 
+def _preload_personal_bests():
+    """Fuellt _personal_bests und _track_records aus gespeicherten Lap-Eintraegen beim Start."""
+    global _personal_bests, _track_records
+    entries = load_laptimes()
+    bests: dict   = {}
+    records: dict = {}
+    for e in entries:
+        lt    = e.get("laptime", 0)
+        if not lt or lt <= 0:
+            continue
+        pb_key = (e.get("driver", ""), e.get("track", ""))
+        if pb_key not in bests or lt < bests[pb_key]:
+            bests[pb_key] = lt
+        track = e.get("track", "")
+        if track and (track not in records or lt < records[track]["laptime_ms"]):
+            records[track] = {"laptime_ms": lt, "driver": e.get("driver", ""), "car": e.get("car", "")}
+    _personal_bests = bests
+    _track_records  = records
+
+
 def _preload_journal_history():
     """Importiert fehlende Runden aus den letzten 5000 Journal-Zeilen beim Start."""
     _preload_session_from_http()
@@ -161,6 +234,7 @@ def _preload_journal_history():
         new_entries = _parse_journal_block(lines, known)
         if new_entries:
             _save_laptimes(existing + new_entries)
+    _preload_personal_bests()
 
 
 # ── Live monitor ──────────────────────────────────────────────────────────────
@@ -189,9 +263,17 @@ def _laptime_monitor():
                     "guid": guid, "car": car, "skin": skin,
                     "track": f"{track}-{layout}" if layout else track,
                 }
+                _cut_sessions[name] = 0  # Session-Cuts zurücksetzen
             dcfg = _load_discord_config()
             if dcfg.get("url") and dcfg.get("notify_join"):
-                discord_notify(dcfg["url"], f"🟢 **{name}** connected ({car})")
+                discord_embed(dcfg["url"], embed_join(name, car))
+            try:
+                from helpers.telegram import _load_telegram_config, telegram_notify as _tg_notify
+                tcfg = _load_telegram_config()
+                if tcfg.get("token") and tcfg.get("chat_id") and tcfg.get("notify_join"):
+                    _tg_notify(tcfg["token"], tcfg["chat_id"], f"🟢 *{name}* connected \\({car}\\)")
+            except Exception:
+                pass
             continue
 
         m = _RE_DISCONNECT.search(line)
@@ -199,9 +281,17 @@ def _laptime_monitor():
             left = m.group(1)
             with _lt_lock:
                 _lt_session.pop(left, None)
+                _cut_sessions.pop(left, None)
             dcfg = _load_discord_config()
             if dcfg.get("url") and dcfg.get("notify_join"):
-                discord_notify(dcfg["url"], f"🔴 **{left}** disconnected")
+                discord_embed(dcfg["url"], embed_leave(left))
+            try:
+                from helpers.telegram import _load_telegram_config, telegram_notify as _tg_notify
+                tcfg = _load_telegram_config()
+                if tcfg.get("token") and tcfg.get("chat_id") and tcfg.get("notify_join"):
+                    _tg_notify(tcfg["token"], tcfg["chat_id"], f"🔴 *{left}* disconnected")
+            except Exception:
+                pass
             continue
 
         m = _RE_LAP.search(line)
@@ -211,17 +301,101 @@ def _laptime_monitor():
                 info = dict(_lt_session.get(name, {}))
             cfg   = read_server_cfg()
             track = cfg.get("TRACK", ""); layout = cfg.get("TRACK_LAYOUT", "")
+            track_str = f"{track}-{layout}" if layout else track
             entry = {
                 "ts":      time.strftime("%Y-%m-%d ") + ts_str,
                 "driver":  name,
                 "guid":    info.get("guid", ""),
                 "car":     info.get("car", ""),
                 "skin":    info.get("skin", ""),
-                "track":   f"{track}-{layout}" if layout else track,
+                "track":   track_str,
                 "laptime": laptime_ms,
                 "cuts":    cuts,
             }
             append_laptime(entry)
+
+            # ── Discord: PB & Streckenrekord ─────────────────────────────────
+            if cuts == 0 and laptime_ms > 10000:
+                dcfg = _load_discord_config()
+                url  = dcfg.get("url", "")
+                pb_key  = (name, track_str)
+                prev_pb = _personal_bests.get(pb_key)
+                is_pb   = prev_pb is None or laptime_ms < prev_pb
+
+                # Absoluter Streckenrekord
+                prev_rec = _track_records.get(track_str)
+                is_record = prev_rec is None or laptime_ms < prev_rec["laptime_ms"]
+
+                if is_record:
+                    _track_records[track_str] = {
+                        "laptime_ms": laptime_ms,
+                        "driver":     name,
+                        "car":        info.get("car", ""),
+                    }
+                    if url and dcfg.get("notify_record", True):
+                        prev_ms = prev_rec["laptime_ms"] if prev_rec else None
+                        discord_embed(url, embed_record(
+                            name, info.get("car", ""), track_str, laptime_ms, prev_ms))
+
+                elif is_pb:
+                    if url and dcfg.get("notify_pb", False):
+                        discord_embed(url, embed_pb(
+                            name, info.get("car", ""), track_str, laptime_ms, prev_pb))
+
+                if is_pb:
+                    _personal_bests[pb_key] = laptime_ms
+
+            # ── Cut-Actions ──────────────────────────────────────────────────
+            if cuts > 0:
+                cut_cfg = _load_cut_actions_config()
+                if cut_cfg.get("enabled"):
+                    with _lt_lock:
+                        _cut_sessions[name] = _cut_sessions.get(name, 0) + cuts
+                    session_cuts = _cut_sessions.get(name, 0)
+
+                    warn_per_lap = int(cut_cfg.get("warn_cuts_per_lap", 2) or 0)
+                    kick_total   = int(cut_cfg.get("kick_session_cuts", 0) or 0)
+
+                    if warn_per_lap > 0 and cuts >= warn_per_lap:
+                        from helpers.system import rcon_send as _rcon
+                        tmpl = cut_cfg.get("warn_message", "⚠️ {driver}: {cuts} Cuts!")
+                        _rcon(f"/say {tmpl.replace('{driver}', name).replace('{cuts}', str(cuts))}")
+
+                    if kick_total > 0 and session_cuts >= kick_total:
+                        from helpers.system import rcon_send as _rcon, server_json as _sjson
+                        js = _sjson()
+                        car_id = None
+                        if js:
+                            for _i, _c in enumerate(js.get("Cars", [])):
+                                if _c.get("DriverName") == name and _c.get("IsConnected"):
+                                    car_id = _i
+                                    break
+                        if car_id is not None:
+                            tmpl = cut_cfg.get("kick_message", "Kick: Zu viele Cuts ({cuts} gesamt)")
+                            _rcon(f"/say {tmpl.replace('{cuts}', str(session_cuts))}")
+                            _rcon(f"/kick_id {car_id}")
+
+            # ── Chat-Notification ────────────────────────────────────────────
+            chat_cfg = _load_chat_notify_config()
+            if chat_cfg.get("enabled"):
+                from helpers.system import rcon_send
+                pb_key   = (name, track_str)
+                prev_best = _personal_bests.get(pb_key)
+                is_pb    = (prev_best is None or laptime_ms < prev_best)
+
+                prefix = chat_cfg.get("prefix", ">> ")
+                msg    = f"{prefix}{name} | {_fmt_ms(laptime_ms)}"
+
+                if is_pb:
+                    msg += " | NEW PB!"
+                    _personal_bests[pb_key] = laptime_ms
+                elif prev_best is not None and chat_cfg.get("show_delta", True):
+                    msg += f" | {_fmt_delta_ms(laptime_ms - prev_best)}"
+
+                if cuts > 0 and chat_cfg.get("show_cuts", True):
+                    msg += f" | {cuts} cut{'s' if cuts != 1 else ''}"
+
+                rcon_send(f"/say {msg}")
 
 
 def start_lap_tracker():

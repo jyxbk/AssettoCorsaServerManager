@@ -28,6 +28,7 @@
     </div>
     <div style="font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="h-track">{{ cfg.get('TRACK','—') }}</div>
     <div style="font-size:10px;color:var(--muted);margin-top:2px" id="h-uptime"></div>
+    <div id="h-weather" style="font-size:10px;color:var(--muted);margin-top:3px;display:none"></div>
   </div>
 
   <!-- Server Control -->
@@ -46,6 +47,8 @@
   <div class="nav-item" data-nav="drivers" onclick="navTo('drivers')"><span class="nav-icon">🚗</span> <span data-i18n="nav_drivers">Live Fahrer</span></div>
   <div class="nav-item" data-nav="laps" onclick="navTo('laps')"><span class="nav-icon">⏱️</span> <span data-i18n="nav_laps">Live Zeiten</span></div>
   <div class="nav-item" data-nav="records" onclick="navTo('records')"><span class="nav-icon">🏆</span> <span data-i18n="nav_records">Rekorde</span></div>
+  <div class="nav-item" data-nav="results" onclick="navTo('results')"><span class="nav-icon">🏁</span> <span data-i18n="nav_results">Ergebnisse</span></div>
+  <div class="nav-item" data-nav="championship" onclick="navTo('championship')"><span class="nav-icon">🏆</span> <span data-i18n="nav_championship">Meisterschaft</span></div>
   <div class="nav-item" data-nav="events" onclick="navTo('events')"><span class="nav-icon">📋</span> Events</div>
 
   <div class="nav-sep" data-i18n="nav_sec_settings">Einstellungen</div>
@@ -61,6 +64,7 @@
   <div class="nav-item" data-nav="content" onclick="navTo('content')"><span class="nav-icon">📦</span> <span data-i18n="nav_content">Inhalte</span></div>
   <div class="nav-item" data-nav="entry-list" onclick="navTo('entry-list')"><span class="nav-icon">📋</span> Entry List</div>
   <div class="nav-item" data-nav="players" onclick="navTo('players')"><span class="nav-icon">👥</span> <span data-i18n="nav_players">Spieler</span></div>
+  <div class="nav-item" data-nav="schedule" onclick="navTo('schedule')"><span class="nav-icon">📅</span> <span data-i18n="nav_schedule">Zeitplanung</span></div>
   <div class="nav-item" data-nav="advanced" onclick="navTo('advanced')"><span class="nav-icon">🔧</span> <span data-i18n="nav_advanced">Erweitert</span></div>
   <div class="nav-item" data-nav="logs" onclick="navTo('logs')"><span class="nav-icon">📜</span> <span data-i18n="nav_logs">Logs</span></div>
   <div class="nav-item" data-nav="help" onclick="navTo('help')"><span class="nav-icon">❓</span> <span data-i18n="nav_help">Hilfe</span></div>
@@ -155,8 +159,6 @@
         </tr>
         <tr><td data-i18n="lbl_invite">Invite Link</td><td><a id="inv-link" href="#" style="color:var(--red);font-size:12px" target="_blank" data-i18n="lbl_open_cm">In CM öffnen ↗</a></td></tr>
         <tr><td data-i18n="lbl_lobby">Lobby</td><td>{{ 'Öffentlich' if cfg.get('REGISTER_TO_LOBBY')=='1' else 'Privat (LAN)' }}</td></tr>
-        <tr><td>ABS</td><td>{{ 'Erlaubt' if cfg.get('ABS_ALLOWED','1')=='1' else 'Deaktiviert' }}</td></tr>
-        <tr><td data-i18n="lbl_damage">Schadensrate</td><td>{{ cfg.get('DAMAGE_MULTIPLIER','100') }}%</td></tr>
       </table>
     </div>
   </div>
@@ -233,10 +235,10 @@
       <table>
         <thead><tr>
           <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th data-i18n="col_vehicle">Fahrzeug</th>
-          <th data-i18n="col_laps">Runden</th><th data-i18n="col_best">Beste</th><th data-i18n="col_last">Letzte</th><th data-i18n="col_current">Aktuell</th>
+          <th data-i18n="col_laps">Runden</th><th data-i18n="col_best">Beste</th><th data-i18n="col_last">Letzte</th><th data-i18n="col_current">Aktuell</th><th data-i18n="col_gap">Gap</th>
         </tr></thead>
         <tbody id="lap-tbody">
-          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:48px" data-i18n="no_data">Keine Daten – warte auf Fahrer</td></tr>
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:48px" data-i18n="no_data">Keine Daten – warte auf Fahrer</td></tr>
         </tbody>
       </table>
     </div>
@@ -333,6 +335,83 @@
         </tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ══ RESULTS ════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-results">
+  <div class="g2 gap">
+
+    <!-- LEFT: Session-Liste -->
+    <div>
+      <div class="card">
+        <div class="sh">
+          <div class="sh-t">🏁 <span data-i18n="nav_results">Ergebnisse</span></div>
+          <button class="btn btn-gray btn-sm" onclick="loadResults()">↻</button>
+        </div>
+        <div id="results-list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:32px" data-i18n="res_loading">Lade Ergebnisse…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Detail-Ansicht -->
+    <div>
+      <div class="card" id="result-detail-card" style="min-height:200px">
+        <div id="result-detail" style="color:var(--muted);font-size:13px;text-align:center;padding:48px" data-i18n="res_select">← Session auswählen</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ CHAMPIONSHIP ═══════════════════════════════════════════════════════ -->
+<div class="panel" id="p-championship">
+  <div class="g2 gap">
+
+    <!-- LEFT: Liste + Erstellen -->
+    <div>
+      <div class="card gap" style="margin-bottom:14px">
+        <div class="card-ttl" data-i18n="champ_create">Neue Meisterschaft</div>
+        <div class="fg">
+          <label class="lbl" data-i18n="lbl_name">Name</label>
+          <input class="inp" id="champ-name" placeholder="AC Liga 2025">
+        </div>
+        <div class="fg">
+          <label class="lbl" data-i18n="champ_points_preset">Punkte-Preset</label>
+          <select class="sel" id="champ-preset" onchange="applyPointsPreset()">
+            <option value="F1">F1 (25-18-15-12-10…)</option>
+            <option value="Liga">Liga (20-15-12-10-8…)</option>
+            <option value="Simple">Simple (10-8-6-5-4…)</option>
+            <option value="IMSA">IMSA (35-32-30…)</option>
+            <option value="custom" data-i18n="champ_custom">Benutzerdefiniert</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="lbl" data-i18n="champ_points_schema">Punkte-Schema (kommagetrennt)</label>
+          <input class="inp" id="champ-points" value="25,18,15,12,10,8,6,4,2,1">
+        </div>
+        <button class="btn btn-red" onclick="createChampionship()" data-i18n="champ_create_btn">🏆 Erstellen</button>
+      </div>
+
+      <div class="card">
+        <div class="sh">
+          <div class="sh-t" data-i18n="nav_championship">Meisterschaften</div>
+          <button class="btn btn-gray btn-sm" onclick="loadChampionships()">↻</button>
+        </div>
+        <div id="champ-list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:32px" data-i18n="champ_empty">Keine Meisterschaften</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Standings + Runden-Verwaltung -->
+    <div>
+      <div class="card" id="champ-detail-card" style="min-height:200px">
+        <div id="champ-detail" style="color:var(--muted);font-size:13px;text-align:center;padding:48px" data-i18n="champ_select">← Meisterschaft auswählen</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -445,13 +524,13 @@
       <div class="card-ttl">&#x1F324;&#xFE0F; <span data-i18n="nav_weather">Wetter</span></div>
       <table class="itbl" style="margin-top:10px">
         <tr><td colspan="2" style="color:var(--muted);font-size:10px;text-transform:uppercase;padding-bottom:4px" data-i18n="card_weather_1">Slot 1</td></tr>
-        <tr><td>Preset</td><td>{{ w0.get('GRAPHICS','3_clear') }}</td></tr>
-        <tr><td>Ambient</td><td>{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}&#176;C</td></tr>
-        <tr><td data-i18n="lbl_road_temp">Stra&#223;e</td><td>{{ w0.get('BASE_TEMPERATURE_ROAD','8') }}&#176;C</td></tr>
+        <tr><td>Preset</td><td id="ov-w0-graphics">{{ w0.get('GRAPHICS','3_clear') }}</td></tr>
+        <tr><td>Ambient</td><td id="ov-w0-ambient">{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}&#176;C</td></tr>
+        <tr><td data-i18n="lbl_road_temp">Stra&#223;e</td><td id="ov-w0-road">{{ (w0.get('BASE_TEMPERATURE_AMBIENT','18')|int + w0.get('BASE_TEMPERATURE_ROAD','8')|int) }}&#176;C</td></tr>
         <tr><td colspan="2" style="color:var(--muted);font-size:10px;text-transform:uppercase;padding:8px 0 4px" data-i18n="card_weather_2">Slot 2</td></tr>
-        <tr><td>Preset</td><td>{{ w1.get('GRAPHICS','7_heavy_clouds') }}</td></tr>
-        <tr><td>Ambient</td><td>{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}&#176;C</td></tr>
-        <tr><td data-i18n="lbl_road_temp">Stra&#223;e</td><td>{{ w1.get('BASE_TEMPERATURE_ROAD','-1') }}&#176;C</td></tr>
+        <tr><td>Preset</td><td id="ov-w1-graphics">{{ w1.get('GRAPHICS','7_heavy_clouds') }}</td></tr>
+        <tr><td>Ambient</td><td id="ov-w1-ambient">{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}&#176;C</td></tr>
+        <tr><td data-i18n="lbl_road_temp">Stra&#223;e</td><td id="ov-w1-road">{{ (w1.get('BASE_TEMPERATURE_AMBIENT','15')|int + w1.get('BASE_TEMPERATURE_ROAD','14')|int) }}&#176;C</td></tr>
       </table>
     </div>
     <div class="card">
@@ -627,12 +706,12 @@
     <div class="card">
       <div class="card-ttl" data-i18n="card_weather_1">Wetter Slot 1</div>
       <div class="fg"><label class="lbl" data-i18n="lbl_graphics_preset">Grafik-Preset</label><select class="sel" id="w0-graphics">{% for wp in weather_presets %}<option value="{{ wp }}" {% if w0.get('GRAPHICS','3_clear')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}</select></div>
-      <div class="g2"><div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w0-amb" value="{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}"></div><div><label class="lbl" data-i18n="lbl_road_temp">Straße °C</label><input class="inp" type="number" id="w0-road" value="{{ w0.get('BASE_TEMPERATURE_ROAD','8') }}"></div></div>
+      <div class="g2"><div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w0-amb" value="{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}"></div><div><label class="lbl" data-i18n="lbl_road_temp">Straße °C</label><input class="inp" type="number" id="w0-road" value="{{ (w0.get('BASE_TEMPERATURE_AMBIENT','18')|int + w0.get('BASE_TEMPERATURE_ROAD','8')|int) }}"></div></div>
     </div>
     <div class="card">
       <div class="card-ttl" data-i18n="card_weather_2">Wetter Slot 2</div>
       <div class="fg"><label class="lbl" data-i18n="lbl_graphics_preset">Grafik-Preset</label><select class="sel" id="w1-graphics">{% for wp in weather_presets %}<option value="{{ wp }}" {% if w1.get('GRAPHICS','7_heavy_clouds')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}</select></div>
-      <div class="g2"><div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w1-amb" value="{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}"></div><div><label class="lbl" data-i18n="lbl_road_temp">Straße °C</label><input class="inp" type="number" id="w1-road" value="{{ w1.get('BASE_TEMPERATURE_ROAD','-1') }}"></div></div>
+      <div class="g2"><div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w1-amb" value="{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}"></div><div><label class="lbl" data-i18n="lbl_road_temp">Straße °C</label><input class="inp" type="number" id="w1-road" value="{{ (w1.get('BASE_TEMPERATURE_AMBIENT','15')|int + w1.get('BASE_TEMPERATURE_ROAD','14')|int) }}"></div></div>
     </div>
     <div class="card">
       <div class="card-ttl" data-i18n="card_dynamic_track">Dynamische Strecke</div>
@@ -882,6 +961,56 @@
   </div>
 </div>
 
+<!-- ══ SCHEDULE ════════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-schedule">
+  <div class="g2 gap">
+
+    <!-- LEFT: Event erstellen -->
+    <div>
+      <div class="card gap">
+        <div class="card-ttl" data-i18n="sched_create">Neues geplantes Event</div>
+        <div class="fg">
+          <label class="lbl" data-i18n="lbl_name">Name</label>
+          <input class="inp" id="sched-name" placeholder="Samstag Liga Rennen">
+        </div>
+        <div class="fg">
+          <label class="lbl" data-i18n="sched_datetime">Datum &amp; Uhrzeit</label>
+          <input class="inp" type="datetime-local" id="sched-dt">
+        </div>
+        <div class="fg">
+          <label class="lbl" data-i18n="sched_action">Aktion</label>
+          <select class="sel" id="sched-action" onchange="toggleSchedPreset()">
+            <option value="apply_preset" data-i18n="sched_action_preset">Preset laden &amp; Server neu starten</option>
+            <option value="restart" data-i18n="sched_action_restart">Nur Server neu starten</option>
+          </select>
+        </div>
+        <div class="fg" id="sched-preset-row">
+          <label class="lbl" data-i18n="sched_preset">Preset</label>
+          <select class="sel" id="sched-preset">
+            <option value="" data-i18n="loading">Lade…</option>
+          </select>
+        </div>
+        <button class="btn btn-red" onclick="createScheduledEvent()" data-i18n="sched_create_btn">📅 Planen</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: Event-Liste -->
+    <div>
+      <div class="card">
+        <div class="sh">
+          <div class="sh-t" data-i18n="sched_events">Geplante Events</div>
+          <button class="btn btn-gray btn-sm" onclick="loadScheduledEvents()">↻</button>
+        </div>
+        <div id="sched-list" style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:32px" data-i18n="sched_empty">Keine geplanten Events</div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)" data-i18n="sched_hint">Der Scheduler prüft alle 30 Sekunden ob ein Event fällig ist.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- ══ ADVANCED ═══════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-advanced">
   <div class="g2 gap">
@@ -906,6 +1035,102 @@
         </div>
         <button class="btn btn-red" onclick="saveExtraCfg()" data-i18n="btn_save_extra_cfg">💾 extra_cfg.yml speichern + Server neu starten</button>
       </div>
+
+      <!-- AssettoServer Plugins -->
+      <div class="card gap adv-section">
+        <div class="card-ttl">AssettoServer Plugins</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Status wird aus extra_cfg.yml gelesen:</div>
+
+        <!-- Statische Plugins (immer aktiv) -->
+        <div style="display:flex;flex-direction:column;gap:8px" id="plugin-status-list">
+          <div class="tog-row" style="background:var(--bg);border-radius:6px;padding:8px 10px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="dot-automod" style="font-size:13px">○</span>
+              <div><div style="font-size:12px;font-weight:600">AutoModerationPlugin</div><div style="font-size:10px;color:var(--muted)">Falsches Fahren, No-Parking, Contact-Limits</div></div>
+            </div>
+          </div>
+          <div class="tog-row" style="background:var(--bg);border-radius:6px;padding:8px 10px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="dot-voting" style="font-size:13px">○</span>
+              <div><div style="font-size:12px;font-weight:600">VotingWeatherPlugin</div><div style="font-size:10px;color:var(--muted)">Spieler stimmen per /weather im Chat ab</div></div>
+            </div>
+          </div>
+
+          <!-- LiveWeatherPlugin mit Toggle -->
+          <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+            <div class="tog-row" style="margin-bottom:0">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="dot-lwp" style="font-size:13px">○</span>
+                <div>
+                  <div style="font-size:12px;font-weight:600">LiveWeatherPlugin</div>
+                  <div style="font-size:10px;color:var(--muted)" id="lwp-status-txt">Deaktiviert — braucht OpenWeatherMap API-Key</div>
+                </div>
+              </div>
+              <label class="tog"><input type="checkbox" id="lwp-toggle" onchange="toggleLiveWeather(this.checked)"><span class="tog-sl"></span></label>
+            </div>
+            <div id="lwp-config" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+              <div class="fg" style="margin-bottom:6px">
+                <label class="lbl">OpenWeatherMap API-Key <a href="https://openweathermap.org/api" target="_blank" style="font-size:10px;color:var(--muted);font-weight:400">kostenlos →</a></label>
+                <input class="inp" id="lwp-apikey" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="font-family:monospace;font-size:12px">
+              </div>
+              <div class="num-row" style="margin-bottom:8px">
+                <span class="tog-lbl" style="font-size:11px">Aktualisierung (Minuten)</span>
+                <input class="inp num-inp" type="number" id="lwp-interval" min="5" max="60" value="10">
+              </div>
+              <button class="btn btn-red btn-sm" onclick="saveLiveWeather()">💾 Speichern &amp; Server neu starten</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-gray btn-sm" onclick="loadPluginStatus()" style="margin-top:8px;align-self:flex-start">↻ Status laden</button>
+      </div>
+
+      <!-- Chat Lap-Notifications -->
+      <div class="card gap adv-section">
+        <div class="card-ttl" data-i18n="card_chat_notify">Chat Lap-Notifications</div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-i18n="lbl_cn_enabled">Aktiviert</div><div class="tog-desc" data-i18n="lbl_cn_enabled_desc">Rundenzeiten im Spiel-Chat ansagen (via RCON)</div></div>
+          <label class="tog"><input type="checkbox" id="cn-enabled"><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-i18n="lbl_cn_delta">Delta anzeigen</div><div class="tog-desc" data-i18n="lbl_cn_delta_desc">+/- zur eigenen Bestzeit</div></div>
+          <label class="tog"><input type="checkbox" id="cn-delta" checked><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-i18n="lbl_cn_cuts">Cuts anzeigen</div></div>
+          <label class="tog"><input type="checkbox" id="cn-cuts" checked><span class="tog-sl"></span></label>
+        </div>
+        <div class="fg">
+          <label class="lbl" data-i18n="lbl_cn_prefix">Prefix</label>
+          <input class="inp" id="cn-prefix" placeholder=">> " maxlength="10">
+        </div>
+        <button class="btn btn-red" onclick="saveChatNotify()" data-i18n="btn_save">💾 Speichern</button>
+      </div>
+
+      <!-- Cut-Aktionen -->
+      <div class="card gap adv-section">
+        <div class="card-ttl" data-i18n="card_cut_actions">Cut-Aktionen</div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-i18n="lbl_ca_enabled">Aktiviert</div><div class="tog-desc" data-i18n="lbl_ca_enabled_desc">Automatische Warn- und Kick-Aktionen bei Cuts</div></div>
+          <label class="tog"><input type="checkbox" id="ca-enabled"><span class="tog-sl"></span></label>
+        </div>
+        <div class="num-row">
+          <span class="tog-lbl" data-i18n="lbl_ca_warn_per_lap">Warn ab X Cuts / Runde <span style="color:var(--muted)">(0 = aus)</span></span>
+          <input class="inp num-inp" type="number" id="ca-warn-per-lap" min="0" max="20" value="2">
+        </div>
+        <div class="fg">
+          <label class="lbl" data-i18n="lbl_ca_warn_msg">Warn-Nachricht <span style="color:var(--muted);font-weight:400">({driver}, {cuts})</span></label>
+          <input class="inp" id="ca-warn-msg" placeholder="⚠️ {driver}: {cuts} Cuts!">
+        </div>
+        <div class="num-row">
+          <span class="tog-lbl" data-i18n="lbl_ca_kick_session">Kick ab X Cuts / Session <span style="color:var(--muted)">(0 = aus)</span></span>
+          <input class="inp num-inp" type="number" id="ca-kick-session" min="0" max="200" value="0">
+        </div>
+        <div class="fg">
+          <label class="lbl" data-i18n="lbl_ca_kick_msg">Kick-Nachricht <span style="color:var(--muted);font-weight:400">({cuts})</span></label>
+          <input class="inp" id="ca-kick-msg" placeholder="Kick: Zu viele Cuts ({cuts} gesamt)">
+        </div>
+        <button class="btn btn-red" onclick="saveCutActions()" data-i18n="btn_save">💾 Speichern</button>
+      </div>
     </div>
 
     <!-- RIGHT -->
@@ -917,15 +1142,51 @@
           <label class="lbl">Webhook URL</label>
           <input class="inp" id="discord-url" placeholder="https://discord.com/api/webhooks/...">
         </div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin:10px 0 6px">Benachrichtigungen</div>
         <div class="tog-row">
-          <div><div class="tog-lbl" data-i18n="discord_notify_join">Fahrer Join/Leave melden</div><div class="tog-desc" data-i18n="discord_notify_join_desc">Nachricht wenn Fahrer verbindet oder trennt</div></div>
+          <div><div class="tog-lbl">🔴 Server Crash / Neustart</div><div class="tog-desc">Rich Embed wenn Server offline geht oder wieder online kommt</div></div>
+          <label class="tog"><input type="checkbox" id="discord-notify-crash" checked><span class="tog-sl"></span></label>
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-i18n="discord_notify_join">🟢 Fahrer Join / Leave</div><div class="tog-desc" data-i18n="discord_notify_join_desc">Embed wenn Fahrer verbindet oder trennt</div></div>
           <label class="tog"><input type="checkbox" id="discord-notify-join"><span class="tog-sl"></span></label>
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn btn-red" onclick="saveDiscord()" data-i18n="btn_save">💾 Speichern</button>
-          <button class="btn btn-gray" onclick="testDiscord()">🔔 <span data-i18n="discord_test">Test senden</span></button>
+        <div class="tog-row">
+          <div><div class="tog-lbl">🏆 Neuer Streckenrekord</div><div class="tog-desc">Embed wenn ein absoluter Streckenrekord gebrochen wird</div></div>
+          <label class="tog"><input type="checkbox" id="discord-notify-record" checked><span class="tog-sl"></span></label>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px" data-i18n="discord_hint">Benachrichtigung wenn Server abstürzt oder wieder online geht.</div>
+        <div class="tog-row">
+          <div><div class="tog-lbl">⏱️ Neuer Personal Best</div><div class="tog-desc">Embed wenn ein Fahrer seine eigene Bestzeit unterbietet (kann viele Nachrichten erzeugen)</div></div>
+          <label class="tog"><input type="checkbox" id="discord-notify-pb"><span class="tog-sl"></span></label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-red" onclick="saveDiscord()" data-i18n="btn_save">💾 Speichern</button>
+          <button class="btn btn-gray" onclick="testDiscord()">🔔 Test Embed</button>
+          <button class="btn btn-blue" onclick="sendDiscordSummary()">📊 Summary senden</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Alle Nachrichten als Rich Embed mit Farben, Feldern und Timestamp.</div>
+      </div>
+
+      <!-- Telegram Bot -->
+      <div class="card gap adv-section">
+        <div class="card-ttl">Telegram Bot</div>
+        <div class="fg">
+          <label class="lbl" data-i18n="lbl_tg_token">Bot Token</label>
+          <input class="inp" id="tg-token" type="password" placeholder="123456789:ABCdef...">
+        </div>
+        <div class="fg">
+          <label class="lbl" data-i18n="lbl_tg_chatid">Chat ID</label>
+          <input class="inp" id="tg-chatid" placeholder="-100123456789">
+        </div>
+        <div class="tog-row">
+          <div><div class="tog-lbl" data-i18n="discord_notify_join">Fahrer Join/Leave melden</div><div class="tog-desc" data-i18n="discord_notify_join_desc">Nachricht wenn Fahrer verbindet oder trennt</div></div>
+          <label class="tog"><input type="checkbox" id="tg-notify-join"><span class="tog-sl"></span></label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-red" onclick="saveTelegram()" data-i18n="btn_save">💾 Speichern</button>
+          <button class="btn btn-gray" onclick="testTelegram()">🔔 <span data-i18n="discord_test">Test senden</span></button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px" data-i18n="tg_hint">Crash/Restart-Benachrichtigungen via Telegram.<br>Token: @BotFather → /newbot &nbsp;·&nbsp; Chat ID: @userinfobot</div>
       </div>
 
       <!-- Track Params Editor -->
@@ -1100,5 +1361,16 @@ window.AC = {
 };
 </script>
 <script src="/static/js/dashboard.js"></script>
+
+<!-- ══ RESTART SUMMARY MODAL ══════════════════════════════════════ -->
+<div class="modal" id="restart-modal">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-ttl">↻ Server-Neustart</div>
+    <div style="color:var(--muted);font-size:12px;margin-bottom:10px" data-i18n="rm_subtitle">Folgende Einstellungen wurden gespeichert:</div>
+    <ul id="restart-modal-items" style="list-style:none;padding:0;margin:0 0 14px;display:flex;flex-direction:column;gap:5px"></ul>
+    <div id="restart-modal-status" style="font-size:13px;font-weight:600;margin-bottom:14px;padding:8px 10px;border-radius:6px;background:var(--bg)"></div>
+    <button id="restart-modal-close" class="btn btn-gray" onclick="_closeRestartModal()" disabled>Schließen</button>
+  </div>
+</div>
 </body>
 </html>

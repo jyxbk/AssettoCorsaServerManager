@@ -130,6 +130,42 @@ def api_live():
                     drv["mapY"] = spline_pts[idx][1]
                 drivers.append(drv)
 
+    # ── Race positions + gaps ─────────────────────────────────────────────
+    if drivers:
+        for drv in drivers:
+            drv["total_progress"] = drv["lapCount"] + drv["spLine"]
+        drivers.sort(key=lambda d: d["total_progress"], reverse=True)
+        leader = drivers[0]
+        ref_ms = leader.get("bestLap") or leader.get("lastLap") or 0
+        for i, drv in enumerate(drivers):
+            drv["race_pos"] = i + 1
+            gap_prog = leader["total_progress"] - drv["total_progress"]
+            if i == 0:
+                drv["gap_ms"]  = 0
+                drv["gap_str"] = "—"
+            elif ref_ms > 0:
+                gap_ms = int(gap_prog * ref_ms)
+                drv["gap_ms"]  = gap_ms
+                drv["gap_str"] = f"+{gap_ms/1000:.3f}s"
+            else:
+                drv["gap_ms"]  = -1
+                drv["gap_str"] = f"+{gap_prog:.3f} Rd"
+
+    # ── Live weather: bevorzuge AS-API-Daten, Fallback auf static config ────
+    full = read_full_server_cfg()
+    w0   = full.get("WEATHER_0", {})
+    static_amb  = int(w0.get("BASE_TEMPERATURE_AMBIENT", 18))
+    static_road = static_amb + int(w0.get("BASE_TEMPERATURE_ROAD", 8))
+    weather_live = {
+        "graphics":   info.get("currentWeatherId") or w0.get("GRAPHICS", "3_clear") if info else w0.get("GRAPHICS", "3_clear"),
+        "ambient":    round(float(info["ambientTemperature"]), 1) if info and info.get("ambientTemperature") else static_amb,
+        "road":       round(float(info["roadTemperature"]),   1) if info and info.get("roadTemperature")   else static_road,
+        "wind_speed": info.get("windSpeed", 0)    if info else 0,
+        "wind_dir":   info.get("windDirection", 0) if info else 0,
+        "grip":       info.get("grip", 100)        if info else 100,
+        "live":       bool(info and info.get("ambientTemperature")),
+    }
+
     return jsonify({
         "status":        status,
         "system":        get_system_stats(),
@@ -137,6 +173,7 @@ def api_live():
         "drivers":       drivers,
         "spline_points": spline_pts,
         "chat":          get_recent_chat(30) if active else [],
+        "weather":       weather_live,
     })
 
 

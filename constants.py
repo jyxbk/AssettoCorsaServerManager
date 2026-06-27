@@ -28,9 +28,14 @@ CARS_DIR      = CONTENT_DIR / "cars"
 TRACKS_DIR    = CONTENT_DIR / "tracks"
 CFG_DIR       = SERVER_DIR / "cfg"
 
-PRESETS_FILE   = Path("/opt/acweb/presets.json")
-DISCORD_FILE   = Path("/opt/acweb/discord.json")
-LAPTIMES_FILE  = Path("/opt/acweb/laptimes.json")
+PRESETS_FILE      = Path("/opt/acweb/presets.json")
+DISCORD_FILE      = Path("/opt/acweb/discord.json")
+LAPTIMES_FILE     = Path("/opt/acweb/laptimes.json")
+CHAT_NOTIFY_FILE  = Path("/opt/acweb/chat_notify.json")
+TELEGRAM_FILE        = Path("/opt/acweb/telegram.json")
+CUT_ACTIONS_FILE     = Path("/opt/acweb/cut_actions.json")
+CHAMPIONSHIPS_FILE   = Path("/opt/acweb/championships.json")
+SCHEDULED_EVENTS_FILE = Path("/opt/acweb/scheduled_events.json")
 WELCOME_FILE   = CFG_DIR / "welcome.txt"
 EXTRA_CFG_FILE = CFG_DIR / "extra_cfg.yml"
 LOGO_FILE      = SERVER_DIR / "logo.png"
@@ -39,7 +44,8 @@ ADMINS_FILE    = SERVER_DIR / "admins.txt"
 BLACKLIST_FILE = SERVER_DIR / "blacklist.txt"
 TRACK_PARAMS_FILE = SERVER_DIR / "data" / "data_track_params.ini"
 
-UPLOAD_TMP = Path("/tmp/acweb_uploads")
+RESULTS_DIR = SERVER_DIR / "results"
+UPLOAD_TMP  = Path("/tmp/acweb_uploads")
 UPLOAD_TMP.mkdir(exist_ok=True)
 
 # ── Weather presets ───────────────────────────────────────────────────────────

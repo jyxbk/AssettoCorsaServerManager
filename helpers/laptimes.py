@@ -315,32 +315,32 @@ def _laptime_monitor():
             append_laptime(entry)
 
             # ── Discord: PB & Streckenrekord ─────────────────────────────────
-            if cuts == 0 and laptime_ms > 10000:
-                dcfg = _load_discord_config()
-                url  = dcfg.get("url", "")
+            if laptime_ms > 10000:
+                dcfg    = _load_discord_config()
+                url     = dcfg.get("url", "")
                 pb_key  = (name, track_str)
                 prev_pb = _personal_bests.get(pb_key)
                 is_pb   = prev_pb is None or laptime_ms < prev_pb
+                car_    = info.get("car", "")
 
-                # Absoluter Streckenrekord
-                prev_rec = _track_records.get(track_str)
-                is_record = prev_rec is None or laptime_ms < prev_rec["laptime_ms"]
+                sent_record = False
+                # Streckenrekord: NUR saubere Runden (cuts == 0)
+                if cuts == 0:
+                    prev_rec  = _track_records.get(track_str)
+                    is_record = prev_rec is None or laptime_ms < prev_rec["laptime_ms"]
+                    if is_record:
+                        _track_records[track_str] = {
+                            "laptime_ms": laptime_ms, "driver": name, "car": car_,
+                        }
+                        if url and dcfg.get("notify_record", True):
+                            prev_ms = prev_rec["laptime_ms"] if prev_rec else None
+                            discord_embed(url, embed_record(name, car_, track_str, laptime_ms, prev_ms))
+                            sent_record = True
 
-                if is_record:
-                    _track_records[track_str] = {
-                        "laptime_ms": laptime_ms,
-                        "driver":     name,
-                        "car":        info.get("car", ""),
-                    }
-                    if url and dcfg.get("notify_record", True):
-                        prev_ms = prev_rec["laptime_ms"] if prev_rec else None
-                        discord_embed(url, embed_record(
-                            name, info.get("car", ""), track_str, laptime_ms, prev_ms))
-
-                elif is_pb:
+                # PB: auch mit Cuts melden (aber nicht doppelt wenn Rekord gesendet)
+                if is_pb and not sent_record:
                     if url and dcfg.get("notify_pb", False):
-                        discord_embed(url, embed_pb(
-                            name, info.get("car", ""), track_str, laptime_ms, prev_pb))
+                        discord_embed(url, embed_pb(name, car_, track_str, laptime_ms, prev_pb, cuts))
 
                 if is_pb:
                     _personal_bests[pb_key] = laptime_ms
@@ -351,7 +351,7 @@ def _laptime_monitor():
                 if cut_cfg.get("enabled"):
                     with _lt_lock:
                         _cut_sessions[name] = _cut_sessions.get(name, 0) + cuts
-                    session_cuts = _cut_sessions.get(name, 0)
+                        session_cuts = _cut_sessions[name]
 
                     warn_per_lap = int(cut_cfg.get("warn_cuts_per_lap", 2) or 0)
                     kick_total   = int(cut_cfg.get("kick_session_cuts", 0) or 0)

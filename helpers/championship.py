@@ -55,7 +55,7 @@ def compute_standings(championship: dict) -> dict:
         for entry in result.get("result", []):
             name = entry.get("DriverName", "?")
             pos  = entry.get("position", 99)
-            pts  = points_scale[pos - 1] if pos <= len(points_scale) else 0
+            pts  = points_scale[pos - 1] if 0 < pos <= len(points_scale) else 0
             if name not in drivers:
                 drivers[name] = {
                     "driver": name, "points": 0, "wins": 0,

@@ -114,7 +114,7 @@ def save_session():
 
     # PRACTICE immer aktualisieren
     practice_upd: dict = {}
-    if "practice_time" in data: practice_upd["TIME"]    = data["practice_time"]
+    if "practice_time" in data: practice_upd["TIME"]    = int(data.get("practice_time", 0) or 0)
     if "practice_open" in data: practice_upd["IS_OPEN"] = 1 if data["practice_open"] else 0
     if practice_upd:
         ok_p, msg_p = update_section_cfg({"PRACTICE": practice_upd})
@@ -280,8 +280,8 @@ def set_live_weather_plugin():
                 content += f"\nLiveWeatherPlugin:\n  OpenWeatherMapApiKey: \"{api_key}\"\n  RefreshIntervalMinutes: {interval}\n"
             else:
                 content = _re.sub(
-                    r'(OpenWeatherMapApiKey:\s*)"?[^"\n]+"?',
-                    f'\\1"{api_key}"',
+                    r'(OpenWeatherMapApiKey:\s*)"?[^"\n]*"?',
+                    lambda m: f'{m.group(1)}"{api_key}"',
                     content,
                 )
                 content = _re.sub(

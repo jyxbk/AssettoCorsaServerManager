@@ -307,6 +307,7 @@ def write_extra_cfg(updates: dict) -> tuple[bool, str]:
             if key not in found_keys:
                 new_lines.append(f"{key}: {_yaml_format_value(val)}")
 
+        EXTRA_CFG_FILE.parent.mkdir(parents=True, exist_ok=True)
         EXTRA_CFG_FILE.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
     return True, "Saved"
 

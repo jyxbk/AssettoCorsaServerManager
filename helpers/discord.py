@@ -39,7 +39,7 @@ def _load_discord_url() -> str:
 def _send(webhook_url: str, payload: dict, raise_on_error: bool = False):
     """Sendet beliebiges payload an einen Discord-Webhook."""
     try:
-        data = json.dumps(payload).encode("utf-8")
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req  = urllib.request.Request(
             webhook_url, data=data,
             headers={
@@ -109,21 +109,24 @@ def embed_leave(driver: str) -> dict:
 
 
 def embed_pb(driver: str, car: str, track: str, laptime_ms: int,
-             prev_ms: int | None) -> dict:
+             prev_ms: int | None, cuts: int = 0) -> dict:
     fields = [
         {"name": "🏎️ Fahrer",  "value": f"**{driver}**",      "inline": True},
         {"name": "⏱️ Neue PB", "value": _fmt_ms(laptime_ms),  "inline": True},
     ]
     if prev_ms:
         delta = laptime_ms - prev_ms
-        sign  = "+" if delta >= 0 else ""
         s, ms = abs(delta) // 1000, abs(delta) % 1000
+        sign  = "-" if delta < 0 else "+"
         fields.append({"name": "📉 Verbesserung", "value": f"{sign}{s}.{ms:03d}s", "inline": True})
     fields += [
         {"name": "🚗 Auto",    "value": car or "—",   "inline": True},
         {"name": "🗺️ Strecke", "value": track or "—", "inline": True},
     ]
-    return _build("⏱️ Neuer Personal Best!", _COL_BLUE, fields=fields)
+    if cuts > 0:
+        fields.append({"name": "⚠️ Cuts", "value": str(cuts), "inline": True})
+    title = "⏱️ Neuer Personal Best!" if cuts == 0 else f"⏱️ Neuer Personal Best! ({cuts} Cut{'s' if cuts != 1 else ''})"
+    return _build(title, _COL_BLUE, fields=fields)
 
 
 def embed_record(driver: str, car: str, track: str, laptime_ms: int,

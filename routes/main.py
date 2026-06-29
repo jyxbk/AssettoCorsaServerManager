@@ -154,8 +154,8 @@ def api_live():
     # ── Live weather: bevorzuge AS-API-Daten, Fallback auf static config ────
     full = read_full_server_cfg()
     w0   = full.get("WEATHER_0", {})
-    static_amb  = int(w0.get("BASE_TEMPERATURE_AMBIENT", 18))
-    static_road = static_amb + int(w0.get("BASE_TEMPERATURE_ROAD", 8))
+    static_amb  = int(w0.get("BASE_TEMPERATURE_AMBIENT") or 18)
+    static_road = static_amb + int(w0.get("BASE_TEMPERATURE_ROAD") or 8)
     weather_live = {
         "graphics":   info.get("currentWeatherId") or w0.get("GRAPHICS", "3_clear") if info else w0.get("GRAPHICS", "3_clear"),
         "ambient":    round(float(info["ambientTemperature"]), 1) if info and info.get("ambientTemperature") else static_amb,

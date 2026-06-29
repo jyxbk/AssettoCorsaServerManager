@@ -89,6 +89,8 @@ def kick_player():
     car_id = (request.json or {}).get("car_id")
     if car_id is None:
         return jsonify({"ok": False, "msg": "car_id missing"}), 400
+    if not isinstance(car_id, int) or car_id < 0:
+        return jsonify({"ok": False, "msg": "car_id must be a non-negative integer"}), 400
     ok, msg = rcon_send(f"/kick_id {car_id}")
     return jsonify({"ok": ok, "msg": msg})
 
@@ -105,6 +107,6 @@ def ban_player():
     if not guid:
         return jsonify({"ok": False, "msg": "GUID missing"}), 400
     add_guid(BLACKLIST_FILE, guid)
-    if car_id is not None:
+    if car_id is not None and isinstance(car_id, int) and car_id >= 0:
         rcon_send(f"/kick_id {car_id}")
     return jsonify({"ok": True, "msg": f"{name} banned"})

@@ -73,7 +73,7 @@ def _udp_listener():
                 cid = data[1]
                 lap_ms = struct.unpack_from("<I", data, 2)[0]
                 with _udp_lock:
-                    entry = _car_data.get(cid, {})
+                    entry = dict(_car_data.get(cid, {}))
                 if 10000 < lap_ms < 7200000:
                     entry["lastLapMs"] = lap_ms
                     if lap_ms < entry.get("bestLapMs", 99999999):
@@ -130,12 +130,23 @@ def maybe_restart(data: dict):
 # ── AS HTTP API ───────────────────────────────────────────────────────────────
 
 def server_info():
+    """Liest /api/details vom AssettoServer. Gibt None zurück bei 5xx oder Timeout.
+    AS wirft NullReferenceException auf /api/details kurz nach dem Start —
+    das 500er wird hier still ignoriert statt im AS-Log zu landen (wir pollen sowieso alle 3s).
+    """
     import urllib.request
+    import urllib.error
+    import json
     for url in ["http://127.0.0.1:8081/api/details", "http://127.0.0.1:8081/INFO"]:
         try:
             with urllib.request.urlopen(url, timeout=2) as r:
-                import json
-                return json.loads(r.read())
+                if r.status == 200:
+                    return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                # 4xx weiterwerfen (unerwarteter Fehler)
+                pass
+            # 5xx (Server noch nicht bereit) → still ignorieren
         except Exception:
             pass
     return None

@@ -224,7 +224,10 @@ def api_events():
     import subprocess, time as _time
     from helpers.laptimes import _RE_CONNECT, _RE_DISCONNECT, _RE_ISO_DATE, _RE_LOG_TIME, split_car_skin
     from constants import SERVICE_NAME
-    limit = min(int(request.args.get("limit", 500)), 2000)
+    try:
+        limit = min(int(request.args.get("limit", 500)), 2000)
+    except (ValueError, TypeError):
+        limit = 500
     try:
         r = subprocess.run(
             ["journalctl", "-u", SERVICE_NAME, f"-n{limit * 4}", "--no-pager", "-o", "short-iso"],
@@ -289,10 +292,10 @@ def config_restore():
     f = request.files.get("backup")
     if not f:
         return jsonify({"ok": False, "msg": "No file"}), 400
-    if not f.filename.lower().endswith(".zip"):
+    if not (f.filename or "").lower().endswith(".zip"):
         return jsonify({"ok": False, "msg": "ZIP only"}), 400
     try:
-        tmp = UPLOAD_TMP / secure_filename(f.filename)
+        tmp = UPLOAD_TMP / secure_filename(f.filename or "backup.zip")
         f.save(str(tmp))
         allowed = {"server_cfg.ini", "entry_list.ini", "extra_cfg.yml", "welcome.txt"}
         with zipfile.ZipFile(tmp) as zf:
@@ -388,9 +391,9 @@ def upload_zip():
     if "file" not in request.files:
         return jsonify({"ok": False, "msg": "No file"}), 400
     f = request.files["file"]
-    if not f.filename.lower().endswith(".zip"):
+    if not (f.filename or "").lower().endswith(".zip"):
         return jsonify({"ok": False, "msg": "ZIP only"}), 400
-    filename  = secure_filename(f.filename)
+    filename  = secure_filename(f.filename or "upload.zip")
     save_path = UPLOAD_TMP / filename
     f.save(save_path)
     items, err = analyze_zip(save_path)

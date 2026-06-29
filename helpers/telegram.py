@@ -31,7 +31,7 @@ def telegram_notify(token: str, chat_id: str, message: str, raise_on_error: bool
             "chat_id":    chat_id,
             "text":       message,
             "parse_mode": "MarkdownV2",
-        }).encode("utf-8")
+        }, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(
             url, data=payload,
             headers={
@@ -59,7 +59,7 @@ def _telegram_monitor():
             prev    = _tg_last_status[0]
             if prev is not None and prev == "active" and current in ("failed", "inactive"):
                 telegram_notify(token, chat_id,
-                    f"🔴 Server `{SERVICE_NAME}` ist *offline* (Status: {current})")
+                    f"🔴 Server `{SERVICE_NAME}` ist *offline* \\(Status: {current}\\)")
             elif prev is not None and prev in ("failed", "inactive") and current == "active":
                 telegram_notify(token, chat_id,
                     f"🟢 Server `{SERVICE_NAME}` ist wieder *online*")

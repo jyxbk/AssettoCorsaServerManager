@@ -1,0 +1,27 @@
+name: Bot 1 - Release Code Analysis (lokales Ollama)
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  analyze:
+    runs-on: [self-hosted, Windows]
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Run AI code analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          OLLAMA_HOST: http://localhost:11434
+          OLLAMA_MODEL: qwen2.5-coder:7b
+        run: python "C:\Users\j100\Documents\Gitbot\scripts\analyze_release.py"

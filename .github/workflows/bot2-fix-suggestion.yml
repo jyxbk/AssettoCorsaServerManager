@@ -1,0 +1,23 @@
+name: Bot 2 - AI Fix Suggestion (lokales Ollama)
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  suggest-fix:
+    if: contains(github.event.issue.labels.*.name, 'ai-detected')
+    runs-on: [self-hosted, Windows]
+    steps:
+      - name: Generate fix suggestion
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          OLLAMA_HOST: http://localhost:11434
+          OLLAMA_MODEL: qwen2.5-coder:7b
+        run: python "C:\Users\j100\Documents\Gitbot\scripts\suggest_fix.py"

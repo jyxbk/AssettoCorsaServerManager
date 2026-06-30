@@ -19,7 +19,9 @@ jobs:
 
       - name: Run AI code analysis
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Must be a real PAT, not secrets.GITHUB_TOKEN: issues created with the
+          # auto-generated token do not trigger other workflows (e.g. Bot 2).
+          GITHUB_TOKEN: ${{ secrets.BOT_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           OLLAMA_HOST: http://localhost:11434

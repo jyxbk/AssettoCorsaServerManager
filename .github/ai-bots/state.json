@@ -50,19 +50,19 @@
       "last_analyzed_at": "2026-07-01T12:23:54Z"
     },
     "helpers/content.py": {
-      "sha": "46e5cb40d4ecbeda60540eb9e29e01def9b4f960",
-      "last_analyzed_release": "v1.0.1",
-      "last_analyzed_at": "2026-07-01T12:23:54Z"
+      "sha": "8ed20796b766e0b63ddaecb83ada374cb739db0b",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
     },
     "helpers/discord.py": {
-      "sha": "1834812656aaf38b6d548130f1899086a3308abd",
-      "last_analyzed_release": "v1.0.1",
-      "last_analyzed_at": "2026-07-01T12:23:54Z"
+      "sha": "b8b99cf73725e64d0c03320b414412a03c5affbf",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
     },
     "helpers/laptimes.py": {
-      "sha": "fbd22a9b1acbe6868dd5474f216b8d41b1b185d2",
-      "last_analyzed_release": "v1.0.1",
-      "last_analyzed_at": "2026-07-01T12:23:54Z"
+      "sha": "a2fd17c8ca1b1f84cb73a6e1aa75cd258782967c",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
     },
     "helpers/results.py": {
       "sha": "c0a2ba86a984479b6c8f24f1e38b2aac04f97618",
@@ -70,9 +70,9 @@
       "last_analyzed_at": "2026-07-01T12:23:54Z"
     },
     "helpers/scheduler.py": {
-      "sha": "da9eee1ebd1a5802c679b97cafbe3faaa06b29d8",
-      "last_analyzed_release": "v1.0.1",
-      "last_analyzed_at": "2026-07-01T12:23:54Z"
+      "sha": "9e832332dafaab91cb375c91620292ccc38d3e0b",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
     },
     "helpers/system.py": {
       "sha": "8871cde708d22bb8563c8b258ddc5ff32b7966ee",
@@ -80,9 +80,9 @@
       "last_analyzed_at": "2026-07-01T12:23:54Z"
     },
     "helpers/telegram.py": {
-      "sha": "c3a0f93db33ec46b98f14dab1b4447736dd973b8",
-      "last_analyzed_release": "v1.0.1",
-      "last_analyzed_at": "2026-07-01T12:23:54Z"
+      "sha": "db45e2568f496eb7f3724edb872d0e303db5fa96",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
     },
     "index.html": {
       "sha": "7bfbae66234ba13d784752eefae33cc573493f1d",
@@ -110,9 +110,9 @@
       "last_analyzed_at": "2026-07-01T12:23:54Z"
     },
     "routes/main.py": {
-      "sha": "6439b8f5e75ca42cb2bd69fa10c092b393b2adf4",
-      "last_analyzed_release": "v1.0.1",
-      "last_analyzed_at": "2026-07-01T12:23:54Z"
+      "sha": "b0da3c3a8e7e4e295c77f99a0a730d9c4c9786e2",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
     },
     "routes/players.py": {
       "sha": "03519333513a72aba9eb9dae463883f939441e0e",
@@ -163,6 +163,151 @@
       "sha": "8cca4635b3d3e410cdd1ffe6ea6b026b8b9528d1",
       "last_analyzed_release": "v1.0.1",
       "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/app.py": {
+      "sha": "8ea9b0703122585c2e76fe52b3c6858a077e7e3b",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/constants.py": {
+      "sha": "cbe95132c34edf5396f1f79dab0ec5b7fa218c49",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/auth.py": {
+      "sha": "aac46e59c6865657ee036f7bf73a026b3c837df2",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/bots.py": {
+      "sha": "b9e31a525a51154dac2b92bca9bfd26786ef8fa8",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/championship.py": {
+      "sha": "b69d78df2e49d3c146fdad9fe0e24e85327fe136",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/config_io.py": {
+      "sha": "661634483e30a95663d14c3c4235cc53c6425e75",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/content.py": {
+      "sha": "3905bbfdae276d4d8594956ad0380e4b613ee4e1",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/discord.py": {
+      "sha": "e2c1e74cd5264bed3e17ebe287ff088632e215b8",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/laptimes.py": {
+      "sha": "fbd22a9b1acbe6868dd5474f216b8d41b1b185d2",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/results.py": {
+      "sha": "47177080f0682cc82c6f805f144b24faa49a15a0",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/scheduler.py": {
+      "sha": "e49fa1728192938f5f68a5eb22e2d45db3e4e765",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/system.py": {
+      "sha": "8871cde708d22bb8563c8b258ddc5ff32b7966ee",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/helpers/telegram.py": {
+      "sha": "6a4cd6bd243926ab586a8ec87b52be4e53d7b476",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/index.html": {
+      "sha": "7bfbae66234ba13d784752eefae33cc573493f1d",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/championship.py": {
+      "sha": "1e63e8a953f81d264e4bbcde36d8b4f01fbf3c40",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/content_mgmt.py": {
+      "sha": "ef40cf597d6e7f6e721e1562be6aaccddee30d88",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/entry_list.py": {
+      "sha": "5bf216dfec0b7f7ed76927a52ae2999383cb7f28",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/laptimes_routes.py": {
+      "sha": "44afb31faac917b101c2fa5deeae036f3bb12ff5",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/main.py": {
+      "sha": "67d62b9627d5e64e5908c44495c13be213301ed3",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/players.py": {
+      "sha": "ccc0064d559bcab58e69c2c6f2e068d108aaaa63",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/results.py": {
+      "sha": "4434e0d5e219c0dd20116eb0e242f614a4802153",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/scheduler.py": {
+      "sha": "1e3a35c888144751e63a2e339f284f2641b49428",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/routes/settings.py": {
+      "sha": "d5520976278606c8fc581ca9a115a915acac590f",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/static/css/dashboard.css": {
+      "sha": "65168f19c449cc4980c4eedb0f9f6fd36fa39d1b",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/static/js/dashboard.js": {
+      "sha": "73837eca994be53d2b69d943bf81a219a3d04d68",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/static/js/lang.js": {
+      "sha": "38407efb3b782debcaa9cd97b61fe38b24437b4b",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/templates/index.html": {
+      "sha": "d977bc4be0aaef9a5c8303190d20acd1ee80ff65",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/templates/leaderboard.html": {
+      "sha": "eefc44e8d7b32eba1da0df947766f3d39d4be3f4",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
+    },
+    ".claude/worktrees/zesty-prancing-beaver/templates/login.html": {
+      "sha": "8cca4635b3d3e410cdd1ffe6ea6b026b8b9528d1",
+      "last_analyzed_release": "manual-2026-07-01",
+      "last_analyzed_at": "2026-07-01T16:25:28Z"
     }
   },
   "findings": [
@@ -781,6 +926,300 @@
       "reason": "Behoben in https://github.com/jyxbk/AssettoCorsaServerManager/commit/2203de0: `get_car_rich`s `except OSError: pass` beim Zählen der Skins loggt jetzt via `logger.exception()`.",
       "resolved_commit": "2203de0",
       "resolved_at": "2026-07-01T13:18:03Z"
+    },
+    {
+      "id": "f-d217990c50",
+      "file": ".claude/worktrees/zesty-prancing-beaver/app.py",
+      "line": null,
+      "title": "Potential Security Issue with Debug Mode Enabled",
+      "category": null,
+      "status": "open",
+      "issue_number": 77,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-0fcae41305",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/auth.py",
+      "line": null,
+      "title": "CSRF Token überprüfung bei GET-Requests",
+      "category": null,
+      "status": "open",
+      "issue_number": 78,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-4cb833bf7c",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/auth.py",
+      "line": null,
+      "title": "Fehlende Rate-Limiting für API-Endpunkte",
+      "category": null,
+      "status": "open",
+      "issue_number": 79,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-5783f0d6d1",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/auth.py",
+      "line": null,
+      "title": "Fehlendes Login-Status-Check bei API-Endpunkten",
+      "category": null,
+      "status": "open",
+      "issue_number": 80,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-00f2afcaea",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/auth.py",
+      "line": null,
+      "title": "Fehlende Rate-Limiting für Login-Versuche",
+      "category": null,
+      "status": "open",
+      "issue_number": 81,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-98817a9b74",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/bots.py",
+      "line": 14,
+      "title": "Fehlende Fallback-Handling für GitHub-API-Antworten",
+      "category": null,
+      "status": "open",
+      "issue_number": 82,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-028fbadd28",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/championship.py",
+      "line": 26,
+      "title": "Potential Security Vulnerability: JSON File Handling",
+      "category": null,
+      "status": "open",
+      "issue_number": 83,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-b1f2b927fc",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/content.py",
+      "line": 37,
+      "title": "Unnötige Fehlerbehandlung in get_car_ui",
+      "category": null,
+      "status": "open",
+      "issue_number": 84,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-5830eeb501",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/content.py",
+      "line": 150,
+      "title": "Unnötige Fehlerbehandlung in get_track_rich",
+      "category": null,
+      "status": "open",
+      "issue_number": 85,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-aea53971c8",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/content.py",
+      "line": 275,
+      "title": "Unnötige Fehlerbehandlung in read_entry_list",
+      "category": null,
+      "status": "open",
+      "issue_number": 86,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-a1b247bcfa",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/content.py",
+      "line": 347,
+      "title": "Unnötige Fehlerbehandlung in analyze_zip",
+      "category": null,
+      "status": "open",
+      "issue_number": 87,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-933ea3a693",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/results.py",
+      "line": 31,
+      "title": "Potential KeyError",
+      "category": null,
+      "status": "open",
+      "issue_number": 88,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-ba13384818",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/results.py",
+      "line": 48,
+      "title": "Potential Division by Zero",
+      "category": null,
+      "status": "open",
+      "issue_number": 89,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-5abefbee88",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/scheduler.py",
+      "line": null,
+      "title": "Potential for race condition in event processing",
+      "category": null,
+      "status": "open",
+      "issue_number": 90,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-0dd3851e8a",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/scheduler.py",
+      "line": 42,
+      "title": "Exception handling in `_execute_event` is too broad",
+      "category": null,
+      "status": "open",
+      "issue_number": 91,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-3824c3b19d",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/scheduler.py",
+      "line": 64,
+      "title": "Exception handling in `_scheduler_loop` is too broad",
+      "category": null,
+      "status": "open",
+      "issue_number": 92,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-a6767a014f",
+      "file": ".claude/worktrees/zesty-prancing-beaver/helpers/system.py",
+      "line": 120,
+      "title": "Unsicherer Socket-Verbindungsversuch",
+      "category": null,
+      "status": "open",
+      "issue_number": 93,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-22a7a47f11",
+      "file": ".claude/worktrees/zesty-prancing-beaver/routes/laptimes_routes.py",
+      "line": 145,
+      "title": "Potential Cross-Site Scripting (XSS)",
+      "category": null,
+      "status": "open",
+      "issue_number": 94,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-66e3a9f07a",
+      "file": ".claude/worktrees/zesty-prancing-beaver/routes/settings.py",
+      "line": 37,
+      "title": "Potential integer overflow",
+      "category": null,
+      "status": "open",
+      "issue_number": 95,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-d7b545f4db",
+      "file": ".claude/worktrees/zesty-prancing-beaver/routes/settings.py",
+      "line": 57,
+      "title": "Potential integer underflow",
+      "category": null,
+      "status": "open",
+      "issue_number": 96,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-e7e9db0588",
+      "file": ".claude/worktrees/zesty-prancing-beaver/routes/settings.py",
+      "line": 58,
+      "title": "Potential division by zero",
+      "category": null,
+      "status": "open",
+      "issue_number": 97,
+      "first_seen_release": "manual-2026-07-01",
+      "last_seen_release": "manual-2026-07-01",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
     }
   ]
 }

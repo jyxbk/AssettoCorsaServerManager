@@ -975,13 +975,13 @@
       "line": null,
       "title": "Fehlendes Login-Status-Check bei API-Endpunkten",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 80,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: `login_required` prüft `request.path.startswith(\"/api/\")` bereits explizit und gibt 401 zurück, siehe helpers/auth.py Zeile 110.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:34:51Z"
     },
     {
       "id": "f-00f2afcaea",

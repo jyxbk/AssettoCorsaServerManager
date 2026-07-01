@@ -746,13 +746,13 @@
       "line": 301,
       "title": "Potential Exception Handling Inadequate",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 76,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
-      "resolved_commit": null,
-      "resolved_at": null
+      "reason": "Behoben in https://github.com/jyxbk/AssettoCorsaServerManager/commit/2203de0: Der `/logs`-Route-Handler loggt journalctl-Fehler jetzt serverseitig via `logger.exception()`, zusätzlich zur bisherigen Fehlermeldung an den Client.",
+      "resolved_commit": "2203de0",
+      "resolved_at": "2026-07-01T13:20:10Z"
     },
     {
       "id": "f-82b1d2baa9",

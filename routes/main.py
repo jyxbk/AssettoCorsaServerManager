@@ -8,6 +8,7 @@ from constants import (
     ACWEB_PASS, ACWEB_USER, CARS_DIR, TRACKS_DIR, WEATHER_PRESETS,
 )
 from helpers.auth import api_rate_limit, check_rate_limit, csrf_protect, login_required, _get_client_ip
+from helpers.bots import get_bot_status
 from helpers.config_io import read_full_server_cfg, read_server_cfg
 from helpers.content import get_car_skins, get_car_ui, get_track_ui, list_cars, list_tracks
 from helpers.system import (
@@ -183,6 +184,12 @@ def api_live():
 @login_required
 def api_uptime():
     return jsonify({"uptime": get_uptime_string()})
+
+
+@bp.route("/api/bots/status")
+@login_required
+def api_bots_status():
+    return jsonify(get_bot_status())
 
 
 # ── Image endpoints ───────────────────────────────────────────────────────────

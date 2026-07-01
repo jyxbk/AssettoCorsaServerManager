@@ -1084,6 +1084,18 @@
         <button class="btn btn-gray btn-sm" onclick="loadPluginStatus()" style="margin-top:8px;align-self:flex-start">↻ Status laden</button>
       </div>
 
+      <!-- CI Bots (Release-Analyse & Fix-Vorschlag) -->
+      <div class="card gap adv-section">
+        <div class="sh">
+          <div class="card-ttl">CI Bots (lokaler Ollama-Runner)</div>
+          <button class="btn btn-gray btn-sm" onclick="loadBotStatus()">↻</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:2px">Bot 1 analysiert Releases, Bot 2 schlägt Fixes für erkannte Bugs vor — beide laufen über GitHub Actions auf dem lokalen Windows-Runner.</div>
+        <div id="bot-status-list" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:16px">Lade Status…</div>
+        </div>
+      </div>
+
       <!-- Chat Lap-Notifications -->
       <div class="card gap adv-section">
         <div class="card-ttl" data-i18n="card_chat_notify">Chat Lap-Notifications</div>

@@ -1756,6 +1756,42 @@ function loadPluginStatus() {
   }).catch(()=>{});
 }
 
+// ═══ CI BOTS STATUS ═══════════════════════════════════════════════════════
+function loadBotStatus() {
+  const box = document.getElementById('bot-status-list');
+  if (!box) return;
+  apiFetch('/api/bots/status').then(r=>r.json()).then(d=>{
+    if (!d.configured) {
+      box.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Nicht konfiguriert — GITHUB_STATUS_TOKEN fehlt in .env</div>`;
+      return;
+    }
+    const runner = d.runner;
+    const runnerLine = runner
+      ? `${runner.status === 'online' ? '🟢' : '🔴'} Runner <b>${runner.name}</b> — ${runner.status === 'online' ? (runner.busy ? 'online, beschäftigt' : 'online') : 'offline'}`
+      : `⚪ Runner-Status unbekannt (Token ohne Admin-Rechte?)`;
+
+    const fmtRun = (label, run) => {
+      if (!run) return `<div style="font-size:12px;color:var(--muted)">${label}: keine Läufe gefunden</div>`;
+      const icon = run.status !== 'completed' ? '🟡'
+                 : run.conclusion === 'success' ? '🟢'
+                 : run.conclusion === 'failure' ? '🔴' : '⚪';
+      const when = run.created_at ? new Date(run.created_at).toLocaleString('de-DE') : '';
+      const label2 = run.status !== 'completed' ? run.status : (run.conclusion || run.status);
+      return `<div style="font-size:12px"><a href="${run.url}" target="_blank" style="color:inherit;text-decoration:none">${icon} ${label}: ${label2} — ${when}</a></div>`;
+    };
+
+    box.innerHTML = `
+      <div style="background:var(--bg);border-radius:6px;padding:8px 10px;font-size:12px">${runnerLine}</div>
+      <div style="background:var(--bg);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:4px">
+        ${fmtRun('Bot 1 (Release-Analyse)', d.runs.bot1)}
+        ${fmtRun('Bot 2 (Fix-Vorschlag)', d.runs.bot2)}
+      </div>
+    `;
+  }).catch(()=>{
+    box.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Fehler beim Laden</div>`;
+  });
+}
+
 function toggleLiveWeather(checked) {
   const cfg = document.getElementById('lwp-config');
   if (cfg) cfg.style.display = checked ? '' : 'none';
@@ -1872,7 +1908,7 @@ function navTo(id) {
   if (id === 'logs') loadLogs();
   if (id === 'settings-profile') loadServerProfile();
   if (id === 'players') { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
-  if (id === 'advanced') { loadExtraCfg(); loadDiscord(); loadChatNotify(); loadCutActions(); loadTelegram(); loadPluginStatus(); }
+  if (id === 'advanced') { loadExtraCfg(); loadDiscord(); loadChatNotify(); loadCutActions(); loadTelegram(); loadPluginStatus(); loadBotStatus(); }
   if (id === 'content') loadInstalledContent();
   if (id === 'settings-overview') loadOverviewExtraCfg();
   if (id === 'records') { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }

@@ -21,13 +21,6 @@
       "source_issue": 45,
       "added_by": "bot",
       "added_at": "2026-07-01T12:04:01Z"
-    },
-    {
-      "id": "fact-757ba9b62f",
-      "text": "Alle persistierenden Daten werden ausschließlich in JSON-Dateien gespeichert, wodurch SQL-Injection technisch unmöglich ist.",
-      "source_issue": 51,
-      "added_by": "bot",
-      "added_at": "2026-07-01T12:08:23Z"
     }
   ],
   "files": {},

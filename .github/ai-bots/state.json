@@ -767,6 +767,20 @@
       "reason": "Geprüft: `secure_filename_path` normalisiert Backslashes zu Slashes, zerlegt in Pfad-Teile und wendet auf JEDEN Teil `werkzeug.secure_filename()` an, zusätzlich werden `.`/`..`-Segmente explizit herausgefiltert. Path Traversal ist dadurch nicht möglich. Keine Änderung nötig.",
       "resolved_commit": null,
       "resolved_at": "2026-07-01T13:17:54Z"
+    },
+    {
+      "id": "f-7970b1c53c",
+      "file": "helpers/content.py",
+      "line": 78,
+      "title": "Potential Exception Handling in `get_car_rich` and `get_track_rich`",
+      "category": null,
+      "status": "fixed",
+      "issue_number": 27,
+      "first_seen_release": "v1.0.0",
+      "last_seen_release": "v1.0.0",
+      "reason": "Behoben in https://github.com/jyxbk/AssettoCorsaServerManager/commit/2203de0: `get_car_rich`s `except OSError: pass` beim Zählen der Skins loggt jetzt via `logger.exception()`.",
+      "resolved_commit": "2203de0",
+      "resolved_at": "2026-07-01T13:18:03Z"
     }
   ]
 }

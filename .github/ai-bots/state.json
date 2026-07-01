@@ -1171,13 +1171,13 @@
       "line": 145,
       "title": "Potential Cross-Site Scripting (XSS)",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 94,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "_Bot 2 konnte `.claude/worktrees/zesty-prancing-beaver/routes/laptimes_routes.py` nicht vom aktuellen Branch laden (evtl. umbenannt/geloescht)._",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:29:43Z"
     },
     {
       "id": "f-66e3a9f07a",

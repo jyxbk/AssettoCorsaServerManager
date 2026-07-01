@@ -1199,13 +1199,13 @@
       "line": 57,
       "title": "Potential integer underflow",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 96,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: `spc_clamped = max(1, min(5, spc))` in routes/settings.py clampt den Wert bereits auf 1–5, ein Underflow ist nicht möglich.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:30:26Z"
     },
     {
       "id": "f-e7e9db0588",

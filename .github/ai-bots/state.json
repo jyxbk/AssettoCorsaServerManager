@@ -933,13 +933,13 @@
       "line": null,
       "title": "Potential Security Issue with Debug Mode Enabled",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 77,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: `app.py` hat bereits `debug=False` (letzte Zeile: `app.run(host=\"0.0.0.0\", port=8080, debug=False)`).",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:36:07Z"
     },
     {
       "id": "f-0fcae41305",

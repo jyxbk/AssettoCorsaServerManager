@@ -592,13 +592,13 @@
       "line": null,
       "title": "Potential Security Issue in Discord Notification Handling",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 58,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
-      "resolved_commit": null,
-      "resolved_at": null
+      "reason": "Teilweise berechtigt, aber nicht als XSS (Discord-Embeds führen keinen HTML/JS-Code aus, daher ist \"Cross-Site-Scripting\" hier nicht zutreffend). Trotzdem in https://github.com/jyxbk/AssettoCorsaServerManager/commit/2203de0 behoben: Spielername/Auto/Strecke werden jetzt in `embed_join`/`embed_leave`/`embed_pb`/`embed_record` mit `esc()` escaped, damit ein Spielername mit Markdown-Sonderzeichen (z.B. `*`) die Embed-Formatierung nicht mehr durcheinanderbringen kann.",
+      "resolved_commit": "2203de0",
+      "resolved_at": "2026-07-01T13:18:20Z"
     },
     {
       "id": "f-a1e66ff9c0",

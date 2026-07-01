@@ -753,6 +753,20 @@
       "reason": "",
       "resolved_commit": null,
       "resolved_at": null
+    },
+    {
+      "id": "f-82b1d2baa9",
+      "file": "helpers/content.py",
+      "line": 42,
+      "title": "Potential Path Traversal in `secure_filename_path`",
+      "category": null,
+      "status": "false_positive",
+      "issue_number": 26,
+      "first_seen_release": "v1.0.0",
+      "last_seen_release": "v1.0.0",
+      "reason": "Geprüft: `secure_filename_path` normalisiert Backslashes zu Slashes, zerlegt in Pfad-Teile und wendet auf JEDEN Teil `werkzeug.secure_filename()` an, zusätzlich werden `.`/`..`-Segmente explizit herausgefiltert. Path Traversal ist dadurch nicht möglich. Keine Änderung nötig.",
+      "resolved_commit": null,
+      "resolved_at": "2026-07-01T13:17:54Z"
     }
   ]
 }

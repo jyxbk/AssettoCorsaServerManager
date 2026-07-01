@@ -1129,13 +1129,13 @@
       "line": 42,
       "title": "Exception handling in `_execute_event` is too broad",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 91,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Kein Bug: siehe #92 — `except Exception` in `_execute_event` ist aus Robustheitsgründen bewusst breit gehalten und loggt bereits per `logger.exception()`. War schon in einem früheren Ledger-Eintrag (issue #42) so entschieden.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:31:49Z"
     },
     {
       "id": "f-3824c3b19d",

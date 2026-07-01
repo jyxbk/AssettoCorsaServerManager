@@ -1017,13 +1017,13 @@
       "line": 26,
       "title": "Potential Security Vulnerability: JSON File Handling",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 83,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Echter Fund — behoben in 7a7dc2b: load_championships() prüft jetzt, dass die geladenen Daten eine Liste von Objekten sind, statt bei einer korrupten/manuell editierten championships.json mit einem unklaren AttributeError abzustürzen.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:36:15Z"
     },
     {
       "id": "f-b1f2b927fc",

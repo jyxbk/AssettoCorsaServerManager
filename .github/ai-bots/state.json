@@ -989,13 +989,13 @@
       "line": null,
       "title": "Fehlende Rate-Limiting für Login-Versuche",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 81,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Kein Bug, sondern Design: `check_rate_limit` ist bewusst nur für Login-Versuche (Brute-Force-Schutz). Andere schreibende Endpunkte haben ihr eigenes Rate-Limiting über `api_rate_limit` (siehe #79).",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:33:52Z"
     },
     {
       "id": "f-98817a9b74",

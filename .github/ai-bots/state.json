@@ -1059,13 +1059,13 @@
       "line": 275,
       "title": "Unnötige Fehlerbehandlung in read_entry_list",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 86,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Kein Bug: siehe #87 — `read_entry_list` loggt den Fehler bereits vollständig über `logger.exception()`, das ist bewusstes robustes Error-Handling beim Parsen einer potenziell kaputten entry_list.ini.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:33:27Z"
     },
     {
       "id": "f-a1b247bcfa",

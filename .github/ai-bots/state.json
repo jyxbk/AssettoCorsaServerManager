@@ -648,13 +648,13 @@
       "line": null,
       "title": "Potential Security Issue in subprocess Call",
       "category": null,
-      "status": "open",
+      "status": "false_positive",
       "issue_number": 62,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
+      "reason": "Geprüft: `subprocess.run([...], ...)` wird mit einer Argumentliste (kein `shell=True`) aufgerufen, `SERVICE_NAME` ist eine fest kodierte Konstante (`\"acserver\"`), keine Nutzereingabe beteiligt. Command Injection ist hier nicht möglich. Keine Änderung nötig.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T13:19:03Z"
     },
     {
       "id": "f-c6426eadfe",

@@ -1143,13 +1143,13 @@
       "line": 64,
       "title": "Exception handling in `_scheduler_loop` is too broad",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 92,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Kein Bug: Der `except Exception` in `_scheduler_loop` ist bewusst so breit, damit der Scheduler-Hintergrund-Thread nicht durch einen einzelnen Fehler stirbt. Der Fehler wird bereits vollständig über `logger.exception()` geloggt (nicht stillschweigend verschluckt).",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:31:40Z"
     },
     {
       "id": "f-a6767a014f",

@@ -156,7 +156,7 @@
       "last_seen_release": "v1.0.0",
       "reason": "Geprüft: Die aktuelle Regex in `get_result` lautet `r'^[\\\\w\\\\-\\\\.]+\\\\.json$'` und ist korrekt (nur Wortzeichen, Bindestrich, Punkt, Endung .json – keine Pfadtrenner erlaubt). Die im Issue zitierte Regex mit den kryptischen Unicode-Zeichen war offenbar ein Rendering-Artefakt der lokalen Bot-Analyse, nicht der tatsächliche Code. Keine Änderung nötig.",
       "resolved_commit": null,
-      "resolved_at": "2026-07-01T12:04:07Z"
+      "resolved_at": "2026-07-01T12:08:29Z"
     },
     {
       "id": "f-8a7d358f70",

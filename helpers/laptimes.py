@@ -213,8 +213,9 @@ def _preload_personal_bests():
         track = e.get("track", "")
         if track and (track not in records or lt < records[track]["laptime_ms"]):
             records[track] = {"laptime_ms": lt, "driver": e.get("driver", ""), "car": e.get("car", "")}
-    _personal_bests = bests
-    _track_records  = records
+    with _lt_lock:
+        _personal_bests = bests
+        _track_records  = records
 
 
 def _preload_journal_history():
@@ -268,10 +269,11 @@ def _laptime_monitor():
             if dcfg.get("url") and dcfg.get("notify_join"):
                 discord_embed(dcfg["url"], embed_join(name, car))
             try:
-                from helpers.telegram import _load_telegram_config, telegram_notify as _tg_notify
+                from helpers.telegram import _load_telegram_config, escape_markdown_v2, telegram_notify as _tg_notify
                 tcfg = _load_telegram_config()
                 if tcfg.get("token") and tcfg.get("chat_id") and tcfg.get("notify_join"):
-                    _tg_notify(tcfg["token"], tcfg["chat_id"], f"🟢 *{name}* connected \\({car}\\)")
+                    _tg_notify(tcfg["token"], tcfg["chat_id"],
+                        f"🟢 *{escape_markdown_v2(name)}* connected \\({escape_markdown_v2(car)}\\)")
             except Exception:
                 pass
             continue
@@ -286,10 +288,10 @@ def _laptime_monitor():
             if dcfg.get("url") and dcfg.get("notify_join"):
                 discord_embed(dcfg["url"], embed_leave(left))
             try:
-                from helpers.telegram import _load_telegram_config, telegram_notify as _tg_notify
+                from helpers.telegram import _load_telegram_config, escape_markdown_v2, telegram_notify as _tg_notify
                 tcfg = _load_telegram_config()
                 if tcfg.get("token") and tcfg.get("chat_id") and tcfg.get("notify_join"):
-                    _tg_notify(tcfg["token"], tcfg["chat_id"], f"🔴 *{left}* disconnected")
+                    _tg_notify(tcfg["token"], tcfg["chat_id"], f"🔴 *{escape_markdown_v2(left)}* disconnected")
             except Exception:
                 pass
             continue
@@ -319,19 +321,22 @@ def _laptime_monitor():
                 dcfg    = _load_discord_config()
                 url     = dcfg.get("url", "")
                 pb_key  = (name, track_str)
-                prev_pb = _personal_bests.get(pb_key)
+                with _lt_lock:
+                    prev_pb = _personal_bests.get(pb_key)
                 is_pb   = prev_pb is None or laptime_ms < prev_pb
                 car_    = info.get("car", "")
 
                 sent_record = False
                 # Streckenrekord: NUR saubere Runden (cuts == 0)
                 if cuts == 0:
-                    prev_rec  = _track_records.get(track_str)
+                    with _lt_lock:
+                        prev_rec = _track_records.get(track_str)
                     is_record = prev_rec is None or laptime_ms < prev_rec["laptime_ms"]
                     if is_record:
-                        _track_records[track_str] = {
-                            "laptime_ms": laptime_ms, "driver": name, "car": car_,
-                        }
+                        with _lt_lock:
+                            _track_records[track_str] = {
+                                "laptime_ms": laptime_ms, "driver": name, "car": car_,
+                            }
                         if url and dcfg.get("notify_record", True):
                             prev_ms = prev_rec["laptime_ms"] if prev_rec else None
                             discord_embed(url, embed_record(name, car_, track_str, laptime_ms, prev_ms))
@@ -343,7 +348,8 @@ def _laptime_monitor():
                         discord_embed(url, embed_pb(name, car_, track_str, laptime_ms, prev_pb, cuts))
 
                 if is_pb:
-                    _personal_bests[pb_key] = laptime_ms
+                    with _lt_lock:
+                        _personal_bests[pb_key] = laptime_ms
 
             # ── Cut-Actions ──────────────────────────────────────────────────
             if cuts > 0:
@@ -380,7 +386,8 @@ def _laptime_monitor():
             if chat_cfg.get("enabled"):
                 from helpers.system import rcon_send
                 pb_key   = (name, track_str)
-                prev_best = _personal_bests.get(pb_key)
+                with _lt_lock:
+                    prev_best = _personal_bests.get(pb_key)
                 is_pb    = (prev_best is None or laptime_ms < prev_best)
 
                 prefix = chat_cfg.get("prefix", ">> ")
@@ -388,7 +395,8 @@ def _laptime_monitor():
 
                 if is_pb:
                     msg += " | NEW PB!"
-                    _personal_bests[pb_key] = laptime_ms
+                    with _lt_lock:
+                        _personal_bests[pb_key] = laptime_ms
                 elif prev_best is not None and chat_cfg.get("show_delta", True):
                     msg += f" | {_fmt_delta_ms(laptime_ms - prev_best)}"
 

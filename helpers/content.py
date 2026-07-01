@@ -136,7 +136,7 @@ def get_car_rich(car: str, active_cars: list) -> dict:
         try:
             skin_count = sum(1 for s in skins_dir.iterdir() if s.is_dir())
         except OSError:
-            pass
+            logger.exception("get_car_rich: konnte Skins von %s nicht zaehlen", car)
     issues = validate_car(car)
     return {
         "id": car, "name": ui["name"], "brand": ui["brand"],

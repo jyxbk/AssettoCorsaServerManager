@@ -115,20 +115,20 @@ def embed_server_status(online: bool, status_str: str = "") -> dict:
 
 def embed_join(driver: str, car: str) -> dict:
     return _build("🟢 Fahrer verbunden", _COL_GREEN, fields=[
-        {"name": "Fahrer", "value": f"**{driver}**", "inline": True},
-        {"name": "Auto",   "value": car or "—",       "inline": True},
+        {"name": "Fahrer", "value": f"**{esc(driver)}**", "inline": True},
+        {"name": "Auto",   "value": esc(car) or "—",       "inline": True},
     ])
 
 
 def embed_leave(driver: str) -> dict:
     return _build("🔴 Fahrer getrennt", _COL_GRAY,
-                  f"**{driver}** hat den Server verlassen.")
+                  f"**{esc(driver)}** hat den Server verlassen.")
 
 
 def embed_pb(driver: str, car: str, track: str, laptime_ms: int,
              prev_ms: int | None, cuts: int = 0) -> dict:
     fields = [
-        {"name": "🏎️ Fahrer",  "value": f"**{driver}**",      "inline": True},
+        {"name": "🏎️ Fahrer",  "value": f"**{esc(driver)}**", "inline": True},
         {"name": "⏱️ Neue PB", "value": _fmt_ms(laptime_ms),  "inline": True},
     ]
     if prev_ms:
@@ -137,8 +137,8 @@ def embed_pb(driver: str, car: str, track: str, laptime_ms: int,
         sign  = "-" if delta < 0 else "+"
         fields.append({"name": "📉 Verbesserung", "value": f"{sign}{s}.{ms:03d}s", "inline": True})
     fields += [
-        {"name": "🚗 Auto",    "value": car or "—",   "inline": True},
-        {"name": "🗺️ Strecke", "value": track or "—", "inline": True},
+        {"name": "🚗 Auto",    "value": esc(car) or "—",   "inline": True},
+        {"name": "🗺️ Strecke", "value": esc(track) or "—", "inline": True},
     ]
     if cuts > 0:
         fields.append({"name": "⚠️ Cuts", "value": str(cuts), "inline": True})
@@ -149,7 +149,7 @@ def embed_pb(driver: str, car: str, track: str, laptime_ms: int,
 def embed_record(driver: str, car: str, track: str, laptime_ms: int,
                  prev_ms: int | None) -> dict:
     fields = [
-        {"name": "🥇 Fahrer",       "value": f"**{driver}**",     "inline": True},
+        {"name": "🥇 Fahrer",       "value": f"**{esc(driver)}**", "inline": True},
         {"name": "🏆 Neue Bestzeit", "value": _fmt_ms(laptime_ms), "inline": True},
     ]
     if prev_ms:
@@ -157,8 +157,8 @@ def embed_record(driver: str, car: str, track: str, laptime_ms: int,
         s, ms = abs(delta) // 1000, abs(delta) % 1000
         fields.append({"name": "📉 Rekord verbessert um", "value": f"-{s}.{ms:03d}s", "inline": True})
     fields += [
-        {"name": "🚗 Auto",    "value": car or "—",   "inline": True},
-        {"name": "🗺️ Strecke", "value": track or "—", "inline": True},
+        {"name": "🚗 Auto",    "value": esc(car) or "—",   "inline": True},
+        {"name": "🗺️ Strecke", "value": esc(track) or "—", "inline": True},
     ]
     return _build("🏆 Neuer Streckenrekord!", _COL_GOLD, fields=fields)
 

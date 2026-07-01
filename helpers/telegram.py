@@ -17,6 +17,15 @@ _tg_status_lock = threading.Lock()
 _TOKEN_RE   = re.compile(r"^\d+:[\w-]+$")
 _CHAT_ID_RE = re.compile(r"^(-?\d+|@\w+)$")
 
+_MDV2_SPECIAL_RE = re.compile(r"([_*\[\]()~`>#+\-=|{}.!\\])")
+
+
+def escape_markdown_v2(s: str) -> str:
+    """Escaped Telegram-MarkdownV2-Sonderzeichen in nutzergeneriertem Text
+    (z.B. Fahrernamen), damit dieser nicht als Formatierung interpretiert
+    wird oder das umgebende Template-Markdown bricht."""
+    return _MDV2_SPECIAL_RE.sub(r"\\\1", str(s or ""))
+
 
 def _load_telegram_config() -> dict:
     if TELEGRAM_FILE.exists():

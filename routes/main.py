@@ -1,4 +1,5 @@
 """Haupt-Routes: Index, Live-API, Uptime, Bilder, Server-Control, Logs, Login/Logout."""
+import logging
 import math
 
 from flask import Blueprint, jsonify, redirect, render_template, request, send_file, session, url_for
@@ -18,6 +19,7 @@ import subprocess
 from constants import SERVICE_NAME
 
 bp = Blueprint("main", __name__)
+logger = logging.getLogger(__name__)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -322,4 +324,5 @@ def logs():
         )
         return jsonify({"logs": r.stdout})
     except Exception as e:
+        logger.exception("logs: journalctl fehlgeschlagen")
         return jsonify({"logs": f"Error: {e}"})

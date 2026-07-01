@@ -120,11 +120,11 @@ def _execute_event(evt: dict):
     except Exception:
         logger.exception("_execute_event: Discord-Benachrichtigung fehlgeschlagen")
     try:
-        from helpers.telegram import _load_telegram_config, telegram_notify
+        from helpers.telegram import _load_telegram_config, escape_markdown_v2, telegram_notify
         tcfg = _load_telegram_config()
         if tcfg.get("token") and tcfg.get("chat_id"):
             telegram_notify(tcfg["token"], tcfg["chat_id"],
-                f"📅 Scheduled Event: *{evt.get('name','')}* \\({action}\\)")
+                f"📅 Scheduled Event: *{escape_markdown_v2(evt.get('name',''))}* \\({action}\\)")
     except Exception:
         logger.exception("_execute_event: Telegram-Benachrichtigung fehlgeschlagen")
 

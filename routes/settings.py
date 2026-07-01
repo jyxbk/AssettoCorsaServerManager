@@ -218,6 +218,20 @@ def _active_plugins(content: str) -> list:
     return _re.findall(r'[ \t]+-[ \t]+(\S+)', m.group(1))
 
 
+def _remove_plugin(content: str, name: str) -> str:
+    return _re.sub(rf'[ \t]+-[ \t]+{name}\n?', '', content)
+
+
+def _add_plugin(content: str, name: str) -> str:
+    if name in _active_plugins(content):
+        return content
+    return _re.sub(
+        r'(EnablePlugins:\s*\n)((?:[ \t]+-[ \t]+\S+\n?)*)',
+        lambda m: m.group(1) + m.group(2) + f"  - {name}\n",
+        content,
+    )
+
+
 @bp.route("/api/plugin_status", methods=["GET"])
 @login_required
 def get_plugin_status():
@@ -262,13 +276,11 @@ def set_live_weather_plugin():
             if not api_key:
                 return jsonify({"ok": False, "msg": "API-Key fehlt"}), 400
 
-            # In EnablePlugins eintragen (falls noch nicht drin)
-            if "LiveWeatherPlugin" not in _active_plugins(content):
-                content = _re.sub(
-                    r'(EnablePlugins:\s*\n)((?:[ \t]+-[ \t]+\S+\n?)*)',
-                    lambda m: m.group(1) + m.group(2) + "  - LiveWeatherPlugin\n",
-                    content,
-                )
+            # Live- und Voting-Wetter schließen sich gegenseitig aus (sonst
+            # ueberschreiben sich beide Plugins gegenseitig und das Wetter
+            # springt zwischen Live-Daten und Voting-Presets hin und her)
+            content = _remove_plugin(content, "VotingWeatherPlugin")
+            content = _add_plugin(content, "LiveWeatherPlugin")
 
             # Kommentare entfernen und Werte setzen
             content = _re.sub(r'^#LiveWeatherPlugin:', 'LiveWeatherPlugin:', content, flags=_re.MULTILINE)
@@ -290,8 +302,9 @@ def set_live_weather_plugin():
                     content,
                 )
         else:
-            # Aus EnablePlugins entfernen
-            content = _re.sub(r'[ \t]+-[ \t]+LiveWeatherPlugin\n?', '', content)
+            # Zurück auf Fest-/Voting-Wetter wechseln
+            content = _remove_plugin(content, "LiveWeatherPlugin")
+            content = _add_plugin(content, "VotingWeatherPlugin")
 
         _write_yaml(content)
         maybe_restart({"restart": True})

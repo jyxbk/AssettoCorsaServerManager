@@ -1101,13 +1101,13 @@
       "line": 48,
       "title": "Potential Division by Zero",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 89,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: Es gibt gar keine Division an der Stelle — `diff = r[\"TotalTime\"] - leader_total` ist eine Subtraktion, und die ist bereits durch `elif leader_total and r.get(\"TotalTime\"):` gegen 0/falsy abgesichert.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:32:11Z"
     },
     {
       "id": "f-5abefbee88",

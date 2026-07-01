@@ -21,13 +21,6 @@
       "source_issue": 45,
       "added_by": "bot",
       "added_at": "2026-07-01T12:04:01Z"
-    },
-    {
-      "id": "fact-ea1a7fc2a9",
-      "text": "No persistence is done using databases, only JSON files are used for storing data.",
-      "source_issue": 51,
-      "added_by": "bot",
-      "added_at": "2026-07-01T12:10:54Z"
     }
   ],
   "files": {},

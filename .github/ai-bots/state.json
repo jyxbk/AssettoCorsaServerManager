@@ -606,13 +606,13 @@
       "line": null,
       "title": "Potential Security Issue in Telegram Notification Handling",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 59,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
-      "resolved_commit": null,
-      "resolved_at": null
+      "reason": "Ähnlich wie #58: kein XSS (Telegram führt keinen Code aus), aber ein echtes Problem mit MarkdownV2 – ein Spielername mit unescapten Sonderzeichen (z.B. `_`, `*`, `[`) hätte die Telegram-Nachricht kaputt formatiert oder den API-Call fehlschlagen lassen (still verschluckt). Behoben in https://github.com/jyxbk/AssettoCorsaServerManager/commit/2203de0: neue `escape_markdown_v2()`-Funktion, angewendet auf Fahrernamen in den Join/Disconnect-Benachrichtigungen und auf Event-Namen im Scheduler.",
+      "resolved_commit": "2203de0",
+      "resolved_at": "2026-07-01T13:18:29Z"
     },
     {
       "id": "f-60c794c10d",

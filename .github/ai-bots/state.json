@@ -961,13 +961,13 @@
       "line": null,
       "title": "Fehlende Rate-Limiting für API-Endpunkte",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 79,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Kein Bug, sondern bewusstes Design: Lesende Endpunkte sind ohnehin nur mit gültiger Session erreichbar (`login_required`); `api_rate_limit` schützt zusätzlich gezielt die schreibenden/zustandsändernden Endpunkte vor Missbrauch.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:35:00Z"
     },
     {
       "id": "f-5783f0d6d1",

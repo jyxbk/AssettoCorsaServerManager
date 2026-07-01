@@ -1045,13 +1045,13 @@
       "line": 150,
       "title": "Unnötige Fehlerbehandlung in get_track_rich",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 85,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Kein Bug: Der try/except in `get_track_ui` (aufgerufen aus `get_track_rich`) ist ein bewusster Fallback, falls ui_track.json fehlt oder kaputt ist — verhindert einen Absturz beim Anzeigen der Strecken-Liste.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:33:35Z"
     },
     {
       "id": "f-aea53971c8",

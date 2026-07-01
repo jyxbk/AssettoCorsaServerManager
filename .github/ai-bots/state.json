@@ -704,13 +704,13 @@
       "line": 127,
       "title": "Race Condition in UDP Listener",
       "category": null,
-      "status": "open",
+      "status": "false_positive",
       "issue_number": 66,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
+      "reason": "Geprüft: Es gibt im gesamten Code keinen \"Stop\"-Mechanismus für den UDP-Listener – `_udp_listener` läuft in einer Endlosschleife ohne Exit-Bedingung, und `_udp_ready` wird nirgends wieder auf `False` gesetzt. Das im Issue beschriebene Stop-Start-Race kann unter dem aktuellen Code gar nicht auftreten. Keine Änderung nötig.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T13:19:50Z"
     },
     {
       "id": "f-9483fdeaed",

@@ -1213,13 +1213,13 @@
       "line": 58,
       "title": "Potential division by zero",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 97,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: In `regen_entry_list` (helpers/content.py) gibt es keine Divisions-Operation — die Funktion befüllt nur eine Slot-Liste per Range-Loop. Vermutlich vom 7B-Modell halluziniert.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:30:18Z"
     }
   ]
 }

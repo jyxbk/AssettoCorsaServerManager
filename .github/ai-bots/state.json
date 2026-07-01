@@ -1115,13 +1115,13 @@
       "line": null,
       "title": "Potential for race condition in event processing",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 90,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: Es gibt bereits ein `threading.Lock` (`_events_lock`), das sowohl den Scheduler-Loop als auch alle Web-Routen (create/delete/reset_event) beim Lesen/Schreiben von scheduled_events.json schützt.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:32:02Z"
     },
     {
       "id": "f-0dd3851e8a",

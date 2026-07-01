@@ -690,13 +690,13 @@
       "line": 69,
       "title": "Potential for Unnecessary Logging",
       "category": null,
-      "status": "open",
+      "status": "false_positive",
       "issue_number": 65,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
+      "reason": "Geprüft: `get_result` hat bereits eine frühe `if not path.exists(): return None`-Prüfung VOR dem try/except – der Exception-Handler wird nur bei echten, unerwarteten Fehlern erreicht (z.B. Race zwischen exists()-Check und read_text(), oder korrupte Datei), und genau dafür ist `logger.exception()` richtig. Das im Issue beschriebene Verhalten (Loggen bei \"file not found\") tritt so nicht auf. Keine Änderung nötig.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T13:19:38Z"
     },
     {
       "id": "f-e63e8c153b",

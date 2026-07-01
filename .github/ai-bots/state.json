@@ -23,7 +23,148 @@
       "added_at": "2026-07-01T12:04:01Z"
     }
   ],
-  "files": {},
+  "files": {
+    "app.py": {
+      "sha": "8ea9b0703122585c2e76fe52b3c6858a077e7e3b",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "constants.py": {
+      "sha": "f78a49b8eea2f73a14fbffe6198177985057fcf0",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/auth.py": {
+      "sha": "aac46e59c6865657ee036f7bf73a026b3c837df2",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/championship.py": {
+      "sha": "b69d78df2e49d3c146fdad9fe0e24e85327fe136",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/config_io.py": {
+      "sha": "661634483e30a95663d14c3c4235cc53c6425e75",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/content.py": {
+      "sha": "46e5cb40d4ecbeda60540eb9e29e01def9b4f960",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/discord.py": {
+      "sha": "1834812656aaf38b6d548130f1899086a3308abd",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/laptimes.py": {
+      "sha": "fbd22a9b1acbe6868dd5474f216b8d41b1b185d2",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/results.py": {
+      "sha": "c0a2ba86a984479b6c8f24f1e38b2aac04f97618",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/scheduler.py": {
+      "sha": "da9eee1ebd1a5802c679b97cafbe3faaa06b29d8",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/system.py": {
+      "sha": "8871cde708d22bb8563c8b258ddc5ff32b7966ee",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "helpers/telegram.py": {
+      "sha": "c3a0f93db33ec46b98f14dab1b4447736dd973b8",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "index.html": {
+      "sha": "7bfbae66234ba13d784752eefae33cc573493f1d",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/championship.py": {
+      "sha": "1e63e8a953f81d264e4bbcde36d8b4f01fbf3c40",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/content_mgmt.py": {
+      "sha": "592c6b6898daeb4ba8d9e69e11506c37c0463371",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/entry_list.py": {
+      "sha": "5bf216dfec0b7f7ed76927a52ae2999383cb7f28",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/laptimes_routes.py": {
+      "sha": "44afb31faac917b101c2fa5deeae036f3bb12ff5",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/main.py": {
+      "sha": "6439b8f5e75ca42cb2bd69fa10c092b393b2adf4",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/players.py": {
+      "sha": "03519333513a72aba9eb9dae463883f939441e0e",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/results.py": {
+      "sha": "4434e0d5e219c0dd20116eb0e242f614a4802153",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/scheduler.py": {
+      "sha": "74d3cd17f1120802d572ccc148be58bea2216510",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "routes/settings.py": {
+      "sha": "97f64e9126883121140ce8bcc23dd55e83680370",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "static/css/dashboard.css": {
+      "sha": "65168f19c449cc4980c4eedb0f9f6fd36fa39d1b",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "static/js/dashboard.js": {
+      "sha": "d18655f2f557474909c5a50e0cbe8b8280cac64f",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "static/js/lang.js": {
+      "sha": "38407efb3b782debcaa9cd97b61fe38b24437b4b",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "templates/index.html": {
+      "sha": "ada672d34d909acd6ccb94ac6d974d32e3083e8f",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "templates/leaderboard.html": {
+      "sha": "eefc44e8d7b32eba1da0df947766f3d39d4be3f4",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    },
+    "templates/login.html": {
+      "sha": "8cca4635b3d3e410cdd1ffe6ea6b026b8b9528d1",
+      "last_analyzed_release": "v1.0.1",
+      "last_analyzed_at": "2026-07-01T12:23:54Z"
+    }
+  },
   "findings": [
     {
       "id": "f-4dd17edbd0",
@@ -430,6 +571,188 @@
       "reason": "Geprüft: Die `data-i18n`-Attribute sind reguläre Übersetzungs-Keys für das clientseitige i18n-System (`static/js/lang.js`), keine Debug-Ausgaben oder sensiblen Daten. Keine Änderung nötig.",
       "resolved_commit": null,
       "resolved_at": "2026-07-01T12:04:19Z"
+    },
+    {
+      "id": "f-cc4c234079",
+      "file": "helpers/laptimes.py",
+      "line": null,
+      "title": "Potential Race Condition in Lap Time Processing",
+      "category": null,
+      "status": "open",
+      "issue_number": 57,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-c70c12c8a5",
+      "file": "helpers/laptimes.py",
+      "line": null,
+      "title": "Potential Security Issue in Discord Notification Handling",
+      "category": null,
+      "status": "open",
+      "issue_number": 58,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-a1e66ff9c0",
+      "file": "helpers/laptimes.py",
+      "line": null,
+      "title": "Potential Security Issue in Telegram Notification Handling",
+      "category": null,
+      "status": "open",
+      "issue_number": 59,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-60c794c10d",
+      "file": "helpers/laptimes.py",
+      "line": null,
+      "title": "Potential Security Issue in RCON Commands",
+      "category": null,
+      "status": "open",
+      "issue_number": 60,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-9972950f82",
+      "file": "helpers/laptimes.py",
+      "line": null,
+      "title": "Potential Security Issue in HTTP Request Handling",
+      "category": null,
+      "status": "open",
+      "issue_number": 61,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-ed6a175c9e",
+      "file": "helpers/laptimes.py",
+      "line": null,
+      "title": "Potential Security Issue in subprocess Call",
+      "category": null,
+      "status": "open",
+      "issue_number": 62,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-c6426eadfe",
+      "file": "helpers/laptimes.py",
+      "line": null,
+      "title": "Potential Missing CSRF Protection",
+      "category": null,
+      "status": "open",
+      "issue_number": 63,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-4f4e63042d",
+      "file": "helpers/results.py",
+      "line": null,
+      "title": "Potential for Inefficient File Reading",
+      "category": null,
+      "status": "open",
+      "issue_number": 64,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-6ddf195c3f",
+      "file": "helpers/results.py",
+      "line": 69,
+      "title": "Potential for Unnecessary Logging",
+      "category": null,
+      "status": "open",
+      "issue_number": 65,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-e63e8c153b",
+      "file": "helpers/system.py",
+      "line": 127,
+      "title": "Race Condition in UDP Listener",
+      "category": null,
+      "status": "open",
+      "issue_number": 66,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-9483fdeaed",
+      "file": "helpers/system.py",
+      "line": 143,
+      "title": "Potential Memory Leak in UDP Listener",
+      "category": null,
+      "status": "open",
+      "issue_number": 74,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-12109bb327",
+      "file": "routes/main.py",
+      "line": 279,
+      "title": "Potential CSRF Protection Missing",
+      "category": null,
+      "status": "open",
+      "issue_number": 75,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
+    },
+    {
+      "id": "f-7b7f17bd32",
+      "file": "routes/main.py",
+      "line": 301,
+      "title": "Potential Exception Handling Inadequate",
+      "category": null,
+      "status": "open",
+      "issue_number": 76,
+      "first_seen_release": "v1.0.1",
+      "last_seen_release": "v1.0.1",
+      "reason": "",
+      "resolved_commit": null,
+      "resolved_at": null
     }
   ]
 }

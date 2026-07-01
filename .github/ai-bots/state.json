@@ -634,13 +634,13 @@
       "line": null,
       "title": "Potential Security Issue in HTTP Request Handling",
       "category": null,
-      "status": "open",
+      "status": "false_positive",
       "issue_number": 61,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
+      "reason": "Geprüft: Die URL in `_preload_session_from_http` ist ein fest kodierter String (`http://127.0.0.1:8081/api/details`) ohne jegliche Nutzereingabe. Keine Injektionsmöglichkeit. Keine Änderung nötig.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T13:18:52Z"
     },
     {
       "id": "f-ed6a175c9e",

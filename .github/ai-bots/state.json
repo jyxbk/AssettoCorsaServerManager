@@ -676,13 +676,13 @@
       "line": null,
       "title": "Potential for Inefficient File Reading",
       "category": null,
-      "status": "open",
+      "status": "false_positive",
       "issue_number": 64,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
+      "reason": "Geprüft: `list_results` parst nicht den Inhalt aller Dateien, sondern nur deren `mtime` zum Sortieren (billig), und liest/parst den JSON-Inhalt erst NACH dem Zuschneiden auf `limit` (Standard 100). Das ist bereits ein sinnvoller Kompromiss für die erwartete Größenordnung. Keine Änderung nötig.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T13:19:27Z"
     },
     {
       "id": "f-6ddf195c3f",

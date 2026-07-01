@@ -1087,13 +1087,13 @@
       "line": 31,
       "title": "Potential KeyError",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 88,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: `data.get(\"Result\", [])` und `data.get(\"Laps\", [])` verwenden bereits Defaults, ein KeyError kann hier nicht auftreten. Zusätzlich ist der gesamte Block in try/except (AttributeError, KeyError, TypeError) gekapselt.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:33:10Z"
     },
     {
       "id": "f-ba13384818",

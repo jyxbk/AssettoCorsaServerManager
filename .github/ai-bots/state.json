@@ -718,13 +718,13 @@
       "line": 143,
       "title": "Potential Memory Leak in UDP Listener",
       "category": null,
-      "status": "open",
-      "issue_number": 74,
+      "status": "false_positive",
+      "issue_number": 68,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
+      "reason": "Duplikat von #67 — das lokale Modell hat denselben Fund (\"Potential Memory Leak in UDP Listener\") in einer einzigen Analyse-Antwort 8x wiederholt; Bot 1 hatte dafür noch keine Deduplizierung innerhalb desselben Batches (mittlerweile gefixt). Konsolidiert auf #67.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T12:32:03Z"
     },
     {
       "id": "f-12109bb327",

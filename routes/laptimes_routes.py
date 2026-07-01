@@ -14,6 +14,17 @@ from helpers.laptimes import clear_laptimes, load_laptimes
 bp = Blueprint("laptimes", __name__)
 
 
+def _csv_safe(value) -> str:
+    """Neutralisiert CSV-Formula-Injection (CWE-1236): Fahrername/Auto/Strecke
+    kommen vom AC-Client und sind damit spielerkontrolliert. Beginnt ein Feld
+    mit =, +, -, @, Tab oder CR, würde Excel/LibreOffice es beim Öffnen als
+    Formel interpretieren statt als Text."""
+    s = str(value)
+    if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + s
+    return s
+
+
 # ── Lap times list ────────────────────────────────────────────────────────────
 
 @bp.route("/api/laptimes")
@@ -95,10 +106,10 @@ def api_laptimes_export():
         fmt  = f"{mins}:{secs:06.3f}"
         writer.writerow([
             e.get("ts", ""),
-            e.get("driver", ""),
+            _csv_safe(e.get("driver", "")),
             e.get("guid", ""),
-            e.get("car", ""),
-            e.get("track", ""),
+            _csv_safe(e.get("car", "")),
+            _csv_safe(e.get("track", "")),
             fmt,
             ms,
             e.get("cuts", 0),

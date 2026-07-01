@@ -18,9 +18,15 @@ POINTS_PRESETS = {
 def load_championships() -> list:
     if CHAMPIONSHIPS_FILE.exists():
         try:
-            return json.loads(CHAMPIONSHIPS_FILE.read_text(encoding="utf-8"))
+            data = json.loads(CHAMPIONSHIPS_FILE.read_text(encoding="utf-8"))
         except Exception:
-            pass
+            return []
+        # Schützt gegen eine korrupte/manuell editierte Datei, deren Top-Level
+        # kein Array ist (z.B. {} statt []) — sonst crashen spätere .get()-Aufrufe
+        # in compute_standings mit einem unklaren AttributeError.
+        if isinstance(data, list) and all(isinstance(c, dict) for c in data):
+            return data
+        return []
     return []
 
 

@@ -732,13 +732,13 @@
       "line": 279,
       "title": "Potential CSRF Protection Missing",
       "category": null,
-      "status": "open",
+      "status": "false_positive",
       "issue_number": 75,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
+      "reason": "Geprüft: `/control/<action>` hat bereits `@csrf_protect` (direkt sichtbar im Code, wie im Issue selbst auch schon festgestellt) – es gibt keine Lücke. Keine Änderung nötig.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T13:20:01Z"
     },
     {
       "id": "f-7b7f17bd32",

@@ -1157,13 +1157,13 @@
       "line": 120,
       "title": "Unsicherer Socket-Verbindungsversuch",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 93,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: Laut eigenem README (Zeile 145) ist 8081 tatsächlich der korrekte AssettoServer-HTTP-Port; 8080 ist der Port dieses Dashboards selbst (siehe nginx proxy_pass Beispiel im README).",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:30:42Z"
     },
     {
       "id": "f-22a7a47f11",

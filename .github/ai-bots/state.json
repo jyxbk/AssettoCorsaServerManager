@@ -578,13 +578,13 @@
       "line": null,
       "title": "Potential Race Condition in Lap Time Processing",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 57,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
-      "resolved_commit": null,
-      "resolved_at": null
+      "reason": "Behoben in https://github.com/jyxbk/AssettoCorsaServerManager/commit/2203de0: `_personal_bests`/`_track_records` wurden von zwei parallel gestarteten Threads (`_preload_journal_history` und `_laptime_monitor`) ohne Synchronisierung gelesen/geschrieben. Jetzt konsistent mit dem bereits vorhandenen `_lt_lock` abgesichert (wie `_lt_session` es schon war).",
+      "resolved_commit": "2203de0",
+      "resolved_at": "2026-07-01T13:18:11Z"
     },
     {
       "id": "f-c70c12c8a5",

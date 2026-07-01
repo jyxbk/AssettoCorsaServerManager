@@ -2,7 +2,15 @@ name: Bot 2 - AI Fix Suggestion (lokales Ollama)
 
 on:
   issues:
-    types: [opened, labeled]
+    # "opened" is the only trigger we need: Bot 1 always creates issues with
+    # the ai-detected label already attached, so the opened-event payload
+    # already carries it. Also triggering on "labeled" caused a real 3x
+    # amplification in practice (1 opened + 1 labeled-event per label
+    # attached at creation), tripling Bot 2 runs and duplicate comments.
+    # Trade-off: manually re-labeling an old issue with ai-detected no
+    # longer auto-triggers Bot 2 -- an edge case that isn't part of the
+    # normal automated flow.
+    types: [opened]
 
 permissions:
   contents: read

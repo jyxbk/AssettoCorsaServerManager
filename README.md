@@ -2,6 +2,9 @@
 
 A modern, browser-based dashboard for managing an [AssettoServer](https://github.com/compujuckel/AssettoServer) dedicated server. Built with Python & Flask — no external dependencies beyond the standard stack.
 
+![Release](https://img.shields.io/github/v/release/jyxbk/AssettoCorsaServerManager)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+
 <img width="1838" height="1017" alt="image" src="https://github.com/user-attachments/assets/297b6db8-92c4-4ceb-ac8b-e615fb15d55c" />
 
 ---
@@ -27,6 +30,15 @@ A modern, browser-based dashboard for managing an [AssettoServer](https://github
   - Pagination (50 entries per page)
   - CSV export with active filters applied
   - Driver statistics — total laps, clean laps %, best time, best car per track
+
+### Results & Championship
+- **Results archive** — every AC session result file (Practice / Qualify / Race), full leaderboard, lap-by-lap breakdown, gap-to-leader, collision count
+- **Championship** — multi-round point standings with 5 built-in scales (F1, F2, IMSA, Simple, Liga) or a custom scale; add/remove rounds directly from stored results, automatic wins/podiums/best-finish tally and points-gap-to-leader
+
+### Scheduler
+- **Zeitplanung tab** — schedule a track/car preset change or a server restart for a specific date & time
+- Background loop checks every 30 seconds and executes due events, with Discord/Telegram notification on execution
+- Reset button to re-schedule an already-executed event without recreating it
 
 ### Server Control
 - Start / Stop / Restart with one click
@@ -75,7 +87,8 @@ A modern, browser-based dashboard for managing an [AssettoServer](https://github
   - WeatherFX (CSP rain), Client Messages, Real Time
   - Minimum CSP version, security level, RCON port
   - Loading image URL
-- **Discord Webhook** — crash/restart notifications, optional join/leave alerts, test button
+- **Discord Webhook** — crash/restart notifications, join/leave alerts, personal best & track record embeds, daily summary, test button
+- **Telegram Bot** — crash/restart and join/leave notifications as an alternative or addition to Discord
 - **Config backup** — download all config files as ZIP
 - **Config restore** — upload a backup ZIP, applies config and restarts the server
 - **Track Parameters editor** — set latitude, longitude and UTC timezone offset for Real Time mode
@@ -83,6 +96,9 @@ A modern, browser-based dashboard for managing an [AssettoServer](https://github
 ### Logs & RCON
 - **Server log viewer** — live journal output with color-coded log levels
 - **RCON console** — send commands with history of recent commands and responses
+
+### Public Leaderboard
+- `/leaderboard` — public, no-login page with the best lap times per track, shareable with players
 
 ### Security
 - **Session-based login** with rate limiting (max 10 attempts / IP / 5 min)
@@ -105,20 +121,23 @@ Browser
     │
     │  HTTPS :443  (nginx reverse proxy)
     ▼
-┌────────────────────────────────────────────────┐
-│              Flask Web App (app.py)             │
-│                                                 │
-│  routes/                   helpers/             │
-│  ├── main.py               ├── auth.py          │
-│  ├── settings.py           ├── config_io.py     │
-│  ├── content_mgmt.py       ├── content.py       │
-│  ├── entry_list.py         ├── system.py        │
-│  ├── players.py            ├── laptimes.py      │
-│  └── laptimes_routes.py    └── discord.py       │
-│                                                 │
-│  constants.py  ← all shared paths & env vars   │
-│  templates/index.html  ← Jinja2 + vanilla JS   │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                Flask Web App (app.py)                 │
+│                                                       │
+│  routes/                       helpers/               │
+│  ├── main.py                   ├── auth.py            │
+│  ├── settings.py               ├── config_io.py       │
+│  ├── content_mgmt.py           ├── content.py         │
+│  ├── entry_list.py             ├── system.py          │
+│  ├── players.py                ├── laptimes.py        │
+│  ├── laptimes_routes.py        ├── results.py         │
+│  ├── results.py                ├── championship.py    │
+│  ├── championship.py           ├── scheduler.py       │
+│  └── scheduler.py              ├── discord.py         │
+│                                 └── telegram.py        │
+│  constants.py  ← all shared paths & env vars         │
+│  templates/index.html  ← Jinja2 + vanilla JS         │
+└──────────────────────────────────────────────────────┘
          │
          ├──► /opt/assettoserver/cfg/     (INI / YAML read-write)
          ├──► acserver.service            (systemctl)
@@ -126,9 +145,13 @@ Browser
          ├──► AssettoServer HTTP :8081   (status polling)
          ├──► AssettoServer UDP :12000   (Real-Time telemetry)
          ├──► systemd journal            (log tailing)
+         ├──► /opt/assettoserver/results/ (race result JSON files)
          ├──► /opt/acweb/laptimes.json   (lap time persistence)
          ├──► /opt/acweb/presets.json    (track/car presets)
-         └──► Discord Webhook            (notifications)
+         ├──► /opt/acweb/championships.json (championship data)
+         ├──► /opt/acweb/scheduled_events.json (scheduler queue)
+         ├──► Discord Webhook            (notifications)
+         └──► Telegram Bot API           (notifications)
 ```
 
 ### Lap Time Tracking
@@ -154,7 +177,8 @@ On startup, the last 5000 journal lines are parsed in `short-iso` format to impo
 | Server control | systemd via `systemctl` |
 | Reverse proxy / TLS | nginx |
 | Frontend | Vanilla JS, CSS Grid, Canvas API |
-| Persistent data | JSON files (`laptimes.json`, `presets.json`, `discord.json`, `entry_list_presets.json`) |
+| Notifications | Discord Webhooks, Telegram Bot API |
+| Persistent data | JSON files (`laptimes.json`, `presets.json`, `championships.json`, `scheduled_events.json`, `discord.json`, `telegram.json`, `entry_list_presets.json`) |
 
 ---
 
@@ -299,14 +323,21 @@ SERVICE_NAME = "acserver"
 │   ├── content.py              # Cars, tracks, ZIP, entry list helpers
 │   ├── system.py               # systemctl, psutil, UDP, RCON, chat
 │   ├── laptimes.py             # Lap tracker background thread
-│   └── discord.py              # Discord webhook monitor thread
+│   ├── results.py              # Race result JSON parser
+│   ├── championship.py         # Multi-round points standings
+│   ├── scheduler.py            # Scheduled event background loop
+│   ├── discord.py              # Discord webhook monitor thread
+│   └── telegram.py             # Telegram bot monitor thread
 ├── routes/
 │   ├── main.py                 # Index, live API, images, login, logs
 │   ├── settings.py             # /save_* endpoints
 │   ├── content_mgmt.py         # Upload, import, delete, backup
 │   ├── entry_list.py           # Entry List Editor API
 │   ├── players.py              # Whitelist, admins, blacklist, kick/ban
-│   └── laptimes_routes.py      # /api/laptimes/* endpoints
+│   ├── laptimes_routes.py      # /api/laptimes/* endpoints
+│   ├── results.py              # /api/results/* endpoints
+│   ├── championship.py         # /api/championships/* endpoints
+│   └── scheduler.py            # /api/scheduled_events/* endpoints
 ├── static/
 │   ├── css/dashboard.css
 │   └── js/
@@ -319,7 +350,10 @@ SERVICE_NAME = "acserver"
 ├── .env.example                # Template for environment variables
 ├── presets.json                # Saved track/car presets (auto-created)
 ├── laptimes.json               # Persistent lap time history (auto-created)
+├── championships.json          # Championship data (auto-created)
+├── scheduled_events.json       # Scheduler queue (auto-created)
 ├── discord.json                # Discord webhook config (auto-created)
+├── telegram.json               # Telegram bot config (auto-created)
 └── entry_list_presets.json     # Entry list presets (auto-created)
 
 /opt/assettoserver/
@@ -331,6 +365,7 @@ SERVICE_NAME = "acserver"
 ├── content/
 │   ├── cars/
 │   └── tracks/
+├── results/                    # Race result JSON files (read by helpers/results.py)
 ├── blacklist.txt
 ├── whitelist.txt
 └── admins.txt

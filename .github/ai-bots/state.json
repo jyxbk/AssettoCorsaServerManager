@@ -620,13 +620,13 @@
       "line": null,
       "title": "Potential Security Issue in RCON Commands",
       "category": null,
-      "status": "open",
+      "status": "false_positive",
       "issue_number": 60,
       "first_seen_release": "v1.0.1",
       "last_seen_release": "v1.0.1",
-      "reason": "",
+      "reason": "Geprüft: Das RCON-Protokoll hier ist binär und laengenpraefigiert (`struct.pack(\"<iii\", ...)`), nicht text-getrennt wie eine Shell – der komplette String landet als EIN Kommando in einem Paket, es gibt kein Shell und keine Metazeichen-Interpretation. Zusätzlich kommt der Fahrername aus zeilenweise verarbeitetem journalctl-Output (`for line in proc.stdout`), kann also gar keinen eingebetteten Zeilenumbruch enthalten, der ein zweites Kommando vortäuschen könnte. Command Injection ist hier nicht möglich. Keine Änderung nötig.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T13:18:40Z"
     },
     {
       "id": "f-9972950f82",

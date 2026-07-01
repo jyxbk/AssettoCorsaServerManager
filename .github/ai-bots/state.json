@@ -359,7 +359,7 @@
       "last_seen_release": "v1.0.0",
       "reason": "_🤖 Bot 3 hat aus diesem Issue eine neue projektweite Regel gelernt und in `.github/ai-bots/state.json` gespeichert:_\n\n> No persistence is done using databases, only JSON files are used for storing data.\n\n_Zukuenftige Analysen beruecksichtigen dies automatisch._",
       "resolved_commit": null,
-      "resolved_at": "2026-07-01T12:15:24Z"
+      "resolved_at": "2026-07-01T12:15:29Z"
     },
     {
       "id": "f-50f7610ab8",

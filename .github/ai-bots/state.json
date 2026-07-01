@@ -1185,13 +1185,13 @@
       "line": 37,
       "title": "Potential integer overflow",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 95,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: siehe #96 — durch das bestehende Clamping auf 1–5 ist auch kein Overflow möglich.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:30:34Z"
     },
     {
       "id": "f-d7b545f4db",

@@ -947,13 +947,13 @@
       "line": null,
       "title": "CSRF Token überprüfung bei GET-Requests",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 78,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Kein Bug, sondern korrektes CSRF-Design: GET-Requests sind laut OWASP-Empfehlung 'safe methods' ohne Seiteneffekte und brauchen daher keinen CSRF-Token. Das steht auch explizit im Docstring von `csrf_protect`.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:35:08Z"
     },
     {
       "id": "f-4cb833bf7c",

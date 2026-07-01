@@ -1031,13 +1031,13 @@
       "line": 37,
       "title": "Unnötige Fehlerbehandlung in get_car_ui",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 84,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Kein Bug: Gleiches Muster wie #85 in get_car_ui() - bewusster Fallback auf den Ordnernamen als Anzeigename, falls ui_car.json fehlt oder kaputtes JSON enthaelt.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:36:23Z"
     },
     {
       "id": "f-5830eeb501",

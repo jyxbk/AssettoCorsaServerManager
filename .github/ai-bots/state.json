@@ -21,6 +21,13 @@
       "source_issue": 45,
       "added_by": "bot",
       "added_at": "2026-07-01T12:04:01Z"
+    },
+    {
+      "id": "fact-757ba9b62f",
+      "text": "Alle persistierenden Daten werden ausschließlich in JSON-Dateien gespeichert, wodurch SQL-Injection technisch unmöglich ist.",
+      "source_issue": 51,
+      "added_by": "bot",
+      "added_at": "2026-07-01T12:08:23Z"
     }
   ],
   "files": {},
@@ -359,7 +366,7 @@
       "last_seen_release": "v1.0.0",
       "reason": "Geprüft: Dieses Projekt verwendet überhaupt keine Datenbank (kein sqlite3/SQLAlchemy/`.execute()` im gesamten Code). `name`/`dt_str`/`action`/`preset` landen ausschließlich in einer JSON-Datei, SQL-Injection ist technisch nicht möglich. Die zugrundeliegende Sorge um fehlende Eingabevalidierung ist aber berechtigt – siehe #52, wo das behoben wurde.",
       "resolved_commit": null,
-      "resolved_at": "2026-07-01T12:04:16Z"
+      "resolved_at": "2026-07-01T12:08:23Z"
     },
     {
       "id": "f-50f7610ab8",

@@ -1003,13 +1003,13 @@
       "line": 14,
       "title": "Fehlende Fallback-Handling für GitHub-API-Antworten",
       "category": null,
-      "status": "open",
+      "status": "fixed",
       "issue_number": 82,
       "first_seen_release": "manual-2026-07-01",
       "last_seen_release": "manual-2026-07-01",
-      "reason": "",
+      "reason": "Fehlalarm: Der referenzierte Code in `helpers/bots.py` prüft mit `if runs else None` bereits, ob die Liste nicht-leer ist, BEVOR auf `runs[0]` zugegriffen wird — ein KeyError/IndexError bei leerer Antwort ist nicht möglich. Zusätzlich: Diese Datei existiert nur in einem alten, nie gemergten Feature-Branch (Bot-Status-Widget), nicht im main-Branch.",
       "resolved_commit": null,
-      "resolved_at": null
+      "resolved_at": "2026-07-01T19:33:44Z"
     },
     {
       "id": "f-028fbadd28",

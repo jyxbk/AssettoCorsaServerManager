@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify, request
 
 from constants import ADMINS_FILE, BLACKLIST_FILE, WHITELIST_FILE
 from helpers.auth import api_rate_limit, csrf_protect, login_required
-from helpers.content import add_guid, read_guid_list, remove_guid
+from helpers.content import add_guid, is_valid_guid, read_guid_list, remove_guid
 from helpers.system import rcon_send
 
 bp = Blueprint("players", __name__)
@@ -24,6 +24,8 @@ def add_whitelist():
     guid = (request.json or {}).get("guid", "").strip()
     if not guid:
         return jsonify({"ok": False, "msg": "GUID required"}), 400
+    if not is_valid_guid(guid):
+        return jsonify({"ok": False, "msg": "Invalid GUID"}), 400
     added = add_guid(WHITELIST_FILE, guid)
     return jsonify({"ok": True, "added": added})
 
@@ -51,6 +53,8 @@ def add_admin():
     guid = (request.json or {}).get("guid", "").strip()
     if not guid:
         return jsonify({"ok": False, "msg": "GUID required"}), 400
+    if not is_valid_guid(guid):
+        return jsonify({"ok": False, "msg": "Invalid GUID"}), 400
     added = add_guid(ADMINS_FILE, guid)
     return jsonify({"ok": True, "added": added})
 
@@ -106,6 +110,8 @@ def ban_player():
     car_id = data.get("car_id")
     if not guid:
         return jsonify({"ok": False, "msg": "GUID missing"}), 400
+    if not is_valid_guid(guid):
+        return jsonify({"ok": False, "msg": "Invalid GUID"}), 400
     add_guid(BLACKLIST_FILE, guid)
     if car_id is not None and isinstance(car_id, int) and car_id >= 0:
         rcon_send(f"/kick_id {car_id}")

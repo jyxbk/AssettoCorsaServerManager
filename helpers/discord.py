@@ -1,5 +1,7 @@
 """Discord-Webhook-Integration: Rich Embeds, Crash/Restart, Join/Leave, PB, Record, Summary."""
 import json
+import logging
+import re
 import threading
 import time
 import urllib.request
@@ -8,7 +10,17 @@ from datetime import datetime, timezone
 from constants import DISCORD_FILE, SERVICE_NAME
 from helpers.system import server_status
 
+logger = logging.getLogger(__name__)
+
 _discord_last_status = [None]
+_discord_status_lock = threading.Lock()
+
+_WEBHOOK_RE = re.compile(r"^https://(?:discord|discordapp)\.com/api/webhooks/\d+/[\w-]+/?$")
+
+
+def is_valid_webhook_url(url: str) -> bool:
+    """Lässt nur echte Discord-Webhook-URLs zu, um SSRF über beliebige Ziel-Hosts zu verhindern."""
+    return bool(url) and bool(_WEBHOOK_RE.match(url.strip()))
 
 # ── Embed-Farben ──────────────────────────────────────────────────────────────
 _COL_GREEN  = 0x27ae60
@@ -38,6 +50,11 @@ def _load_discord_url() -> str:
 
 def _send(webhook_url: str, payload: dict, raise_on_error: bool = False):
     """Sendet beliebiges payload an einen Discord-Webhook."""
+    if not is_valid_webhook_url(webhook_url):
+        logger.warning("Discord-Send abgelehnt: keine gültige Discord-Webhook-URL")
+        if raise_on_error:
+            raise ValueError("Ungültige Discord-Webhook-URL")
+        return
     try:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req  = urllib.request.Request(
@@ -204,17 +221,19 @@ def _discord_monitor():
             dcfg = _load_discord_config()
             url  = dcfg.get("url", "")
             if not url or dcfg.get("notify_crash") is False:
-                _discord_last_status[0] = server_status()
+                with _discord_status_lock:
+                    _discord_last_status[0] = server_status()
                 continue
             current = server_status()
-            prev    = _discord_last_status[0]
+            with _discord_status_lock:
+                prev = _discord_last_status[0]
+                _discord_last_status[0] = current
             if prev is not None and prev == "active" and current in ("failed", "inactive"):
                 discord_embed(url, embed_server_status(False, current))
             elif prev is not None and prev in ("failed", "inactive") and current == "active":
                 discord_embed(url, embed_server_status(True))
-            _discord_last_status[0] = current
         except Exception:
-            pass
+            logger.exception("_discord_monitor: Fehler im Überwachungs-Loop")
 
 
 def start_discord_monitor():

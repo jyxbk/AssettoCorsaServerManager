@@ -1,8 +1,11 @@
 """Race Results Parser: liest AC-Server Results-JSON-Dateien aus SERVER_DIR/results/."""
 import json
+import logging
 import re
 
 from constants import RESULTS_DIR
+
+logger = logging.getLogger(__name__)
 
 
 def _fmt_ms(ms: int) -> str:
@@ -46,7 +49,7 @@ def list_results(limit: int = 100) -> list:
                 "winner":       winner,
             })
         except Exception:
-            pass
+            logger.exception("list_results: konnte %s nicht parsen", f.name)
     return out
 
 
@@ -59,55 +62,60 @@ def get_result(filename: str) -> dict | None:
         return None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        logger.exception("get_result: konnte %s nicht lesen/parsen", filename)
         return None
 
-    # Ergebnis-Einträge anreichern
-    result_list = data.get("Result", [])
-    for i, r in enumerate(result_list):
-        r["position"]  = i + 1
-        r["best_fmt"]  = _fmt_ms(r.get("BestLap", 0))
-        r["total_fmt"] = _fmt_total(r.get("TotalTime", 0))
+    try:
+        # Ergebnis-Einträge anreichern
+        result_list = data.get("Result", []) or []
+        for i, r in enumerate(result_list):
+            r["position"]  = i + 1
+            r["best_fmt"]  = _fmt_ms(r.get("BestLap", 0))
+            r["total_fmt"] = _fmt_total(r.get("TotalTime", 0))
 
-    # Gap zum Leader berechnen
-    if len(result_list) > 1:
-        leader_total = result_list[0].get("TotalTime", 0)
-        for r in result_list:
-            if r["position"] == 1:
+        # Gap zum Leader berechnen
+        if len(result_list) > 1:
+            leader_total = result_list[0].get("TotalTime", 0)
+            for r in result_list:
+                if r["position"] == 1:
+                    r["gap_fmt"] = "—"
+                elif leader_total and r.get("TotalTime"):
+                    diff = r["TotalTime"] - leader_total
+                    r["gap_fmt"] = f"+{_fmt_total(diff)}"
+                else:
+                    r["gap_fmt"] = "—"
+        else:
+            for r in result_list:
                 r["gap_fmt"] = "—"
-            elif leader_total and r.get("TotalTime"):
-                diff = r["TotalTime"] - leader_total
-                r["gap_fmt"] = f"+{_fmt_total(diff)}"
-            else:
-                r["gap_fmt"] = "—"
-    else:
-        for r in result_list:
-            r["gap_fmt"] = "—"
 
-    # Lap-Zeiten pro Fahrer für Mini-Chart (schnellste 20 Runden je Fahrer)
-    laps = data.get("Laps", [])
-    driver_bests: dict = {}
-    for lap in laps:
-        name = lap.get("DriverName", "")
-        lt   = lap.get("LapTime", 0)
-        if lt and lt > 10000:
-            if name not in driver_bests or lt < driver_bests[name]:
-                driver_bests[name] = lt
+        # Lap-Zeiten pro Fahrer für Mini-Chart (schnellste 20 Runden je Fahrer)
+        laps = data.get("Laps", []) or []
+        driver_bests: dict = {}
+        for lap in laps:
+            name = lap.get("DriverName", "")
+            lt   = lap.get("LapTime", 0)
+            if lt and lt > 10000:
+                if name not in driver_bests or lt < driver_bests[name]:
+                    driver_bests[name] = lt
 
-    # Sektorzeiten nur wenn vorhanden
-    has_sectors = any(lap.get("Sectors") for lap in laps)
+        # Sektorzeiten nur wenn vorhanden
+        has_sectors = any(lap.get("Sectors") for lap in laps)
 
-    return {
-        "filename":     filename,
-        "type":         data.get("Type", "PRACTICE"),
-        "track":        data.get("TrackName", ""),
-        "config":       data.get("TrackConfig", ""),
-        "date":         data.get("Date", ""),
-        "duration":     data.get("DurationSecs", 0),
-        "race_laps":    data.get("RaceLaps", 0),
-        "result":       result_list,
-        "laps":         laps,
-        "driver_bests": driver_bests,
-        "has_sectors":  has_sectors,
-        "collision_count": len([e for e in data.get("Events", []) if "COLLISION" in e.get("Type", "")]),
-    }
+        return {
+            "filename":     filename,
+            "type":         data.get("Type", "PRACTICE"),
+            "track":        data.get("TrackName", ""),
+            "config":       data.get("TrackConfig", ""),
+            "date":         data.get("Date", ""),
+            "duration":     data.get("DurationSecs", 0),
+            "race_laps":    data.get("RaceLaps", 0),
+            "result":       result_list,
+            "laps":         laps,
+            "driver_bests": driver_bests,
+            "has_sectors":  has_sectors,
+            "collision_count": len([e for e in data.get("Events", []) if "COLLISION" in e.get("Type", "")]),
+        }
+    except (AttributeError, KeyError, TypeError):
+        logger.exception("get_result: unerwartete Struktur in %s", filename)
+        return None

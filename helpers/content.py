@@ -265,8 +265,8 @@ def read_entry_list() -> list:
                 elif key == "SPECTATOR_MODE": current["spectator"] = int(val or 0)
         if current is not None:
             slots.append(current)
-    except Exception as exc:
-        logger.error("read_entry_list fehlgeschlagen: %s", exc)
+    except Exception:
+        logger.exception("read_entry_list fehlgeschlagen (Datei: %s)", entry_path)
     return slots
 
 
@@ -295,8 +295,8 @@ def write_entry_list_slots(slots: list) -> None:
                 "",
             ]
         (CFG_DIR / "entry_list.ini").write_text("\n".join(lines), encoding="utf-8")
-    except Exception as exc:
-        logger.error("write_entry_list_slots fehlgeschlagen: %s", exc)
+    except Exception:
+        logger.exception("write_entry_list_slots fehlgeschlagen (%d Slots)", len(slots))
 
 
 def regen_entry_list(car_models: list, slots_per_car: int = 2, car_config: dict = None):
@@ -381,34 +381,56 @@ def _zip_rel(name: str, prefix: str) -> str | None:
     return None
 
 
+def _safe_extract_target(base: Path, rel: str) -> Path | None:
+    """Löst rel relativ zu base auf und lehnt Zip-Slip-Pfade ab, die base verlassen würden."""
+    try:
+        tgt = (base / rel).resolve()
+        tgt.relative_to(base.resolve())
+    except (ValueError, OSError):
+        return None
+    return tgt
+
+
 def extract_from_zip(zip_path: Path, sel_cars: list, sel_tracks: list) -> list:
     imported = []
-    with zipfile.ZipFile(zip_path) as zf:
-        names = zf.namelist()
-        has_prefix_cars   = any(re.search(r"(?:^|/)cars/",   n) for n in names)
-        has_prefix_tracks = any(re.search(r"(?:^|/)tracks/", n) for n in names)
+    sel_cars   = [secure_filename(c) for c in sel_cars if secure_filename(c)]
+    sel_tracks = [secure_filename(t) for t in sel_tracks if secure_filename(t)]
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            names = zf.namelist()
+            has_prefix_cars   = any(re.search(r"(?:^|/)cars/",   n) for n in names)
+            has_prefix_tracks = any(re.search(r"(?:^|/)tracks/", n) for n in names)
 
-        for name in names:
-            for car in sel_cars:
-                rel = _zip_rel(name, f"cars/{car}") if has_prefix_cars else _zip_rel(name, car)
-                if rel and not rel.endswith("/"):
-                    tgt = CARS_DIR / car / rel
-                    tgt.parent.mkdir(parents=True, exist_ok=True)
-                    with zf.open(name) as src, open(tgt, "wb") as dst:
-                        shutil.copyfileobj(src, dst)
-                    key = f"cars/{car}"
-                    if key not in imported:
-                        imported.append(key)
-            for track in sel_tracks:
-                rel = _zip_rel(name, f"tracks/{track}") if has_prefix_tracks else _zip_rel(name, track)
-                if rel and not rel.endswith("/"):
-                    tgt = TRACKS_DIR / track / rel
-                    tgt.parent.mkdir(parents=True, exist_ok=True)
-                    with zf.open(name) as src, open(tgt, "wb") as dst:
-                        shutil.copyfileobj(src, dst)
-                    key = f"tracks/{track}"
-                    if key not in imported:
-                        imported.append(key)
+            for name in names:
+                for car in sel_cars:
+                    rel = _zip_rel(name, f"cars/{car}") if has_prefix_cars else _zip_rel(name, car)
+                    if rel and not rel.endswith("/"):
+                        tgt = _safe_extract_target(CARS_DIR / car, rel)
+                        if tgt is None:
+                            logger.warning("extract_from_zip: unsicherer Pfad übersprungen (car=%s, rel=%s)", car, rel)
+                            continue
+                        tgt.parent.mkdir(parents=True, exist_ok=True)
+                        with zf.open(name) as src, open(tgt, "wb") as dst:
+                            shutil.copyfileobj(src, dst)
+                        key = f"cars/{car}"
+                        if key not in imported:
+                            imported.append(key)
+                for track in sel_tracks:
+                    rel = _zip_rel(name, f"tracks/{track}") if has_prefix_tracks else _zip_rel(name, track)
+                    if rel and not rel.endswith("/"):
+                        tgt = _safe_extract_target(TRACKS_DIR / track, rel)
+                        if tgt is None:
+                            logger.warning("extract_from_zip: unsicherer Pfad übersprungen (track=%s, rel=%s)", track, rel)
+                            continue
+                        tgt.parent.mkdir(parents=True, exist_ok=True)
+                        with zf.open(name) as src, open(tgt, "wb") as dst:
+                            shutil.copyfileobj(src, dst)
+                        key = f"tracks/{track}"
+                        if key not in imported:
+                            imported.append(key)
+    except Exception:
+        logger.exception("extract_from_zip fehlgeschlagen (%s)", zip_path)
+        raise
     return imported
 
 
@@ -456,16 +478,30 @@ def load_presets() -> dict:
         try:
             return json.loads(PRESETS_FILE.read_text(encoding="utf-8"))
         except Exception:
+            logger.exception("load_presets fehlgeschlagen (Datei: %s)", PRESETS_FILE)
             return {}
     return {}
 
 
 def save_presets(data: dict):
     PRESETS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PRESETS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    try:
+        PRESETS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        logger.exception("save_presets fehlgeschlagen (Datei: %s)", PRESETS_FILE)
+        raise
 
 
 # ── Player list (whitelist / admins / blacklist) ──────────────────────────────
+
+_GUID_RE = re.compile(r"^\d{1,32}$")
+
+
+def is_valid_guid(guid: str) -> bool:
+    """Steam64-GUIDs sind rein numerisch. Lehnt u.a. Zeilenumbrüche ab,
+    über die sonst zusätzliche Einträge in die Liste eingeschleust werden könnten."""
+    return bool(guid) and bool(_GUID_RE.match(guid))
+
 
 def read_guid_list(path: Path) -> list:
     if not path.exists():
@@ -479,6 +515,8 @@ def write_guid_list(path: Path, guids: list):
 
 
 def add_guid(path: Path, guid: str) -> bool:
+    if not is_valid_guid(guid):
+        return False
     guids = read_guid_list(path)
     if guid not in guids:
         guids.append(guid)

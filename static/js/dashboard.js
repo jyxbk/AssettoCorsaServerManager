@@ -241,8 +241,8 @@ function renderCards(id, drivers, showAct) {
         <div class="dc-st"><div class="dc-stv" id="ct-${d.id}">${fmt(d.lapTime)}</div><div class="dc-stl">Aktuell</div></div>
       </div>
       ${showAct ? `<div class="dc-acts">
-        <button class="btn btn-danger btn-sm" onclick="kick(${d.id},'${esc(d.name)}')">⊘ Kick</button>
-        <button class="btn btn-warn btn-sm" onclick="ban(${d.id},'${esc(d.guid)}','${esc(d.name)}')">⛔ Ban</button>
+        <button class="btn btn-danger btn-sm" onclick="kick(${d.id},'${escJs(d.name)}')">⊘ Kick</button>
+        <button class="btn btn-warn btn-sm" onclick="ban(${d.id},'${escJs(d.guid)}','${escJs(d.name)}')">⛔ Ban</button>
       </div>` : ""}
     </div>`;
   }).join("");
@@ -1202,6 +1202,10 @@ function filterCars(){const q=document.getElementById("car-search").value.toLowe
 function filterZip(listId,searchId){const q=document.getElementById(searchId).value.toLowerCase();document.querySelectorAll(`#${listId} .ci`).forEach(el=>el.style.display=el.textContent.toLowerCase().includes(q)?"":"none");}
 function fmt(ms){if(!ms||ms<=0)return"—";const m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000),ms3=ms%1000;return`${m}:${String(s).padStart(2,"0")}.${String(ms3).padStart(3,"0")}`;}
 function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+// Für Werte, die in einem einfach gequoteten JS-String innerhalb eines inline onclick-Attributs landen
+// (z.B. Fahrername/GUID vom AC-Client): HTML-Entities werden vom Browser vor der JS-Ausführung dekodiert,
+// daher reicht esc() dort allein nicht – Backslash/Single-Quote müssen zusätzlich JS-escaped werden.
+function escJs(s){return esc(String(s||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'"));}
 function copy(text){navigator.clipboard.writeText(text).then(()=>toast("📋 Kopiert: "+text,"info"));}
 function copyPub(){const ip=document.getElementById("pub-ip").textContent;if(ip&&ip!=="—")copy(ip+":9600");}
 

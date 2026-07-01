@@ -78,10 +78,12 @@ def get_discord():
 @login_required
 @csrf_protect
 def set_discord():
-    from helpers.discord import _load_discord_config
+    from helpers.discord import _load_discord_config, is_valid_webhook_url
     from constants import DISCORD_FILE
     data = request.json or {}
     url  = data.get("url", "").strip()
+    if url and not is_valid_webhook_url(url):
+        return jsonify({"ok": False, "msg": "Ungültige Discord-Webhook-URL"}), 400
     cfg  = _load_discord_config()
     cfg["url"]           = url
     cfg["notify_crash"]  = bool(data.get("notify_crash",  cfg.get("notify_crash",  True)))

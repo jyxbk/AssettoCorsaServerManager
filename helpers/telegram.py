@@ -1,5 +1,7 @@
 """Telegram-Bot-Notifications: Crash/Restart + Join/Leave."""
 import json
+import logging
+import re
 import threading
 import time
 import urllib.request
@@ -7,7 +9,13 @@ import urllib.request
 from constants import SERVICE_NAME, TELEGRAM_FILE
 from helpers.system import server_status
 
+logger = logging.getLogger(__name__)
+
 _tg_last_status = [None]
+_tg_status_lock = threading.Lock()
+
+_TOKEN_RE   = re.compile(r"^\d+:[\w-]+$")
+_CHAT_ID_RE = re.compile(r"^(-?\d+|@\w+)$")
 
 
 def _load_telegram_config() -> dict:
@@ -15,7 +23,7 @@ def _load_telegram_config() -> dict:
         try:
             return json.loads(TELEGRAM_FILE.read_text(encoding="utf-8"))
         except Exception:
-            pass
+            logger.exception("_load_telegram_config: konnte %s nicht parsen", TELEGRAM_FILE)
     return {}
 
 
@@ -25,6 +33,16 @@ def save_telegram_config(cfg: dict):
 
 
 def telegram_notify(token: str, chat_id: str, message: str, raise_on_error: bool = False):
+    if not token or not chat_id or not message:
+        logger.warning("telegram_notify: token/chat_id/message fehlt")
+        if raise_on_error:
+            raise ValueError("token, chat_id und message sind erforderlich")
+        return
+    if not _TOKEN_RE.match(str(token)) or not _CHAT_ID_RE.match(str(chat_id)):
+        logger.warning("telegram_notify: ungültiges token- oder chat_id-Format")
+        if raise_on_error:
+            raise ValueError("Ungültiges token- oder chat_id-Format")
+        return
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
         payload = json.dumps({
@@ -56,16 +74,17 @@ def _telegram_monitor():
             if not token or not chat_id:
                 continue
             current = server_status()
-            prev    = _tg_last_status[0]
+            with _tg_status_lock:
+                prev = _tg_last_status[0]
+                _tg_last_status[0] = current
             if prev is not None and prev == "active" and current in ("failed", "inactive"):
                 telegram_notify(token, chat_id,
                     f"🔴 Server `{SERVICE_NAME}` ist *offline* \\(Status: {current}\\)")
             elif prev is not None and prev in ("failed", "inactive") and current == "active":
                 telegram_notify(token, chat_id,
                     f"🟢 Server `{SERVICE_NAME}` ist wieder *online*")
-            _tg_last_status[0] = current
         except Exception:
-            pass
+            logger.exception("_telegram_monitor: Fehler im Überwachungs-Loop")
 
 
 def start_telegram_monitor():

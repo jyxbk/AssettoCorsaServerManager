@@ -5,7 +5,7 @@ on:
     types: [published]
 
 permissions:
-  contents: read
+  contents: write # ai-bots/state.json wird ueber die Contents API aktualisiert (per BOT_PAT)
   issues: write
 
 jobs:

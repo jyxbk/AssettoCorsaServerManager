@@ -1811,7 +1811,6 @@ function toggleLiveWeather(checked) {
 function saveLiveWeather() {
   const key      = document.getElementById('lwp-apikey').value.trim();
   const interval = parseInt(document.getElementById('lwp-interval').value) || 10;
-  if (!key) { toast(t('t_lwp_key_missing'), 'err'); return; }
   apiFetch('/api/live_weather_plugin', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({enabled: true, api_key: key, interval})})
     .then(r=>r.json()).then(d=>{

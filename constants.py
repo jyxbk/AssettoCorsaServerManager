@@ -21,11 +21,7 @@ SECRET_KEY = _require_env("ACWEB_SECRET")
 ACWEB_USER = _require_env("ACWEB_USER")
 ACWEB_PASS = _require_env("ACWEB_PASS")
 
-# ── CI-Bots Status (optional) ─────────────────────────────────────────────────
-# Read-only PAT (scope: repo) um den Status der lokalen KI-Bots (Bot 1/Bot 2,
-# self-hosted Runner) im Dashboard anzuzeigen. Ohne Token bleibt die Karte leer.
-GITHUB_STATUS_TOKEN = os.environ.get("GITHUB_STATUS_TOKEN", "")
-GITHUB_REPO          = "jyxbk/AssettoCorsaServerManager"
+ACWEB_PORT = int(os.environ.get("ACWEB_PORT", "8080"))
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 SERVER_DIR    = Path("/opt/assettoserver")

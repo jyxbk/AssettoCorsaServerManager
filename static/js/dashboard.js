@@ -65,7 +65,7 @@ function _pollRestart(n) {
     apiFetch('/api/live').then(r => r.json()).then(d => {
       if (d.status === 'active') {
         const st = document.getElementById('restart-modal-status');
-        if (st) { st.textContent = '✓ Server läuft wieder'; st.style.color = 'var(--green)'; }
+        if (st) { st.textContent = t('t_server_back'); st.style.color = 'var(--green)'; }
         const btn = document.getElementById('restart-modal-close');
         if (btn) btn.disabled = false;
         refreshLive();
@@ -118,7 +118,7 @@ function toast(msg, type="ok") {
 // ═══ SERVER CONTROL ═══════════════════════════════════════════════════════
 let _ctrlLocked = false;
 function ctrl(action) {
-  if (_ctrlLocked) { toast("Bitte warten…","info"); return; }
+  if (_ctrlLocked) { toast(t('t_please_wait'),"info"); return; }
   _ctrlLocked = true;
   apiFetch("/control/" + action, {method:"POST"})
     .then(r=>r.json())
@@ -160,6 +160,38 @@ const _WEATHER_ICONS = {
   '8_drizzle':'🌦️','9_light_drizzle':'🌦️','10_drizzle_race':'🌧️',
   '11_practice_storm':'⛈️',
 };
+const _WEATHER_NAMES = {
+  '1_heavy_clouds':  {de:'Stark bewölkt',   en:'Heavy Clouds'},
+  '2_light_clouds':  {de:'Leicht bewölkt',  en:'Light Clouds'},
+  '3_clear':         {de:'Klar',            en:'Clear'},
+  '4_mid_clear':     {de:'Überwieg. klar',  en:'Mostly Clear'},
+  '5_light_clouds':  {de:'Heiter',          en:'Partly Cloudy'},
+  '6_light_clouds':  {de:'Leicht bewölkt',  en:'Partly Cloudy'},
+  '7_heavy_clouds':  {de:'Bedeckt',         en:'Overcast'},
+  '8_drizzle':       {de:'Nieselregen',     en:'Drizzle'},
+  '9_light_drizzle': {de:'Leichter Regen',  en:'Light Rain'},
+  '10_drizzle_race': {de:'Regen',           en:'Rain'},
+  '11_practice_storm':{de:'Gewitter',       en:'Thunderstorm'},
+};
+function _weatherLabel(key) {
+  const ico  = _WEATHER_ICONS[key] || '🌡️';
+  const lang = (typeof curLang !== 'undefined' ? curLang : 'de');
+  const name = (_WEATHER_NAMES[key] || {})[lang] || key;
+  return ico + ' ' + name;
+}
+function sunAngleToTime(angle) {
+  const refs = [[0,0],[40,360],[75,540],[166,720],[230,1020],[285,1170],[308,1260],[316,1320],[360,1440]];
+  const a = ((angle % 360) + 360) % 360;
+  for (let i = 1; i < refs.length; i++) {
+    if (a <= refs[i][0]) {
+      const frac = (a - refs[i-1][0]) / (refs[i][0] - refs[i-1][0]);
+      const mins = refs[i-1][1] + frac * (refs[i][1] - refs[i-1][1]);
+      const h = Math.floor(mins / 60) % 24, m = Math.floor(mins % 60);
+      return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    }
+  }
+  return '00:00';
+}
 
 function updateHeader(d) {
   const active = d.status === "active";
@@ -188,7 +220,7 @@ function updateDash(d) {
   const badge = document.getElementById("d-badge");
   badge.textContent = active ? "Online" : d.status;
   badge.className = "bdg " + (active?"bdg-on":d.status==="failed"?"bdg-err":"bdg-off");
-  document.getElementById("d-up").textContent = active ? "Server läuft" : "Server offline";
+  document.getElementById("d-up").textContent = active ? t('t_server_running') : t('t_server_offline');
   document.getElementById("d-cl").textContent = d.info?.clients ?? d.drivers.length;
   document.getElementById("d-mcl").textContent = d.info?.maxclients || "?";
   const cpu = d.system?.cpu ?? 0, ram = d.system?.mem_percent ?? 0;
@@ -208,7 +240,7 @@ function updateDash(d) {
     const hp = d.info.cport || 8081;
     const inv = document.getElementById("inv-link");
     if (ip) inv.href = `https://acstuff.ru/s/q:race/online/join?ip=${ip}&httpPort=${hp}`;
-    document.getElementById("i-sess").textContent = (["Practice","Qualify","Race"])[d.info.session] || "Practice";
+    document.getElementById("i-sess").textContent = ([t('sess_practice'),t('sess_qualify'),t('sess_race')])[d.info.session] || t('sess_practice');
   }
   renderCards("d-drivers", d.drivers, false);
 }
@@ -428,7 +460,7 @@ function drawMap(data) {
   ctx.fillStyle="#111"; ctx.fillRect(ix-4,iy-4,iw+8,ih+8);
   ctx.globalAlpha=0.6; ctx.drawImage(mapImg,ix,iy,iw,ih); ctx.globalAlpha=1;
   const drivers = data?.drivers||[];
-  if (!drivers.length) { document.getElementById("map-hint").textContent="Karte geladen · Keine Fahrer"; return; }
+  if (!drivers.length) { document.getElementById("map-hint").textContent=t('map_no_drivers'); return; }
   const perim=2*(iw+ih);
   drivers.forEach((d,i) => {
     const sp=d.spLine||0, col=COLORS[i%COLORS.length], dist=sp*perim;
@@ -451,26 +483,27 @@ function loadOverviewExtraCfg() {
   const el  = document.getElementById('ov-extra-content');
   const st  = document.getElementById('ov-extra-status');
   if (!el) return;
-  el.textContent = t('loading') || 'Lade...';
+  el.textContent = t('loading');
   apiFetch('/api/extra_cfg').then(r => r.json()).then(d => {
-    if (!d.ok) { el.textContent = '✗ Fehler'; return; }
+    if (!d.ok) { el.textContent = '✗ ' + t('res_error'); return; }
     const cfg = d.data || {};
-    const bool = v => v === 'True' || v === true || v === '1'
-      ? '<span style="color:var(--green)">✓</span>'
-      : '<span style="color:var(--muted)">✗</span>';
+    const isOn = v => v === 'True' || v === 'true' || v === true || v === '1' || v === 1;
+    const bool = v => isOn(v)
+      ? '<span style="color:var(--green)">✓ ' + t('lbl_on') + '</span>'
+      : '<span style="color:var(--muted)">✗ ' + t('lbl_off') + '</span>';
     el.innerHTML = `<table class="itbl">
-      <tr><td>Server Details</td><td>${bool(cfg.EnableServerDetails)}</td></tr>
-      <tr><td>Anti-AFK</td><td>${bool(cfg.EnableAntiAfk)} ${cfg.MaxAfkTimeMinutes ? cfg.MaxAfkTimeMinutes+'min' : ''}</td></tr>
+      <tr><td style="color:var(--muted);font-size:10px" title="EnableServerDetails: CM-Beschreibung anzeigen">Server Details <span style="font-size:10px">(CM)</span></td><td>${bool(cfg.EnableServerDetails)}</td></tr>
+      <tr><td>Anti-AFK</td><td>${bool(cfg.EnableAntiAfk)}${cfg.MaxAfkTimeMinutes ? ' · '+cfg.MaxAfkTimeMinutes+'min' : ''}</td></tr>
       <tr><td>Max Ping</td><td>${cfg.MaxPing || '—'}ms</td></tr>
-      <tr><td>WeatherFX</td><td>${bool(cfg.EnableWeatherFx)}</td></tr>
+      <tr><td>WeatherFX (CSP)</td><td>${bool(cfg.EnableWeatherFx)}</td></tr>
       <tr><td>Real Time</td><td>${bool(cfg.EnableRealTime)}</td></tr>
       <tr><td>Client Messages</td><td>${bool(cfg.EnableClientMessages)}</td></tr>
-      <tr><td>Min CSP</td><td>${cfg.MinimumCSPVersion || '0 (kein Limit)'}</td></tr>
+      <tr><td>Min CSP Version</td><td>${cfg.MinimumCSPVersion || '0'} <span style="color:var(--muted);font-size:10px">(0 = kein Limit)</span></td></tr>
       <tr><td>RCON Port</td><td>${cfg.RconPort || '9700'}</td></tr>
       ${cfg.UDPPluginAddress ? `<tr><td>UDP Plugin</td><td>${cfg.UDPPluginAddress}</td></tr>` : ''}
     </table>`;
-    if (st) st.textContent = '✓ geladen';
-  }).catch(() => { if (el) el.textContent = '✗ Ladefehler'; });
+    if (st) st.textContent = '✓';
+  }).catch(() => { if (el) el.textContent = '✗ ' + t('ev_load_error'); });
 }
 // ═══ SUN ANGLE PRESETS ═════════════════════════════════════════════════════
 function setSunAngle(val) {
@@ -681,7 +714,7 @@ function saveExtendedSettings() {
   apiFetch('/save_server_settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
     .then(r=>r.json()).then(d=>{
       toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err');
-      if(d.ok&&autoRestart()) _showRestartModal(['⚙️ Server-Einstellungen: Ports & Modus aktualisiert']);
+      if(d.ok&&autoRestart()) _showRestartModal([t('t_server_settings_updated')]);
     });
 }
 
@@ -1133,10 +1166,10 @@ function saveExtraCfg(){
 
 async function restoreBackup(){
   const inp=document.getElementById("restore-inp");
-  if(!inp.files[0]){toast("Keine Datei gewählt","err");return;}
-  if(!confirm("Config wirklich wiederherstellen? Server wird neu gestartet!"))return;
+  if(!inp.files[0]){toast(t('t_no_file'),"err");return;}
+  if(!confirm(t('t_restore_confirm')))return;
   const fd=new FormData();fd.append("backup",inp.files[0]);
-  toast("Restore läuft...","info");
+  toast(t('t_restore_loading'),"info");
   const r=await fetch("/api/restore",{method:"POST",credentials:'same-origin',body:fd});
   const d=await r.json();
   toast(d.ok?"✓ "+d.msg:"✗ "+d.msg,d.ok?"ok":"err");
@@ -1726,9 +1759,15 @@ function loadPluginStatus() {
       const el = document.getElementById(id);
       if (el) { el.textContent = on ? '●' : '○'; el.style.color = on ? 'var(--green)' : 'var(--muted)'; }
     };
+    const vwpActive = active.includes('VotingWeatherPlugin');
     dot('dot-automod', active.includes('AutoModerationPlugin'));
-    dot('dot-voting',  active.includes('VotingWeatherPlugin'));
+    dot('dot-voting',  vwpActive);
     dot('dot-lwp',     d.lwp_enabled);
+
+    const vwpTog = document.getElementById('vwp-toggle');
+    if (vwpTog) vwpTog.checked = vwpActive;
+    const vwpCfg = document.getElementById('vwp-config');
+    if (vwpCfg) vwpCfg.style.display = vwpActive ? '' : 'none';
 
     const tog = document.getElementById('lwp-toggle');
     if (tog) tog.checked = !!d.lwp_enabled;
@@ -1739,13 +1778,13 @@ function loadPluginStatus() {
     const txt = document.getElementById('lwp-status-txt');
     if (txt) {
       if (d.lwp_enabled && d.lwp_key_set) {
-        txt.textContent = `Aktiv · Key: ${d.lwp_key_hint} · alle ${d.lwp_interval} min`;
+        txt.textContent = t('t_lwp_active', d.lwp_key_hint, d.lwp_interval);
         txt.style.color = 'var(--green)';
       } else if (d.lwp_enabled && !d.lwp_key_set) {
-        txt.textContent = '⚠ Aktiviert aber kein API-Key gesetzt';
+        txt.textContent = t('t_lwp_no_key');
         txt.style.color = 'var(--warn,#f59e0b)';
       } else {
-        txt.textContent = 'Deaktiviert — braucht OpenWeatherMap API-Key';
+        txt.textContent = t('t_lwp_disabled');
         txt.style.color = 'var(--muted)';
       }
     }
@@ -1756,42 +1795,6 @@ function loadPluginStatus() {
   }).catch(()=>{});
 }
 
-// ═══ CI BOTS STATUS ═══════════════════════════════════════════════════════
-function loadBotStatus() {
-  const box = document.getElementById('bot-status-list');
-  if (!box) return;
-  apiFetch('/api/bots/status').then(r=>r.json()).then(d=>{
-    if (!d.configured) {
-      box.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Nicht konfiguriert — GITHUB_STATUS_TOKEN fehlt in .env</div>`;
-      return;
-    }
-    const runner = d.runner;
-    const runnerLine = runner
-      ? `${runner.status === 'online' ? '🟢' : '🔴'} Runner <b>${runner.name}</b> — ${runner.status === 'online' ? (runner.busy ? 'online, beschäftigt' : 'online') : 'offline'}`
-      : `⚪ Runner-Status unbekannt (Token ohne Admin-Rechte?)`;
-
-    const fmtRun = (label, run) => {
-      if (!run) return `<div style="font-size:12px;color:var(--muted)">${label}: keine Läufe gefunden</div>`;
-      const icon = run.status !== 'completed' ? '🟡'
-                 : run.conclusion === 'success' ? '🟢'
-                 : run.conclusion === 'failure' ? '🔴' : '⚪';
-      const when = run.created_at ? new Date(run.created_at).toLocaleString('de-DE') : '';
-      const label2 = run.status !== 'completed' ? run.status : (run.conclusion || run.status);
-      return `<div style="font-size:12px"><a href="${run.url}" target="_blank" style="color:inherit;text-decoration:none">${icon} ${label}: ${label2} — ${when}</a></div>`;
-    };
-
-    box.innerHTML = `
-      <div style="background:var(--bg);border-radius:6px;padding:8px 10px;font-size:12px">${runnerLine}</div>
-      <div style="background:var(--bg);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:4px">
-        ${fmtRun('Bot 1 (Release-Analyse)', d.runs.bot1)}
-        ${fmtRun('Bot 2 (Fix-Vorschlag)', d.runs.bot2)}
-      </div>
-    `;
-  }).catch(()=>{
-    box.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Fehler beim Laden</div>`;
-  });
-}
-
 function toggleLiveWeather(checked) {
   const cfg = document.getElementById('lwp-config');
   if (cfg) cfg.style.display = checked ? '' : 'none';
@@ -1799,7 +1802,7 @@ function toggleLiveWeather(checked) {
     apiFetch('/api/live_weather_plugin', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({enabled: false})})
       .then(r=>r.json()).then(d=>{
-        toast(d.ok ? '✓ LiveWeatherPlugin deaktiviert — Server wird neu gestartet' : '✗ '+d.msg, d.ok?'ok':'err');
+        toast(d.ok ? t('t_lwp_deactivated') : '✗ '+d.msg, d.ok?'ok':'err');
         if (d.ok) setTimeout(loadPluginStatus, 2000);
       });
   }
@@ -1808,12 +1811,82 @@ function toggleLiveWeather(checked) {
 function saveLiveWeather() {
   const key      = document.getElementById('lwp-apikey').value.trim();
   const interval = parseInt(document.getElementById('lwp-interval').value) || 10;
-  if (!key) { toast('API-Key fehlt', 'err'); return; }
+  if (!key) { toast(t('t_lwp_key_missing'), 'err'); return; }
   apiFetch('/api/live_weather_plugin', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({enabled: true, api_key: key, interval})})
     .then(r=>r.json()).then(d=>{
-      toast(d.ok ? '✓ LiveWeatherPlugin aktiviert — Server wird neu gestartet' : '✗ '+d.msg, d.ok?'ok':'err');
+      toast(d.ok ? t('t_lwp_activated') : '✗ '+d.msg, d.ok?'ok':'err');
       if (d.ok) setTimeout(loadPluginStatus, 3000);
+    });
+}
+
+// ═══ WEATHER LOG ══════════════════════════════════════════════════════════
+function loadWeatherLog() {
+  const box = document.getElementById('lwp-log');
+  if (!box) return;
+  apiFetch('/api/weather_log').then(r => r.json()).then(d => {
+    if (d.error) { box.innerHTML = `<div style="color:var(--muted)">${d.error}</div>`; return; }
+    if (!d.entries || d.entries.length === 0) {
+      box.innerHTML = `<div style="color:var(--muted);padding:16px 0;text-align:center">${t('t_weather_log_empty')}</div>`;
+      return;
+    }
+    box.innerHTML = d.entries.map(e => {
+      const ok  = e.level === 'INF';
+      const err = e.level === 'ERR';
+      const ico = ok ? '✅' : err ? '❌' : '⚠️';
+      const col = ok ? 'var(--green)' : err ? 'var(--red,#e53e3e)' : 'var(--warn,#f59e0b)';
+      const ts  = e.ts.replace('T', ' ').replace(/([+-]\d{4})$/, '');
+      const detail = e.detail ? `<div style="color:var(--muted);padding-left:18px;margin-top:2px">${e.detail}</div>` : '';
+      return `<div style="border-left:3px solid ${col};padding:4px 8px;background:var(--bg);border-radius:0 4px 4px 0">
+        <span style="color:${col}">${ico}</span>
+        <span style="color:var(--muted);margin:0 6px">${ts}</span>
+        <span>${e.msg}</span>${detail}
+      </div>`;
+    }).join('');
+  }).catch(() => {
+    if (box) box.innerHTML = `<div style="color:var(--muted)">${t('t_weather_log_error')}</div>`;
+  });
+}
+
+// ═══ VOTING WEATHER ═══════════════════════════════════════════════════════
+function loadVotingWeather() {
+  apiFetch('/api/voting_weather').then(r=>r.json()).then(d=>{
+    const tog = document.getElementById('vwp-toggle');
+    const cfg = document.getElementById('vwp-config');
+    const iv  = document.getElementById('vwp-interval');
+    const dv  = document.getElementById('vwp-duration');
+    const sq  = document.getElementById('vwp-sequential');
+    if (tog) tog.checked = !!d.active;
+    if (cfg) cfg.style.display = d.active ? '' : 'none';
+    if (iv) iv.value = d.interval ?? 30;
+    if (dv) dv.value = d.duration ?? 30;
+    if (sq) sq.checked = !!d.sequential;
+  }).catch(()=>{});
+}
+
+function toggleVotingWeather(checked) {
+  const cfg = document.getElementById('vwp-config');
+  if (cfg) cfg.style.display = checked ? '' : 'none';
+  const interval   = parseInt(document.getElementById('vwp-interval')?.value)  || 30;
+  const duration   = parseInt(document.getElementById('vwp-duration')?.value)  || 30;
+  const sequential = !!document.getElementById('vwp-sequential')?.checked;
+  apiFetch('/api/voting_weather', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({enabled: checked, interval, duration, sequential})})
+    .then(r=>r.json()).then(d=>{
+      const msg = checked ? t('t_vwp_activated') : t('t_vwp_deactivated');
+      toast(d.ok ? msg + t('t_server_restarting') : '✗ '+d.msg, d.ok?'ok':'err');
+      if (d.ok) setTimeout(loadPluginStatus, 2500);
+    });
+}
+
+function saveVotingWeather() {
+  const interval   = parseInt(document.getElementById('vwp-interval').value) || 30;
+  const duration   = parseInt(document.getElementById('vwp-duration').value) || 30;
+  const sequential = document.getElementById('vwp-sequential').checked;
+  apiFetch('/api/voting_weather', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({interval, duration, sequential})})
+    .then(r=>r.json()).then(d=>{
+      toast(d.ok ? t('t_vwp_settings_saved') : '✗ '+d.msg, d.ok?'ok':'err');
     });
 }
 
@@ -1905,17 +1978,37 @@ function navTo(id) {
   const _cnt = document.querySelector('.content');
   if (_cnt) _cnt.scrollTop = 0;
   // Side effects
-  if (id === 'logs') loadLogs();
+  if (id === 'logs')             loadLogs();
   if (id === 'settings-profile') loadServerProfile();
-  if (id === 'players') { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
-  if (id === 'advanced') { loadExtraCfg(); loadDiscord(); loadChatNotify(); loadCutActions(); loadTelegram(); loadPluginStatus(); loadBotStatus(); }
-  if (id === 'content') loadInstalledContent();
-  if (id === 'settings-overview') loadOverviewExtraCfg();
-  if (id === 'records') { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
-  if (id === 'results')      loadResults();
-  if (id === 'championship') { loadChampionships(); }
-  if (id === 'schedule')     { loadScheduledEvents(); _loadSchedPresets(); }
-  if (id === 'events')       loadEvents();
+  if (id === 'players')          { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
+  if (id === 'advanced')         { loadExtraCfg(); }
+  if (id === 'integrations')     { loadDiscord(); loadChatNotify(); loadTelegram(); }
+  if (id === 'content')          loadInstalledContent();
+  if (id === 'settings-overview') {
+    loadOverviewExtraCfg();
+    // Sun Angle → lesbarer Zeitstring
+    const saEl = document.getElementById('ov-sun-angle');
+    if (saEl) {
+      const angle = parseInt(saEl.dataset.angle || saEl.textContent);
+      saEl.textContent = sunAngleToTime(angle) + ' Uhr  (~' + angle + '°)';
+    }
+    // Wetter-Preset-IDs → lesbarer Name mit Icon
+    ['ov-w0-graphics','ov-w1-graphics'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el.dataset.converted) {
+        el.textContent = _weatherLabel(el.textContent.trim());
+        el.dataset.converted = '1';
+      }
+    });
+  }
+  if (id === 'settings-assists') loadCutActions();
+  if (id === 'settings-sessions') { loadScheduledEvents(); _loadSchedPresets(); }
+  if (id === 'settings-weather') { loadPluginStatus(); loadVotingWeather(); loadWeatherLog(); }
+  if (id === 'records')          { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
+  if (id === 'results')          loadResults();
+  if (id === 'championship')     { loadChampionships(); }
+  if (id === 'schedule')         { loadScheduledEvents(); _loadSchedPresets(); }
+  if (id === 'events')           loadEvents();
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('open');
@@ -1989,16 +2082,17 @@ function saveWeatherPage() {
           const w0road = parseInt(document.getElementById('w0-road').value) || 0;
           const w1road = parseInt(document.getElementById('w1-road').value) || 0;
           const upd = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-          upd('ov-w0-graphics', document.getElementById('w0-graphics').value);
+          const _setWeatherOv = (id, key) => { const el = document.getElementById(id); if(el){el.textContent=_weatherLabel(key);el.dataset.converted='1';} };
+          _setWeatherOv('ov-w0-graphics', document.getElementById('w0-graphics').value);
           upd('ov-w0-ambient',  _w0a + '\u00b0C');
           upd('ov-w0-road',     w0road + '\u00b0C');
-          upd('ov-w1-graphics', document.getElementById('w1-graphics').value);
+          _setWeatherOv('ov-w1-graphics', document.getElementById('w1-graphics').value);
           upd('ov-w1-ambient',  _w1a + '\u00b0C');
           upd('ov-w1-road',     w1road + '\u00b0C');
           // Bug fix: Modal nur wenn BEIDE Saves (Weather + DynamicTrack) ok
           if (autoRestart() && d.ok) _showRestartModal([
-            '🌤️ Slot 1: '+document.getElementById('w0-graphics').value+' | '+_w0a+'°C Ambient | '+w0road+'°C Straße',
-            '🌤️ Slot 2: '+document.getElementById('w1-graphics').value+' | '+_w1a+'°C Ambient | '+w1road+'°C Straße'
+            _weatherLabel(document.getElementById('w0-graphics').value)+' · '+_w0a+'°C / '+w0road+'°C '+t('lbl_road_temp'),
+            _weatherLabel(document.getElementById('w1-graphics').value)+' · '+_w1a+'°C / '+w1road+'°C '+t('lbl_road_temp'),
           ]);
         }
       })

@@ -276,18 +276,14 @@ def set_live_weather_plugin():
             if not api_key:
                 return jsonify({"ok": False, "msg": "API-Key fehlt"}), 400
 
-            # Live- und Voting-Wetter schließen sich gegenseitig aus (sonst
-            # ueberschreiben sich beide Plugins gegenseitig und das Wetter
-            # springt zwischen Live-Daten und Voting-Presets hin und her)
+            # LiveWeather und VotingWeather schließen sich gegenseitig aus
             content = _remove_plugin(content, "VotingWeatherPlugin")
             content = _add_plugin(content, "LiveWeatherPlugin")
 
-            # Kommentare entfernen und Werte setzen
             content = _re.sub(r'^#LiveWeatherPlugin:', 'LiveWeatherPlugin:', content, flags=_re.MULTILINE)
             content = _re.sub(r'^#\s*OpenWeatherMapApiKey:.*', f'  OpenWeatherMapApiKey: "{api_key}"', content, flags=_re.MULTILINE)
             content = _re.sub(r'^#\s*RefreshIntervalMinutes:.*', f'  RefreshIntervalMinutes: {interval}', content, flags=_re.MULTILINE)
 
-            # Falls Plugin-Config noch nicht in der Datei: anfügen
             if "OpenWeatherMapApiKey" not in content:
                 content += f"\nLiveWeatherPlugin:\n  OpenWeatherMapApiKey: \"{api_key}\"\n  RefreshIntervalMinutes: {interval}\n"
             else:
@@ -302,12 +298,66 @@ def set_live_weather_plugin():
                     content,
                 )
         else:
-            # Zurück auf Fest-/Voting-Wetter wechseln
+            # Nur LiveWeather deaktivieren — VotingWeather bleibt wie es ist
             content = _remove_plugin(content, "LiveWeatherPlugin")
-            content = _add_plugin(content, "VotingWeatherPlugin")
 
         _write_yaml(content)
         maybe_restart({"restart": True})
+        return jsonify({"ok": True, "enabled": enabled})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+# ── VotingWeatherPlugin ───────────────────────────────────────────────────────
+
+@bp.route("/api/voting_weather", methods=["GET"])
+@login_required
+def get_voting_weather():
+    content = _read_yaml()
+    m_int = _re.search(r'VotingIntervalMinutes:\s*(\d+)', content)
+    m_dur = _re.search(r'VotingDurationSeconds:\s*(\d+)', content)
+    m_seq = _re.search(r'SequentialWeatherReplacement:\s*(true|false)', content)
+    return jsonify({
+        "active":     "VotingWeatherPlugin" in _active_plugins(content),
+        "interval":   int(m_int.group(1)) if m_int else 30,
+        "duration":   int(m_dur.group(1)) if m_dur else 30,
+        "sequential": (m_seq.group(1) == "true") if m_seq else False,
+    })
+
+
+@bp.route("/api/voting_weather", methods=["POST"])
+@login_required
+@csrf_protect
+def set_voting_weather():
+    data     = request.json or {}
+    enabled  = data.get("enabled")          # None = nur Settings speichern, kein Toggle
+    interval = max(1, int(data.get("interval", 30) or 30))
+    duration = max(5, int(data.get("duration", 30) or 30))
+    seq      = bool(data.get("sequential", False))
+
+    if not EXTRA_CFG_FILE.exists():
+        return jsonify({"ok": False, "msg": "extra_cfg.yml nicht gefunden"}), 500
+    try:
+        content = _read_yaml()
+
+        if enabled is True:
+            # VotingWeather aktivieren — LiveWeather muss raus (Konflikt)
+            content = _remove_plugin(content, "LiveWeatherPlugin")
+            content = _add_plugin(content, "VotingWeatherPlugin")
+        elif enabled is False:
+            # Nur VotingWeather deaktivieren — nichts anderes anfassen
+            content = _remove_plugin(content, "VotingWeatherPlugin")
+
+        content = _re.sub(r'(VotingIntervalMinutes:\s*)\d+',   f'\\g<1>{interval}', content)
+        content = _re.sub(r'(VotingDurationSeconds:\s*)\d+',   f'\\g<1>{duration}', content)
+        content = _re.sub(
+            r'(SequentialWeatherReplacement:\s*)(true|false)',
+            f'\\g<1>{"true" if seq else "false"}',
+            content,
+        )
+        _write_yaml(content)
+        if enabled is not None:
+            maybe_restart({"restart": True})
         return jsonify({"ok": True, "enabled": enabled})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500

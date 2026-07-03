@@ -1,5 +1,4 @@
 """Haupt-Routes: Index, Live-API, Uptime, Bilder, Server-Control, Logs, Login/Logout."""
-import logging
 import math
 
 from flask import Blueprint, jsonify, redirect, render_template, request, send_file, session, url_for
@@ -8,8 +7,9 @@ from constants import (
     ACWEB_PASS, ACWEB_USER, CARS_DIR, TRACKS_DIR, WEATHER_PRESETS,
 )
 from helpers.auth import api_rate_limit, check_rate_limit, csrf_protect, login_required, _get_client_ip
-from helpers.bots import get_bot_status
 from helpers.config_io import read_full_server_cfg, read_server_cfg
+from constants import EXTRA_CFG_FILE
+import re as _re
 from helpers.content import get_car_skins, get_car_ui, get_track_ui, list_cars, list_tracks
 from helpers.system import (
     ensure_udp, get_car_data, get_recent_chat, get_system_stats,
@@ -20,7 +20,6 @@ import subprocess
 from constants import SERVICE_NAME
 
 bp = Blueprint("main", __name__)
-logger = logging.getLogger(__name__)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -154,19 +153,29 @@ def api_live():
                 drv["gap_ms"]  = -1
                 drv["gap_str"] = f"+{gap_prog:.3f} Rd"
 
-    # ── Live weather: bevorzuge AS-API-Daten, Fallback auf static config ────
+    # ── Live weather ────────────────────────────────────────────────────────
     full = read_full_server_cfg()
     w0   = full.get("WEATHER_0", {})
     static_amb  = int(w0.get("BASE_TEMPERATURE_AMBIENT") or 18)
     static_road = static_amb + int(w0.get("BASE_TEMPERATURE_ROAD") or 8)
+
+    # Nur echte OWM-Werte anzeigen wenn LiveWeatherPlugin aktiviert ist.
+    # Der AC-Server passt Temperaturen tageszeit-abhängig an — ohne Plugin
+    # stimmen diese nicht mit den konfigurierten Slot-1 Werten überein.
+    _yaml_txt = EXTRA_CFG_FILE.read_text(encoding="utf-8") if EXTRA_CFG_FILE.exists() else ""
+    _plugins_m = _re.search(r'EnablePlugins:\s*\n((?:[ \t]+-[ \t]+\S+\n?)*)', _yaml_txt)
+    _active = _re.findall(r'[ \t]+-[ \t]+(\S+)', _plugins_m.group(1)) if _plugins_m else []
+    lwp_active = "LiveWeatherPlugin" in _active
+
+    use_live_temps = lwp_active and info and info.get("ambientTemperature")
     weather_live = {
         "graphics":   info.get("currentWeatherId") or w0.get("GRAPHICS", "3_clear") if info else w0.get("GRAPHICS", "3_clear"),
-        "ambient":    round(float(info["ambientTemperature"]), 1) if info and info.get("ambientTemperature") else static_amb,
-        "road":       round(float(info["roadTemperature"]),   1) if info and info.get("roadTemperature")   else static_road,
+        "ambient":    round(float(info["ambientTemperature"]), 1) if use_live_temps else static_amb,
+        "road":       round(float(info["roadTemperature"]),   1) if use_live_temps and info.get("roadTemperature") else static_road,
         "wind_speed": info.get("windSpeed", 0)    if info else 0,
         "wind_dir":   info.get("windDirection", 0) if info else 0,
         "grip":       info.get("grip", 100)        if info else 100,
-        "live":       bool(info and info.get("ambientTemperature")),
+        "live":       use_live_temps,
     }
 
     return jsonify({
@@ -186,10 +195,64 @@ def api_uptime():
     return jsonify({"uptime": get_uptime_string()})
 
 
-@bp.route("/api/bots/status")
+@bp.route("/api/weather_log")
 @login_required
-def api_bots_status():
-    return jsonify(get_bot_status())
+def api_weather_log():
+    try:
+        out = subprocess.check_output(
+            ["journalctl", "-u", SERVICE_NAME, "--no-pager", "-n", "200",
+             "--output=short-iso"],
+            stderr=subprocess.DEVNULL, text=True, timeout=5
+        )
+    except Exception:
+        return jsonify({"entries": [], "error": "journalctl nicht verfügbar"})
+
+    entries = []
+    lines = out.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = _re.search(
+            r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{4})'
+            r'.*AssettoServer\[\d+\]:\s*(\[\d{2}:\d{2}:\d{2}\s+(\w+)\])\s*(.*)',
+            line
+        )
+        if not m:
+            i += 1
+            continue
+
+        iso_ts, tag, level, msg = m.group(1), m.group(2), m.group(3), m.group(4).strip()
+
+        is_weather = any(k in msg for k in (
+            "live weather", "LiveWeather", "OpenWeather", "weather update",
+            "Weather", "temperature", "Temperature",
+        ))
+
+        if level == "ERR" and i + 1 < len(lines):
+            next_line = lines[i + 1]
+            if "LiveWeatherPlugin" in next_line or "OpenWeatherMap" in next_line:
+                exc_m = _re.search(r'AssettoServer\[\d+\]:\s*(.*)', next_line)
+                detail = exc_m.group(1).strip() if exc_m else ""
+                entries.append({
+                    "ts": iso_ts, "level": "ERR",
+                    "msg": msg, "detail": detail,
+                })
+                i += 2
+                continue
+
+        if is_weather or (level in ("INF", "WRN") and "weather" in msg.lower()):
+            entries.append({"ts": iso_ts, "level": level, "msg": msg, "detail": ""})
+
+        i += 1
+
+    entries = [e for e in entries if any(
+        k in (e["msg"] + e["detail"]) for k in (
+            "live weather", "LiveWeather", "OpenWeather", "weather update",
+            "Weather", "temperature", "Temperature",
+        )
+    )]
+
+    return jsonify({"entries": list(reversed(entries[-30:]))})
 
 
 # ── Image endpoints ───────────────────────────────────────────────────────────
@@ -331,5 +394,4 @@ def logs():
         )
         return jsonify({"logs": r.stdout})
     except Exception as e:
-        logger.exception("logs: journalctl fehlgeschlagen")
         return jsonify({"logs": f"Error: {e}"})

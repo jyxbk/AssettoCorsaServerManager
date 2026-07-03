@@ -272,6 +272,11 @@ def set_live_weather_plugin():
     try:
         content = _read_yaml()
 
+        # Kein neuer Key angegeben → vorhandenen aus der Config verwenden
+        if enabled and not api_key:
+            m = _re.search(r'^\s*OpenWeatherMapApiKey:\s*"?([^"\n]+)"?', content, _re.MULTILINE)
+            api_key = m.group(1).strip() if m else ""
+
         if enabled:
             if not api_key:
                 return jsonify({"ok": False, "msg": "API-Key fehlt"}), 400

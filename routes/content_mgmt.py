@@ -11,7 +11,7 @@ from flask import Blueprint, jsonify, render_template, request, send_file
 from werkzeug.utils import secure_filename
 
 from constants import (
-    ACWEB_PORT, CARS_DIR, CFG_DIR, LOGO_FILE, TRACKS_DIR, UPLOAD_TMP, WELCOME_FILE,
+    CARS_DIR, CFG_DIR, TRACKS_DIR, UPLOAD_TMP, WELCOME_FILE,
 )
 from helpers.auth import api_rate_limit, csrf_protect, login_required
 from helpers.config_io import (
@@ -25,7 +25,7 @@ from helpers.content import (
     list_cars, list_tracks,
     regen_entry_list, secure_filename_path,
 )
-from helpers.system import run_systemctl, server_info
+from helpers.system import run_systemctl
 from constants import EXTRA_CFG_KEYS
 
 bp = Blueprint("content_mgmt", __name__)
@@ -515,7 +515,7 @@ def upload_folder():
     return jsonify({"ok": True, "name": root_name, "files": written})
 
 
-# ── Server profile (welcome message + logo) ───────────────────────────────────
+# ── Server profile (welcome message) ──────────────────────────────────────────
 
 @bp.route("/api/server_profile", methods=["GET", "POST"])
 @login_required
@@ -525,46 +525,13 @@ def server_profile():
         msg = get_extra_cfg_description()
         if not msg and WELCOME_FILE.exists():
             msg = WELCOME_FILE.read_text(encoding="utf-8")
-        logo_url = read_extra_cfg().get("LoadingImageUrl", "")
-        return jsonify({"ok": True, "welcome": msg, "has_logo": LOGO_FILE.exists(), "logo_url": logo_url})
+        return jsonify({"ok": True, "welcome": msg})
     data    = request.get_json() or {}
     welcome = data.get("welcome", "")
     WELCOME_FILE.write_text(welcome, encoding="utf-8")
     set_extra_cfg_description(welcome)
     update_server_cfg({"WELCOME_MESSAGE": "cfg/welcome.txt"})
     return jsonify({"ok": True})
-
-
-# Öffentlich – kein Login – damit Content Manager das Logo direkt laden kann
-@bp.route("/logo.png")
-def public_logo():
-    if not LOGO_FILE.exists():
-        return "", 404
-    return send_file(str(LOGO_FILE), mimetype="image/png")
-
-
-@bp.route("/api/server_logo", methods=["GET"])
-@login_required
-def get_server_logo():
-    if not LOGO_FILE.exists():
-        return "", 404
-    return send_file(str(LOGO_FILE), mimetype="image/png")
-
-
-@bp.route("/api/server_logo", methods=["POST"])
-@login_required
-@csrf_protect
-def upload_server_logo():
-    f = request.files.get("logo")
-    if not f:
-        return jsonify({"ok": False, "msg": "no file"}), 400
-    f.save(str(LOGO_FILE))
-    info = server_info()
-    public_ip = (info or {}).get("ip", "")
-    logo_url = f"http://{public_ip}:{ACWEB_PORT}/logo.png" if public_ip else ""
-    if logo_url:
-        write_extra_cfg({"LoadingImageUrl": logo_url})
-    return jsonify({"ok": True, "logo_url": logo_url})
 
 
 # ── Public leaderboard ────────────────────────────────────────────────────────

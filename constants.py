@@ -21,8 +21,6 @@ SECRET_KEY = _require_env("ACWEB_SECRET")
 ACWEB_USER = _require_env("ACWEB_USER")
 ACWEB_PASS = _require_env("ACWEB_PASS")
 
-ACWEB_PORT = int(os.environ.get("ACWEB_PORT", "8080"))
-
 # ── Paths ─────────────────────────────────────────────────────────────────────
 SERVER_DIR    = Path("/opt/assettoserver")
 CONTENT_DIR   = SERVER_DIR / "content"
@@ -40,7 +38,6 @@ CHAMPIONSHIPS_FILE   = Path("/opt/acweb/championships.json")
 SCHEDULED_EVENTS_FILE = Path("/opt/acweb/scheduled_events.json")
 WELCOME_FILE   = CFG_DIR / "welcome.txt"
 EXTRA_CFG_FILE = CFG_DIR / "extra_cfg.yml"
-LOGO_FILE      = SERVER_DIR / "logo.png"
 WHITELIST_FILE = SERVER_DIR / "whitelist.txt"
 ADMINS_FILE    = SERVER_DIR / "admins.txt"
 BLACKLIST_FILE = SERVER_DIR / "blacklist.txt"

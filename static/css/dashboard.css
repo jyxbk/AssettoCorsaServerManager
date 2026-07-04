@@ -57,11 +57,31 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-seri
 .sb-ctrl .btn{flex:1;justify-content:center;padding:6px 4px;font-size:11px}
 .sb-restart{display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)}
 .sb-restart label{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text);font-size:11px;user-select:none}
-.nav-sep{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:14px 14px 4px;opacity:.5}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600;transition:all .15s;border-left:3px solid transparent;user-select:none}
 .nav-item:hover{color:var(--text);background:var(--bg3)}
 .nav-item.active{color:var(--text);background:var(--bg3);border-left-color:var(--red)}
 .nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+
+/* ── NAV ACCORDION GROUPS ──────────────────────────────────────────────────── */
+.ng{border-bottom:1px solid var(--border)}
+.ng-hdr{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;transition:all .15s;user-select:none;border-left:3px solid transparent}
+.ng-hdr:hover{color:var(--text);background:var(--bg3)}
+.ng-hdr.has-active{color:var(--text);border-left-color:var(--red)}
+.ng-icon{font-size:13px;width:18px;text-align:center;flex-shrink:0}
+.ng-label{flex:1}
+.ng-chevron{font-size:16px;color:var(--muted);transition:transform .2s;line-height:1;margin-left:auto}
+.ng-items{display:none}
+.ng-items.open{display:block}
+.nav-sub{padding-left:38px !important;font-size:12px;border-left:3px solid transparent}
+
+/* ── CONFIG INTERNAL TABS ──────────────────────────────────────────────────── */
+.cfg-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px;flex-wrap:wrap;overflow-x:auto}
+.cfg-tab{padding:10px 16px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit}
+.cfg-tab:hover{color:var(--text)}
+.cfg-tab.active{color:var(--text);border-bottom-color:var(--red)}
+.cfg-pane{display:none}
+.cfg-pane.active{display:block}
+
 .sb-bottom{margin-top:auto;padding:12px;border-top:1px solid var(--border);display:flex;gap:8px}
 .sb-bottom a,.sb-bottom button{flex:1;text-align:center;justify-content:center}
 

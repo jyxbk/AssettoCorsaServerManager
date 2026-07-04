@@ -2256,50 +2256,100 @@ function updateServerMonitor(d) {
 }
 
 // ═══ NAVIGATION (SIDEBAR) ════════════════════════════════════════════════
+// ─── NAV GROUP ACCORDION ───────────────────────────────────────────────────
+const _NAV_GROUP_MAP = {
+  drivers:'live', laps:'live', events:'live',
+  records:'daten', analytics:'daten', results:'daten', championship:'daten',
+  players:'verwaltung', content:'verwaltung', 'entry-list':'verwaltung', integrations:'verwaltung',
+  'server-monitor':'system', logs:'system',
+};
+const _CFG_TAB_MAP = {
+  'settings-server':'server', 'settings-track':'track', 'settings-assists':'assists',
+  'settings-sessions':'sessions', 'settings-weather':'weather',
+  'settings-profile':'profile', 'advanced':'advanced', 'settings-overview':null,
+};
+
+function toggleGroup(name) {
+  const items   = document.getElementById('ngi-' + name);
+  const chevron = document.getElementById('ngc-' + name);
+  const hdr     = document.getElementById('ngh-' + name);
+  if (!items) return;
+  const isOpen = items.classList.toggle('open');
+  if (chevron) chevron.style.transform = isOpen ? 'rotate(90deg)' : '';
+  const saved = JSON.parse(localStorage.getItem('acweb_nav_open') || '[]');
+  if (isOpen) { if (!saved.includes(name)) saved.push(name); }
+  else         { const i = saved.indexOf(name); if (i !== -1) saved.splice(i, 1); }
+  localStorage.setItem('acweb_nav_open', JSON.stringify(saved));
+}
+
+function cfgTab(name) {
+  document.querySelectorAll('.cfg-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.cfg-tab').forEach(t => t.classList.remove('active'));
+  const pane = document.getElementById('cfgp-' + name);
+  if (pane) pane.classList.add('active');
+  const tab = document.querySelector(`.cfg-tab[data-tab="${name}"]`);
+  if (tab) tab.classList.add('active');
+  localStorage.setItem('acweb_cfg_tab', name);
+  if (name === 'profile')   loadServerProfile();
+  if (name === 'advanced')  loadExtraCfg();
+  if (name === 'assists')   loadCutActions();
+  if (name === 'sessions')  { loadScheduledEvents(); _loadSchedPresets(); }
+  if (name === 'weather')   { loadPluginStatus(); loadVotingWeather(); loadWeatherLog(); }
+}
+
+// Restore accordion state on page load
+(function _initNavGroups() {
+  const saved = JSON.parse(localStorage.getItem('acweb_nav_open') || '["live"]');
+  saved.forEach(name => {
+    const items   = document.getElementById('ngi-' + name);
+    const chevron = document.getElementById('ngc-' + name);
+    if (items)   items.classList.add('open');
+    if (chevron) chevron.style.transform = 'rotate(90deg)';
+  });
+})();
+
 function navTo(id) {
+  // Redirect old settings IDs → unified config panel
+  if (id in _CFG_TAB_MAP) {
+    const tab = _CFG_TAB_MAP[id];
+    if (!tab) { navTo('dashboard'); return; }
+    navTo('config');
+    cfgTab(tab);
+    return;
+  }
   _currentNav = id;
   document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   const target = document.getElementById('p-' + id);
   if (target) { target.classList.add('active'); }
+  // Nav item highlight — including sub-items
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll(`.nav-item[data-nav="${id}"]`).forEach(n => n.classList.add('active'));
-  // Scroll content to top (Bug fix: Null-Check)
+  // Group header highlight
+  document.querySelectorAll('.ng-hdr').forEach(h => h.classList.remove('has-active'));
+  const grp = _NAV_GROUP_MAP[id];
+  if (grp) {
+    const hdr = document.getElementById('ngh-' + grp);
+    if (hdr) hdr.classList.add('has-active');
+    // Auto-open group if closed
+    const items = document.getElementById('ngi-' + grp);
+    if (items && !items.classList.contains('open')) toggleGroup(grp);
+  }
+  // Scroll content to top
   const _cnt = document.querySelector('.content');
   if (_cnt) _cnt.scrollTop = 0;
   // Side effects
-  if (id === 'server-monitor')   updateServerMonitor(live);
-  if (id === 'logs')             loadLogs();
-  if (id === 'settings-profile') loadServerProfile();
-  if (id === 'players')          { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
-  if (id === 'advanced')         { loadExtraCfg(); }
-  if (id === 'integrations')     { loadDiscord(); loadChatNotify(); loadTelegram(); }
-  if (id === 'content')          loadInstalledContent();
-  if (id === 'settings-overview') {
-    loadOverviewExtraCfg();
-    // Sun Angle → lesbarer Zeitstring
-    const saEl = document.getElementById('ov-sun-angle');
-    if (saEl) {
-      const angle = parseInt(saEl.dataset.angle || saEl.textContent);
-      saEl.textContent = sunAngleToTime(angle) + ' Uhr  (~' + angle + '°)';
-    }
-    // Wetter-Preset-IDs → lesbarer Name mit Icon
-    ['ov-w0-graphics','ov-w1-graphics'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && !el.dataset.converted) {
-        el.textContent = _weatherLabel(el.textContent.trim());
-        el.dataset.converted = '1';
-      }
-    });
-  }
-  if (id === 'settings-assists') loadCutActions();
-  if (id === 'settings-sessions') { loadScheduledEvents(); _loadSchedPresets(); }
-  if (id === 'settings-weather') { loadPluginStatus(); loadVotingWeather(); loadWeatherLog(); }
-  if (id === 'records')          { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
-  if (id === 'analytics')        { loadAnalyticsDrivers(); }
-  if (id === 'results')          loadResults();
-  if (id === 'championship')     { loadChampionships(); }
-  if (id === 'schedule')         { loadScheduledEvents(); _loadSchedPresets(); }
-  if (id === 'events')           loadEvents();
+  if (id === 'config')         { const t = localStorage.getItem('acweb_cfg_tab') || 'server'; cfgTab(t); }
+  if (id === 'server-monitor') updateServerMonitor(live);
+  if (id === 'logs')           loadLogs();
+  if (id === 'players')        { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
+  if (id === 'integrations')   { loadDiscord(); loadChatNotify(); loadTelegram(); }
+  if (id === 'content')        loadInstalledContent();
+  if (id === 'records')        { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
+  if (id === 'analytics')      loadAnalyticsDrivers();
+  if (id === 'results')        loadResults();
+  if (id === 'championship')   loadChampionships();
+  if (id === 'schedule')       { loadScheduledEvents(); _loadSchedPresets(); }
+  if (id === 'events')         loadEvents();
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('open');

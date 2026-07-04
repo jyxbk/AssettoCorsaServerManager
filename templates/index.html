@@ -42,41 +42,52 @@
   </div>
 
   <!-- Navigation -->
-  <div class="nav-sep" data-i18n="nav_sec_live">Live</div>
-  <div class="nav-item active" data-nav="dashboard" onclick="navTo('dashboard')"><span class="nav-icon">🏠</span> <span data-i18n="nav_dashboard">Dashboard</span></div>
-  <div class="nav-item" data-nav="drivers" onclick="navTo('drivers')"><span class="nav-icon">🚗</span> <span data-i18n="nav_drivers_map">Fahrer & Karte</span></div>
-  <div class="nav-item" data-nav="laps" onclick="navTo('laps')"><span class="nav-icon">⏱️</span> <span data-i18n="nav_laps">Live Zeiten</span></div>
-  <div class="nav-item" data-nav="events" onclick="navTo('events')"><span class="nav-icon">📋</span> <span data-i18n="nav_events">Events</span></div>
+  <div class="nav-item active" data-nav="dashboard" onclick="navTo('dashboard')"><span class="nav-icon">⌂</span> <span data-i18n="nav_dashboard">Dashboard</span></div>
 
-  <div class="nav-sep" data-i18n="nav_sec_statistics">Statistiken</div>
-  <div class="nav-item" data-nav="records" onclick="navTo('records')"><span class="nav-icon">🏆</span> <span data-i18n="nav_records">Rekorde</span></div>
-  <div class="nav-item" data-nav="analytics" onclick="navTo('analytics')"><span class="nav-icon">📈</span> <span data-i18n="nav_analytics">Fahrerprofil</span></div>
-  <div class="nav-item" data-nav="results" onclick="navTo('results')"><span class="nav-icon">🏁</span> <span data-i18n="nav_results">Ergebnisse</span></div>
-  <div class="nav-item" data-nav="championship" onclick="navTo('championship')"><span class="nav-icon">🥇</span> <span data-i18n="nav_championship">Meisterschaft</span></div>
+  <div class="ng" id="ng-live">
+    <div class="ng-hdr" id="ngh-live" onclick="toggleGroup('live')"><span class="ng-icon">◉</span><span class="ng-label" data-i18n="nav_sec_live">Live</span><span class="ng-chevron" id="ngc-live">›</span></div>
+    <div class="ng-items" id="ngi-live">
+      <div class="nav-item nav-sub" data-nav="drivers" onclick="navTo('drivers')"><span data-i18n="nav_drivers_map">Karte & Fahrer</span></div>
+      <div class="nav-item nav-sub" data-nav="laps" onclick="navTo('laps')"><span data-i18n="nav_laps">Timing</span></div>
+      <div class="nav-item nav-sub" data-nav="events" onclick="navTo('events')"><span data-i18n="nav_events">Event-Feed</span></div>
+    </div>
+  </div>
 
-  <div class="nav-sep" data-i18n="nav_sec_config">Konfiguration</div>
-  <div class="nav-item" data-nav="settings-overview" onclick="navTo('settings-overview')"><span class="nav-icon">📊</span> <span data-i18n="nav_overview">Übersicht</span></div>
-  <div class="nav-item" data-nav="settings-server" onclick="navTo('settings-server')"><span class="nav-icon">⚙️</span> <span data-i18n="nav_server">Server</span></div>
-  <div class="nav-item" data-nav="settings-track" onclick="navTo('settings-track')"><span class="nav-icon">🗺️</span> <span data-i18n="nav_track">Strecke & Autos</span></div>
-  <div class="nav-item" data-nav="settings-assists" onclick="navTo('settings-assists')"><span class="nav-icon">🛡️</span> <span data-i18n="nav_assists_rules">Fahrhilfen & Regeln</span></div>
-  <div class="nav-item" data-nav="settings-sessions" onclick="navTo('settings-sessions')"><span class="nav-icon">📅</span> <span data-i18n="nav_sessions_schedule">Sessions & Zeitplan</span></div>
-  <div class="nav-item" data-nav="settings-weather" onclick="navTo('settings-weather')"><span class="nav-icon">🌤️</span> <span data-i18n="nav_weather_plugins">Wetter & Plugins</span></div>
-  <div class="nav-item" data-nav="settings-profile" onclick="navTo('settings-profile')"><span class="nav-icon">🎨</span> <span data-i18n="nav_profile">Serverprofil</span></div>
-  <div class="nav-item" data-nav="advanced" onclick="navTo('advanced')"><span class="nav-icon">🔧</span> <span data-i18n="nav_assettoserver">AssettoServer</span></div>
+  <div class="ng" id="ng-daten">
+    <div class="ng-hdr" id="ngh-daten" onclick="toggleGroup('daten')"><span class="ng-icon">▤</span><span class="ng-label" data-i18n="nav_sec_statistics">Daten</span><span class="ng-chevron" id="ngc-daten">›</span></div>
+    <div class="ng-items" id="ngi-daten">
+      <div class="nav-item nav-sub" data-nav="records" onclick="navTo('records')"><span data-i18n="nav_records">Rundenzeiten</span></div>
+      <div class="nav-item nav-sub" data-nav="analytics" onclick="navTo('analytics')"><span data-i18n="nav_analytics">Fahrerprofil</span></div>
+      <div class="nav-item nav-sub" data-nav="results" onclick="navTo('results')"><span data-i18n="nav_results">Ergebnisse</span></div>
+      <div class="nav-item nav-sub" data-nav="championship" onclick="navTo('championship')"><span data-i18n="nav_championship">Meisterschaft</span></div>
+    </div>
+  </div>
 
-  <div class="nav-sep" data-i18n="nav_sec_admin">Verwaltung</div>
-  <div class="nav-item" data-nav="content" onclick="navTo('content')"><span class="nav-icon">📦</span> <span data-i18n="nav_content">Inhalte</span></div>
-  <div class="nav-item" data-nav="entry-list" onclick="navTo('entry-list')"><span class="nav-icon">📋</span> <span data-i18n="nav_entry_list">Entry List</span></div>
-  <div class="nav-item" data-nav="players" onclick="navTo('players')"><span class="nav-icon">👥</span> <span data-i18n="nav_players">Spieler</span></div>
-  <div class="nav-item" data-nav="integrations" onclick="navTo('integrations')"><span class="nav-icon">🔗</span> <span data-i18n="nav_integrations">Integrationen</span></div>
-  <div class="nav-item" data-nav="server-monitor" onclick="navTo('server-monitor')"><span class="nav-icon">🖥️</span> <span>Server Monitor</span></div>
-  <div class="nav-item" data-nav="logs" onclick="navTo('logs')"><span class="nav-icon">📜</span> <span data-i18n="nav_logs">Logs</span></div>
-  <div class="nav-item" data-nav="help" onclick="navTo('help')"><span class="nav-icon">❓</span> <span data-i18n="nav_help">Hilfe</span></div>
+  <div class="nav-item" data-nav="config" onclick="navTo('config')"><span class="nav-icon">⚙</span> <span>Konfiguration</span></div>
 
-  <!-- Bottom: Lang + Logout -->
+  <div class="ng" id="ng-verwaltung">
+    <div class="ng-hdr" id="ngh-verwaltung" onclick="toggleGroup('verwaltung')"><span class="ng-icon">⊞</span><span class="ng-label" data-i18n="nav_sec_admin">Verwaltung</span><span class="ng-chevron" id="ngc-verwaltung">›</span></div>
+    <div class="ng-items" id="ngi-verwaltung">
+      <div class="nav-item nav-sub" data-nav="players" onclick="navTo('players')"><span data-i18n="nav_players">Spieler</span></div>
+      <div class="nav-item nav-sub" data-nav="content" onclick="navTo('content')"><span data-i18n="nav_content">Inhalte</span></div>
+      <div class="nav-item nav-sub" data-nav="entry-list" onclick="navTo('entry-list')"><span data-i18n="nav_entry_list">Entry List</span></div>
+      <div class="nav-item nav-sub" data-nav="integrations" onclick="navTo('integrations')"><span data-i18n="nav_integrations">Integrationen</span></div>
+    </div>
+  </div>
+
+  <div class="ng" id="ng-system">
+    <div class="ng-hdr" id="ngh-system" onclick="toggleGroup('system')"><span class="ng-icon">⬡</span><span class="ng-label">System</span><span class="ng-chevron" id="ngc-system">›</span></div>
+    <div class="ng-items" id="ngi-system">
+      <div class="nav-item nav-sub" data-nav="server-monitor" onclick="navTo('server-monitor')"><span>Monitor</span></div>
+      <div class="nav-item nav-sub" data-nav="logs" onclick="navTo('logs')"><span data-i18n="nav_logs">Logs</span></div>
+    </div>
+  </div>
+
+  <!-- Bottom: Lang + Hilfe + Logout -->
   <div class="sb-bottom">
-    <button class="lang-btn btn btn-gray btn-sm" id="lang-toggle" onclick="toggleLang()" style="flex:1">EN</button>
-    <a href="/logout" class="btn btn-gray btn-sm" style="flex:1;justify-content:center" data-i18n="btn_logout">Abmelden</a>
+    <button class="lang-btn btn btn-gray btn-sm" id="lang-toggle" onclick="toggleLang()">EN</button>
+    <button class="btn btn-gray btn-sm" onclick="navTo('help')" title="Hilfe">?</button>
+    <a href="/logout" class="btn btn-gray btn-sm" style="justify-content:center" data-i18n="btn_logout">Abmelden</a>
   </div>
 </nav>
 
@@ -529,12 +540,21 @@
   </div>
 </div>
 
-<!-- ══ SETTINGS: SERVER ════════════════════════════════════════════════════ -->
-<!-- ══ SETTINGS: ÜBERSICHT ═════════════════════════════════════════════════ -->
-<div class="panel" id="p-settings-overview">
-  <div class="sec-hdr">
-    <div><h2>&#x1F4CA; <span data-i18n="nav_overview">&#220;bersicht</span></h2><div class="sec-sub" data-i18n="ov_subtitle">Alle aktuellen Server-Einstellungen</div></div>
-    <button class="btn btn-gray btn-sm" onclick="loadOverviewExtraCfg()">&#8635; extra_cfg</button>
+<!-- ══ KONFIGURATION (unified config panel) ══════════════════════════════ -->
+<div class="panel" id="p-config">
+  <div class="cfg-tabs">
+    <button class="cfg-tab active" data-tab="server" onclick="cfgTab('server')" data-i18n="nav_server">Server</button>
+    <button class="cfg-tab" data-tab="track" onclick="cfgTab('track')" data-i18n="nav_track">Strecke & Autos</button>
+    <button class="cfg-tab" data-tab="assists" onclick="cfgTab('assists')" data-i18n="nav_assists_rules">Fahrhilfen</button>
+    <button class="cfg-tab" data-tab="sessions" onclick="cfgTab('sessions')" data-i18n="nav_sessions_schedule">Sessions</button>
+    <button class="cfg-tab" data-tab="weather" onclick="cfgTab('weather')" data-i18n="nav_weather_plugins">Wetter</button>
+    <button class="cfg-tab" data-tab="profile" onclick="cfgTab('profile')" data-i18n="nav_profile">Profil</button>
+    <button class="cfg-tab" data-tab="advanced" onclick="cfgTab('advanced')" data-i18n="nav_assettoserver">Erweitert</button>
+  </div>
+
+<!-- p-settings-overview ENTFERNT (Infos doppelt zu Dashboard) -->
+<!-- BEGIN cfg-pane placeholder (overview was here) -->
+<div style="display:none" id="p-settings-overview">
   </div>
 
   <div class="g2 gap" style="margin-bottom:16px">
@@ -637,9 +657,9 @@
     </div>
     <div id="ov-extra-content" style="margin-top:10px;color:var(--muted);font-size:12px" data-i18n="loading">Lade...</div>
   </div>
-</div>
+</div><!-- /p-settings-overview (hidden) -->
 
-<div class="panel" id="p-settings-server">
+<div class="cfg-pane active" id="cfgp-server">
   <div class="sec-hdr"><h2>⚙️ <span data-i18n="nav_server">Server</span></h2></div>
   <div class="g2 gap">
     <div class="card">
@@ -683,8 +703,7 @@
   </div>
 </div>
 
-<!-- ══ SETTINGS: STRECKE & AUTOS ═══════════════════════════════════════════ -->
-<div class="panel" id="p-settings-track">
+<div class="cfg-pane" id="cfgp-track">
   <div class="sec-hdr"><h2>🗺️ <span data-i18n="nav_track">Strecke & Autos</span></h2></div>
   <div class="g2 gap">
     <div class="card">
@@ -726,8 +745,7 @@
   </div>
 </div>
 
-<!-- ══ SETTINGS: FAHRHILFEN ════════════════════════════════════════════════ -->
-<div class="panel" id="p-settings-assists">
+<div class="cfg-pane" id="cfgp-assists">
   <div class="sec-hdr"><h2>🛡️ <span data-i18n="nav_assists">Fahrhilfen</span> & <span data-i18n="sec_rules">Regeln</span></h2></div>
   <div class="g2 gap">
     <div class="card">
@@ -780,8 +798,7 @@
   </div>
 </div>
 
-<!-- ══ SETTINGS: SESSIONS ══════════════════════════════════════════════════ -->
-<div class="panel" id="p-settings-sessions">
+<div class="cfg-pane" id="cfgp-sessions">
   <div class="sec-hdr"><h2>📅 <span data-i18n="nav_sessions">Sessions</span></h2></div>
   {% set practice = full_cfg.get('PRACTICE', {}) %}
   {% set qualify  = full_cfg.get('QUALIFY',  {}) %}
@@ -849,8 +866,7 @@
   </div>
 </div>
 
-<!-- ══ SETTINGS: WETTER ════════════════════════════════════════════════════ -->
-<div class="panel" id="p-settings-weather">
+<div class="cfg-pane" id="cfgp-weather">
   <div class="sec-hdr"><h2>🌤️ <span data-i18n="nav_weather">Wetter</span> & <span data-i18n="sec_track">Strecke</span></h2></div>
   {% set w0 = full_cfg.get('WEATHER_0', {}) %}
   {% set w1 = full_cfg.get('WEATHER_1', {}) %}
@@ -958,8 +974,7 @@
   </div>
 </div>
 
-<!-- ══ SETTINGS: PROFIL ════════════════════════════════════════════════════ -->
-<div class="panel" id="p-settings-profile">
+<div class="cfg-pane" id="cfgp-profile">
   <div class="sec-hdr"><h2>🎨 <span data-i18n="nav_profile">Serverprofil</span></h2></div>
   <div class="card" style="margin-top:0">
     <div class="card-ttl"><span data-i18n="card_welcome">Willkommensnachricht</span> <span style="font-weight:400;color:var(--muted);float:right" id="welcome-chars">0 <span data-i18n="lbl_chars">Zeichen</span></span></div>
@@ -982,7 +997,31 @@
   <div class="save-footer">
     <button class="btn btn-red" onclick="saveServerProfile()" data-i18n="btn_save_profile">💾 Profil speichern</button>
   </div>
-</div>
+</div><!-- /cfgp-profile -->
+
+<div class="cfg-pane" id="cfgp-advanced">
+  <div class="sec-hdr"><h2>🔧 AssettoServer <span style="font-size:13px;font-weight:400;color:var(--muted)">(extra_cfg.yml)</span></h2></div>
+  <div class="card gap">
+    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_server_details">Server Details aktivieren</div><div class="tog-desc" data-i18n="tog_server_details_desc">Pflicht für CM-Beschreibung</div></div><label class="tog"><input type="checkbox" id="ec-details"><span class="tog-sl"></span></label></div>
+    <div class="tog-row"><div><div class="tog-lbl">Anti-AFK Kick</div></div><label class="tog"><input type="checkbox" id="ec-afk"><span class="tog-sl"></span></label></div>
+    <div class="num-row"><span class="tog-lbl">AFK Timeout (min)</span><input class="inp num-inp" type="number" id="ec-afkmin" min="1" max="60" value="10"></div>
+    <div class="num-row"><span class="tog-lbl">Max Ping (ms)</span><input class="inp num-inp" type="number" id="ec-ping" min="100" max="2000" value="500"></div>
+    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_force_lights">Lichter erzwingen</div></div><label class="tog"><input type="checkbox" id="ec-lights"><span class="tog-sl"></span></label></div>
+    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_weatherfx">WeatherFX (CSP Regen)</div><div class="tog-desc" data-i18n="tog_weatherfx_desc">Benötigt CSP 0.1.76+</div></div><label class="tog"><input type="checkbox" id="ec-wxfx"><span class="tog-sl"></span></label></div>
+    <div class="tog-row"><div><div class="tog-lbl">Client Messages (CSP)</div></div><label class="tog"><input type="checkbox" id="ec-clmsg"><span class="tog-sl"></span></label></div>
+    <div class="tog-row"><div><div class="tog-lbl">Real Time</div></div><label class="tog"><input type="checkbox" id="ec-realtime"><span class="tog-sl"></span></label></div>
+    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_min_csp">Min CSP Version (0=kein Limit)</span><input class="inp num-inp" type="number" id="ec-csp" min="0" value="0"></div>
+    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_security_level">Security Level (0 oder 1)</span><input class="inp num-inp" type="number" id="ec-sec" min="0" max="1" value="0"></div>
+    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_rcon_port">RCON Port (0=aus)</span><input class="inp num-inp" type="number" id="ec-rcon" min="0" max="65535" value="9700"></div>
+    <div class="fg" style="margin-top:8px">
+      <label class="lbl">Loading Image URL</label>
+      <input class="inp" id="ec-loadimg" placeholder="https://...">
+    </div>
+    <button class="btn btn-red" onclick="saveExtraCfg()" data-i18n="btn_save_extra_cfg">💾 Speichern &amp; Server neu starten</button>
+  </div>
+</div><!-- /cfgp-advanced -->
+
+</div><!-- /p-config -->
 
 <!-- ══ CONTENT ════════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-content">
@@ -1234,28 +1273,8 @@
   </div>
 </div>
 
-<!-- ══ ASSETTOSERVER CONFIG ═════════════════════════════════════════════════ -->
-<div class="panel" id="p-advanced">
-  <div class="sec-hdr"><h2>🔧 AssettoServer <span style="font-size:13px;font-weight:400;color:var(--muted)">(extra_cfg.yml)</span></h2></div>
-  <div class="card gap">
-    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_server_details">Server Details aktivieren</div><div class="tog-desc" data-i18n="tog_server_details_desc">Pflicht für CM-Beschreibung</div></div><label class="tog"><input type="checkbox" id="ec-details"><span class="tog-sl"></span></label></div>
-    <div class="tog-row"><div><div class="tog-lbl">Anti-AFK Kick</div></div><label class="tog"><input type="checkbox" id="ec-afk"><span class="tog-sl"></span></label></div>
-    <div class="num-row"><span class="tog-lbl">AFK Timeout (min)</span><input class="inp num-inp" type="number" id="ec-afkmin" min="1" max="60" value="10"></div>
-    <div class="num-row"><span class="tog-lbl">Max Ping (ms)</span><input class="inp num-inp" type="number" id="ec-ping" min="100" max="2000" value="500"></div>
-    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_force_lights">Lichter erzwingen</div></div><label class="tog"><input type="checkbox" id="ec-lights"><span class="tog-sl"></span></label></div>
-    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_weatherfx">WeatherFX (CSP Regen)</div><div class="tog-desc" data-i18n="tog_weatherfx_desc">Benötigt CSP 0.1.76+</div></div><label class="tog"><input type="checkbox" id="ec-wxfx"><span class="tog-sl"></span></label></div>
-    <div class="tog-row"><div><div class="tog-lbl">Client Messages (CSP)</div></div><label class="tog"><input type="checkbox" id="ec-clmsg"><span class="tog-sl"></span></label></div>
-    <div class="tog-row"><div><div class="tog-lbl">Real Time</div></div><label class="tog"><input type="checkbox" id="ec-realtime"><span class="tog-sl"></span></label></div>
-    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_min_csp">Min CSP Version (0=kein Limit)</span><input class="inp num-inp" type="number" id="ec-csp" min="0" value="0"></div>
-    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_security_level">Security Level (0 oder 1)</span><input class="inp num-inp" type="number" id="ec-sec" min="0" max="1" value="0"></div>
-    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_rcon_port">RCON Port (0=aus)</span><input class="inp num-inp" type="number" id="ec-rcon" min="0" max="65535" value="9700"></div>
-    <div class="fg" style="margin-top:8px">
-      <label class="lbl">Loading Image URL</label>
-      <input class="inp" id="ec-loadimg" placeholder="https://...">
-    </div>
-    <button class="btn btn-red" onclick="saveExtraCfg()" data-i18n="btn_save_extra_cfg">💾 Speichern &amp; Server neu starten</button>
-  </div>
-</div>
+<!-- p-advanced: Inhalt wurde in cfgp-advanced (innerhalb p-config) verschoben -->
+<div class="panel" id="p-advanced" style="display:none"></div>
 
 <!-- ══ INTEGRATIONEN ════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-integrations">

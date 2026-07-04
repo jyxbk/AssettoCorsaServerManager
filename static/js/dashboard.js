@@ -1401,6 +1401,76 @@ async function loadDriverStats() {
   }).join('');
 }
 
+// ═══ ANALYTICS (Fahrerprofil) ═════════════════════════════════════════════
+async function loadAnalyticsDrivers() {
+  const d  = await apiFetch('/api/analytics/drivers').then(r => r.json()).catch(() => null);
+  const sel = document.getElementById('an-driver-select');
+  const tb  = document.getElementById('an-leaderboard-tbody');
+  if (!d || !d.drivers.length) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+    return;
+  }
+
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${t('an_select_driver')}</option>` +
+    d.drivers.map(s => `<option value="${esc(s.driver)}">${esc(s.driver)}</option>`).join('');
+  if (cur) sel.value = cur;
+
+  tb.innerHTML = d.drivers.map((s, i) => {
+    const pc      = ['pos-1','pos-2','pos-3'][i] || '';
+    const safety  = s.safety_score;
+    const cons    = s.consistency;
+    const scoreColor = v => v == null ? 'var(--muted)' : v >= 90 ? 'var(--green)' : v >= 70 ? 'var(--yellow)' : 'var(--red)';
+    return `<tr>
+      <td class="${pc}">${i+1}</td>
+      <td><strong>${esc(s.driver)}</strong></td>
+      <td>${s.total_laps}</td>
+      <td style="color:${scoreColor(safety)}">${safety == null ? '—' : safety + '%'}</td>
+      <td style="color:${scoreColor(cons)}">${cons == null ? '—' : cons + '%'}</td>
+      <td class="best-t" style="font-family:monospace">${s.best_overall ? fmtMs(s.best_overall) : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadDriverProfile() {
+  const name = document.getElementById('an-driver-select').value;
+  const wrap = document.getElementById('an-profile-wrap');
+  if (!name) { wrap.style.display = 'none'; return; }
+
+  const d = await apiFetch('/api/analytics/driver?name=' + encodeURIComponent(name)).then(r => r.json()).catch(() => null);
+  if (!d || !d.ok) { wrap.style.display = 'none'; return; }
+  const p = d.profile;
+  wrap.style.display = '';
+
+  document.getElementById('an-best').textContent        = p.best_overall != null ? fmtMs(p.best_overall) : '—';
+  document.getElementById('an-consistency').textContent = p.consistency  != null ? p.consistency + '%'  : '—';
+  document.getElementById('an-safety').textContent      = p.safety_score != null ? p.safety_score + '%' : '—';
+
+  const speeds = p.tracks.map(tr => tr.avg_speed_kmh).filter(v => v != null);
+  const avgSpeed = speeds.length ? Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length) : null;
+  document.getElementById('an-speed').textContent = avgSpeed != null ? avgSpeed + ' km/h' : '—';
+
+  const trTb = document.getElementById('an-tracks-tbody');
+  trTb.innerHTML = p.tracks.length ? p.tracks.map(tr => `<tr>
+      <td style="font-size:11px">${esc(tr.track)}</td>
+      <td>${tr.laps}</td>
+      <td>${tr.clean_laps}</td>
+      <td class="best-t" style="font-family:monospace">${tr.best ? fmtMs(tr.best) : '—'}</td>
+      <td>${tr.avg_speed_kmh != null ? tr.avg_speed_kmh + ' km/h' : '—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(tr.car || '')}</td>
+    </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+
+  const recTb = document.getElementById('an-recent-tbody');
+  recTb.innerHTML = p.recent_laps.length ? p.recent_laps.map(e => `<tr>
+      <td style="font-size:11px;color:var(--muted)">${esc(e.ts || '')}</td>
+      <td style="font-size:11px">${esc(e.track)}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(e.car)}</td>
+      <td style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
+      <td style="color:${e.cuts > 0 ? 'var(--yellow)' : 'var(--muted)'}">${e.cuts}</td>
+      <td>${e.avg_speed_kmh != null ? e.avg_speed_kmh + ' km/h' : '—'}</td>
+    </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+}
+
 // ═══ DISCORD ══════════════════════════════════════════════════════════════
 function loadDiscord() {
   apiFetch('/api/discord').then(r=>r.json()).then(d=>{
@@ -2004,6 +2074,7 @@ function navTo(id) {
   if (id === 'settings-sessions') { loadScheduledEvents(); _loadSchedPresets(); }
   if (id === 'settings-weather') { loadPluginStatus(); loadVotingWeather(); loadWeatherLog(); }
   if (id === 'records')          { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
+  if (id === 'analytics')        { loadAnalyticsDrivers(); }
   if (id === 'results')          loadResults();
   if (id === 'championship')     { loadChampionships(); }
   if (id === 'schedule')         { loadScheduledEvents(); _loadSchedPresets(); }

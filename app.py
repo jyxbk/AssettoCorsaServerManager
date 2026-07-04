@@ -33,6 +33,7 @@ from routes.entry_list      import bp as entry_list_bp
 from routes.results         import bp as results_bp
 from routes.championship    import bp as championship_bp
 from routes.scheduler       import bp as scheduler_bp
+from routes.analytics       import bp as analytics_bp
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -52,6 +53,7 @@ app.register_blueprint(entry_list_bp)
 app.register_blueprint(results_bp)
 app.register_blueprint(championship_bp)
 app.register_blueprint(scheduler_bp)
+app.register_blueprint(analytics_bp)
 
 # ── Background threads ────────────────────────────────────────────────────────
 from helpers.discord   import start_discord_monitor

@@ -50,6 +50,7 @@
 
   <div class="nav-sep" data-i18n="nav_sec_statistics">Statistiken</div>
   <div class="nav-item" data-nav="records" onclick="navTo('records')"><span class="nav-icon">🏆</span> <span data-i18n="nav_records">Rekorde</span></div>
+  <div class="nav-item" data-nav="analytics" onclick="navTo('analytics')"><span class="nav-icon">📈</span> <span data-i18n="nav_analytics">Fahrerprofil</span></div>
   <div class="nav-item" data-nav="results" onclick="navTo('results')"><span class="nav-icon">🏁</span> <span data-i18n="nav_results">Ergebnisse</span></div>
   <div class="nav-item" data-nav="championship" onclick="navTo('championship')"><span class="nav-icon">🥇</span> <span data-i18n="nav_championship">Meisterschaft</span></div>
 
@@ -333,6 +334,89 @@
           <th data-i18n="col_car">Bestes Auto</th>
         </tr></thead>
         <tbody id="stats-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ANALYTICS (Fahrerprofil) ═══════════════════════════════════════════ -->
+<div class="panel" id="p-analytics">
+  <div class="card gap">
+    <div class="sh">
+      <div class="sh-t">📈 <span data-i18n="nav_analytics">Fahrerprofil</span></div>
+      <button class="btn btn-gray btn-sm" onclick="loadAnalyticsDrivers()">↻</button>
+    </div>
+    <div class="fg" style="max-width:320px;margin-bottom:0">
+      <label class="lbl" data-i18n="col_driver">Fahrer</label>
+      <select class="sel" id="an-driver-select" onchange="loadDriverProfile()">
+        <option value="" data-i18n="an_select_driver">— Fahrer wählen —</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="an-profile-wrap" style="display:none">
+    <div class="g4 gap" style="margin:14px 0">
+      <div class="card" style="text-align:center">
+        <div class="card-ttl" data-i18n="an_best_lap">Beste Runde</div>
+        <div id="an-best" style="font-size:26px;font-weight:800;font-family:monospace">—</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="card-ttl" data-i18n="an_avg_speed">Ø Geschwindigkeit</div>
+        <div id="an-speed" style="font-size:26px;font-weight:800">—</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="card-ttl" data-i18n="an_consistency">Konsistenz</div>
+        <div id="an-consistency" style="font-size:26px;font-weight:800">—</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="card-ttl" data-i18n="an_safety">Safety-Score</div>
+        <div id="an-safety" style="font-size:26px;font-weight:800">—</div>
+      </div>
+    </div>
+
+    <div class="card gap">
+      <div class="sh"><div class="sh-t" data-i18n="an_per_track">Pro Strecke</div></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th data-i18n="col_track">Strecke</th><th data-i18n="an_laps">Runden</th>
+            <th data-i18n="stat_clean_laps">Saubere Runden</th><th data-i18n="col_best">Bestzeit</th>
+            <th data-i18n="an_avg_speed">Ø Geschwindigkeit</th><th data-i18n="col_car">Auto</th>
+          </tr></thead>
+          <tbody id="an-tracks-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sh"><div class="sh-t" data-i18n="an_recent_laps">Letzte Runden</div></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th data-i18n="col_date">Datum</th><th data-i18n="col_track">Strecke</th><th data-i18n="col_car">Auto</th>
+            <th data-i18n="col_time">Zeit</th><th data-i18n="col_cuts">Cuts</th><th data-i18n="an_avg_speed">Ø Geschwindigkeit</th>
+          </tr></thead>
+          <tbody id="an-recent-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="sh"><div class="sh-t" data-i18n="an_leaderboard">Fahrervergleich</div></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th data-i18n="an_laps">Runden</th>
+          <th data-i18n="an_safety">Safety-Score</th><th data-i18n="an_consistency">Konsistenz</th><th data-i18n="stat_best">Beste Zeit</th>
+        </tr></thead>
+        <tbody id="an-leaderboard-tbody">
           <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
         </tbody>
       </table>

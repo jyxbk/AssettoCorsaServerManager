@@ -1,4 +1,14 @@
-﻿// ═══ TRANSLATE HELPER ════════════════════════════════════════════════════════
+﻿// ═══ THEME ════════════════════════════════════════════════════════════════════
+function setTheme(name) {
+  document.documentElement.setAttribute('data-theme', name);
+  localStorage.setItem('acweb_theme', name);
+  document.querySelectorAll('.theme-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.themeKey === name);
+  });
+}
+(function(){ setTheme(localStorage.getItem('acweb_theme') || 'dark'); })();
+
+// ═══ TRANSLATE HELPER ════════════════════════════════════════════════════════
 function t(key, ...args) {
   const L = (typeof LANG!=='undefined' && typeof curLang!=='undefined' && LANG[curLang]) ? LANG[curLang] : {};
   let s = L[key] !== undefined ? L[key] : key;
@@ -159,6 +169,7 @@ function refreshLive() {
       if (d.spline_points?.length > 10) spPts = d.spline_points;
       _detectLiveEvents(d.drivers);
       updateHeader(d); updateDash(d); updateDrivers(d); updateLaps(d);
+      if (_currentNav === 'server-monitor') updateServerMonitor(d);
       _renderChat(d.chat||[], "dash-chat-box");
       _renderChat(d.chat||[], "chat-box");
       drawMap(d);
@@ -2082,6 +2093,90 @@ function saveTrackParams() {
     .then(r=>r.json()).then(d=>toast(d.ok?'✓ '+d.msg:'✗ '+d.msg,d.ok?'ok':'err'));
 }
 
+// ═══ SERVER MONITOR ══════════════════════════════════════════════════════════
+const _AC_NATION = {
+  ALB:'AL',AND:'AD',ARG:'AR',ARM:'AM',AUS:'AU',AUT:'AT',AZE:'AZ',
+  BEL:'BE',BLR:'BY',BIH:'BA',BRA:'BR',BGR:'BG',CAN:'CA',CHN:'CN',
+  COL:'CO',HRV:'HR',CYP:'CY',CZE:'CZ',DNK:'DK',ECU:'EC',EGY:'EG',
+  EST:'EE',FIN:'FI',FRA:'FR',GEO:'GE',DEU:'DE',GRC:'GR',HUN:'HU',
+  ISL:'IS',IND:'IN',IDN:'ID',IRL:'IE',ISR:'IL',ITA:'IT',JPN:'JP',
+  KAZ:'KZ',KOR:'KR',LVA:'LV',LIE:'LI',LTU:'LT',LUX:'LU',MKD:'MK',
+  MYS:'MY',MLT:'MT',MEX:'MX',MDA:'MD',MCO:'MC',MNE:'ME',NLD:'NL',
+  NZL:'NZ',NOR:'NO',POL:'PL',PRT:'PT',ROU:'RO',RUS:'RU',SRB:'RS',
+  SVK:'SK',SVN:'SI',ZAF:'ZA',ESP:'ES',SWE:'SE',CHE:'CH',TUR:'TR',
+  UKR:'UA',GBR:'GB',USA:'US',URY:'UY',VEN:'VE',VNM:'VN',
+};
+const _AC_NATION_NAME = {
+  ALB:'Albanien',AND:'Andorra',ARG:'Argentinien',ARM:'Armenien',AUS:'Australien',
+  AUT:'Österreich',AZE:'Aserbaidschan',BEL:'Belgien',BLR:'Weißrussland',
+  BIH:'Bosnien',BRA:'Brasilien',BGR:'Bulgarien',CAN:'Kanada',CHN:'China',
+  COL:'Kolumbien',HRV:'Kroatien',CYP:'Zypern',CZE:'Tschechien',DNK:'Dänemark',
+  ECU:'Ecuador',EGY:'Ägypten',EST:'Estland',FIN:'Finnland',FRA:'Frankreich',
+  GEO:'Georgien',DEU:'Deutschland',GRC:'Griechenland',HUN:'Ungarn',ISL:'Island',
+  IND:'Indien',IDN:'Indonesien',IRL:'Irland',ISR:'Israel',ITA:'Italien',
+  JPN:'Japan',KAZ:'Kasachstan',KOR:'Südkorea',LVA:'Lettland',LIE:'Liechtenstein',
+  LTU:'Litauen',LUX:'Luxemburg',MKD:'Nordmazedonien',MYS:'Malaysia',MLT:'Malta',
+  MEX:'Mexiko',MDA:'Moldawien',MCO:'Monaco',MNE:'Montenegro',NLD:'Niederlande',
+  NZL:'Neuseeland',NOR:'Norwegen',POL:'Polen',PRT:'Portugal',ROU:'Rumänien',
+  RUS:'Russland',SRB:'Serbien',SVK:'Slowakei',SVN:'Slowenien',ZAF:'Südafrika',
+  ESP:'Spanien',SWE:'Schweden',CHE:'Schweiz',TUR:'Türkei',UKR:'Ukraine',
+  GBR:'Großbritannien',USA:'USA',URY:'Uruguay',VEN:'Venezuela',VNM:'Vietnam',
+};
+function nationFlag(code3) {
+  const c3 = (code3 || '').toUpperCase();
+  const c2 = _AC_NATION[c3] || c3.slice(0, 2);
+  if (c2.length < 2) return '🏁';
+  return [...c2.toUpperCase()].map(l =>
+    String.fromCodePoint(0x1F1E6 + l.charCodeAt(0) - 65)).join('');
+}
+function nationName(code3) {
+  return _AC_NATION_NAME[(code3 || '').toUpperCase()] || code3 || '—';
+}
+
+function _smSetBar(id, pct) {
+  const el = document.getElementById(id);
+  if (el) el.style.width = Math.min(pct, 100) + '%';
+}
+function _smFmtNet(kbps) {
+  return kbps >= 1024 ? (kbps / 1024).toFixed(1) + ' MB/s' : kbps.toFixed(1) + ' KB/s';
+}
+
+function updateServerMonitor(d) {
+  if (!d) return;
+  const sys = d.system || {};
+  const el = id => document.getElementById(id);
+  if (el('sm-cpu')) el('sm-cpu').textContent = (sys.cpu ?? '—') + (sys.cpu !== undefined ? '%' : '');
+  _smSetBar('sm-cpu-bar', sys.cpu ?? 0);
+  if (el('sm-ram')) el('sm-ram').textContent = (sys.mem_percent ?? '—') + (sys.mem_percent !== undefined ? '%' : '');
+  if (el('sm-ram-sub')) el('sm-ram-sub').textContent = sys.mem_used_mb ? `${sys.mem_used_mb} / ${sys.mem_total_mb} MB` : '';
+  _smSetBar('sm-ram-bar', sys.mem_percent ?? 0);
+  if (el('sm-tx')) el('sm-tx').textContent = sys.net_tx_kbps !== undefined ? _smFmtNet(sys.net_tx_kbps) : '—';
+  if (el('sm-rx')) el('sm-rx').textContent = sys.net_rx_kbps !== undefined ? _smFmtNet(sys.net_rx_kbps) : '—';
+  if (el('sm-uptime')) el('sm-uptime').textContent = (d.uptime || {}).string || '—';
+  if (el('sm-ip')) el('sm-ip').textContent = (d.info || {}).ip || '—';
+
+  const wrap = el('sm-nation-wrap');
+  if (!wrap) return;
+  const drivers = (d.drivers || []).filter(drv => drv.name);
+  if (!drivers.length) {
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:13px">Keine Fahrer verbunden.</div>';
+    return;
+  }
+  wrap.innerHTML = `<table class="nation-table">
+    <thead><tr><th>Flag</th><th>Fahrer</th><th>Herkunft</th><th>Auto</th></tr></thead>
+    <tbody>${drivers.map(drv => {
+      const flag = nationFlag(drv.nation);
+      const name = nationName(drv.nation);
+      return `<tr>
+        <td style="font-size:20px">${flag}</td>
+        <td>${esc(drv.name)}</td>
+        <td>${drv.nation ? esc(name) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td style="color:var(--muted);font-size:12px">${esc(drv.model || '')}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
 // ═══ NAVIGATION (SIDEBAR) ════════════════════════════════════════════════
 function navTo(id) {
   _currentNav = id;
@@ -2094,6 +2189,7 @@ function navTo(id) {
   const _cnt = document.querySelector('.content');
   if (_cnt) _cnt.scrollTop = 0;
   // Side effects
+  if (id === 'server-monitor')   updateServerMonitor(live);
   if (id === 'logs')             loadLogs();
   if (id === 'settings-profile') loadServerProfile();
   if (id === 'players')          { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }

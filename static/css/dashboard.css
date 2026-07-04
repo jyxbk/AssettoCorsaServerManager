@@ -6,6 +6,40 @@
   --green:#27ae60;--yellow:#f39c12;--blue:#2980b9;
   --sidebar:220px;
 }
+[data-theme="blue"]{
+  --red:#2980b9;--red-dark:#1a5c8a;
+  --bg:#090d14;--bg2:#0f1520;--bg3:#162030;--bg4:#1e2a3a;
+  --border:#1e2a3a;--text:#dde4ef;--muted:#6a7a90;
+}
+[data-theme="green"]{
+  --red:#27ae60;--red-dark:#1a7a42;
+  --bg:#070f0a;--bg2:#0d1710;--bg3:#132118;--bg4:#1a2e20;
+  --border:#1a2e20;--text:#d8efdf;--muted:#5a7a63;
+}
+[data-theme="light"]{
+  --red:#c0392b;--red-dark:#922b21;
+  --bg:#f0f0f0;--bg2:#ffffff;--bg3:#e8e8e8;--bg4:#dcdcdc;
+  --border:#cccccc;--text:#1a1a1a;--muted:#666666;
+}
+/* Metric-Cards im Server-Monitor */
+.sm-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.sm-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.sm-card-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.sm-card-val{font-size:26px;font-weight:700;color:var(--text);line-height:1}
+.sm-card-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.sm-bar-wrap{background:var(--bg4);border-radius:4px;height:6px;margin-top:8px;overflow:hidden}
+.sm-bar{height:100%;border-radius:4px;background:var(--red);transition:width .4s}
+/* Theme-Picker */
+.theme-cards{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.theme-card{cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:8px;transition:border-color .15s;user-select:none}
+.theme-card:hover{border-color:var(--muted)}
+.theme-card.active{border-color:var(--red)}
+.theme-dot{width:14px;height:14px;border-radius:50%;display:inline-block}
+/* Nation-Tabelle */
+.nation-table{width:100%;border-collapse:collapse}
+.nation-table th{text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:6px 8px;border-bottom:1px solid var(--border)}
+.nation-table td{padding:8px;border-bottom:1px solid var(--border);font-size:13px}
+.nation-table tr:last-child td{border-bottom:none}
 html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
 
 /* ── LAYOUT ─────────────────────────────────────── */

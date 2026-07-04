@@ -69,6 +69,7 @@
   <div class="nav-item" data-nav="entry-list" onclick="navTo('entry-list')"><span class="nav-icon">📋</span> <span data-i18n="nav_entry_list">Entry List</span></div>
   <div class="nav-item" data-nav="players" onclick="navTo('players')"><span class="nav-icon">👥</span> <span data-i18n="nav_players">Spieler</span></div>
   <div class="nav-item" data-nav="integrations" onclick="navTo('integrations')"><span class="nav-icon">🔗</span> <span data-i18n="nav_integrations">Integrationen</span></div>
+  <div class="nav-item" data-nav="server-monitor" onclick="navTo('server-monitor')"><span class="nav-icon">🖥️</span> <span>Server Monitor</span></div>
   <div class="nav-item" data-nav="logs" onclick="navTo('logs')"><span class="nav-icon">📜</span> <span data-i18n="nav_logs">Logs</span></div>
   <div class="nav-item" data-nav="help" onclick="navTo('help')"><span class="nav-icon">❓</span> <span data-i18n="nav_help">Hilfe</span></div>
 
@@ -1333,6 +1334,72 @@
           <button class="btn btn-warn" onclick="restoreBackup()" data-i18n="btn_restore">⚠ Restore + Server neu starten</button>
         </div>
         <div style="font-size:11px;color:var(--muted)" data-i18n="lbl_backup_contains">Enthält: server_cfg.ini, entry_list.ini, extra_cfg.yml, welcome.txt</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SERVER MONITOR ═══════════════════════════════════════════════════════ -->
+<div class="panel" id="p-server-monitor">
+  <div class="page">
+    <div class="sec-hdr"><h2>🖥️ Server Monitor</h2></div>
+
+    <!-- System-Metriken -->
+    <div class="card gap" style="margin-bottom:16px">
+      <div class="card-ttl">System</div>
+      <div class="sm-metrics">
+        <div class="sm-card">
+          <div class="sm-card-lbl">CPU</div>
+          <div class="sm-card-val" id="sm-cpu">—</div>
+          <div class="sm-bar-wrap"><div class="sm-bar" id="sm-cpu-bar" style="width:0%"></div></div>
+        </div>
+        <div class="sm-card">
+          <div class="sm-card-lbl">RAM</div>
+          <div class="sm-card-val" id="sm-ram">—</div>
+          <div class="sm-card-sub" id="sm-ram-sub"></div>
+          <div class="sm-bar-wrap"><div class="sm-bar" id="sm-ram-bar" style="width:0%"></div></div>
+        </div>
+        <div class="sm-card">
+          <div class="sm-card-lbl">↑ Upload</div>
+          <div class="sm-card-val" id="sm-tx">—</div>
+          <div class="sm-card-sub">KB/s</div>
+        </div>
+        <div class="sm-card">
+          <div class="sm-card-lbl">↓ Download</div>
+          <div class="sm-card-val" id="sm-rx">—</div>
+          <div class="sm-card-sub">KB/s</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:24px;font-size:13px;color:var(--muted)">
+        <span>Uptime Server: <strong id="sm-uptime" style="color:var(--text)">—</strong></span>
+        <span>IP: <strong id="sm-ip" style="color:var(--text)">—</strong></span>
+      </div>
+    </div>
+
+    <!-- Fahrer-Herkunft -->
+    <div class="card gap" style="margin-bottom:16px">
+      <div class="card-ttl">Fahrer-Herkunft</div>
+      <div id="sm-nation-wrap">
+        <div style="color:var(--muted);font-size:13px">Keine Fahrer verbunden.</div>
+      </div>
+    </div>
+
+    <!-- Theme -->
+    <div class="card gap">
+      <div class="card-ttl">Erscheinungsbild</div>
+      <div class="theme-cards" id="sm-theme-cards">
+        <div class="theme-card" data-theme-key="dark" onclick="setTheme('dark')">
+          <span class="theme-dot" style="background:#e8150c"></span> Dark
+        </div>
+        <div class="theme-card" data-theme-key="blue" onclick="setTheme('blue')">
+          <span class="theme-dot" style="background:#2980b9"></span> Dark Blue
+        </div>
+        <div class="theme-card" data-theme-key="green" onclick="setTheme('green')">
+          <span class="theme-dot" style="background:#27ae60"></span> Racing Green
+        </div>
+        <div class="theme-card" data-theme-key="light" onclick="setTheme('light')">
+          <span class="theme-dot" style="background:#c0392b;outline:1px solid #aaa"></span> Hell
+        </div>
       </div>
     </div>
   </div>

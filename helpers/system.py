@@ -213,16 +213,27 @@ def server_json():
 
 # ── System stats ──────────────────────────────────────────────────────────────
 
+_prev_net: dict = {"sent": 0, "recv": 0, "t": 0.0}
+
 def get_system_stats() -> dict:
     if not HAS_PSUTIL:
-        return {"cpu": 0, "mem_percent": 0, "mem_used_mb": 0, "mem_total_mb": 0}
+        return {"cpu": 0, "mem_percent": 0, "mem_used_mb": 0, "mem_total_mb": 0,
+                "net_tx_kbps": 0, "net_rx_kbps": 0}
     cpu = psutil.cpu_percent(interval=0.1)
     mem = psutil.virtual_memory()
+    net = psutil.net_io_counters()
+    now = time.time()
+    dt  = max(now - _prev_net["t"], 0.1)
+    tx  = (net.bytes_sent - _prev_net["sent"]) / dt / 1024
+    rx  = (net.bytes_recv - _prev_net["recv"]) / dt / 1024
+    _prev_net.update({"sent": net.bytes_sent, "recv": net.bytes_recv, "t": now})
     return {
         "cpu":          round(cpu, 1),
         "mem_percent":  round(mem.percent, 1),
         "mem_used_mb":  mem.used // (1024 * 1024),
         "mem_total_mb": mem.total // (1024 * 1024),
+        "net_tx_kbps":  round(max(tx, 0), 1),
+        "net_rx_kbps":  round(max(rx, 0), 1),
     }
 
 

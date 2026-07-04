@@ -614,121 +614,15 @@
 <!-- ══ KONFIGURATION (unified config panel) ══════════════════════════════ -->
 <div class="panel" id="p-config">
   <div class="cfg-tabs">
-    <button class="cfg-tab active" data-tab="server" onclick="cfgTab('server')" data-i18n="nav_server">Server</button>
-    <button class="cfg-tab" data-tab="track" onclick="cfgTab('track')" data-i18n="nav_track">Strecke & Autos</button>
-    <button class="cfg-tab" data-tab="assists" onclick="cfgTab('assists')" data-i18n="nav_assists_rules">Fahrhilfen</button>
-    <button class="cfg-tab" data-tab="sessions" onclick="cfgTab('sessions')" data-i18n="nav_sessions_schedule">Sessions</button>
-    <button class="cfg-tab" data-tab="weather" onclick="cfgTab('weather')" data-i18n="nav_weather_plugins">Wetter</button>
-    <button class="cfg-tab" data-tab="profile" onclick="cfgTab('profile')" data-i18n="nav_profile">Profil</button>
-    <button class="cfg-tab" data-tab="advanced" onclick="cfgTab('advanced')" data-i18n="nav_assettoserver">Erweitert</button>
+    <button class="cfg-tab active" data-tab="server"   onclick="cfgTab('server')">⚙ Server</button>
+    <button class="cfg-tab" data-tab="track"    onclick="cfgTab('track')">🗺 Strecke & Autos</button>
+    <button class="cfg-tab" data-tab="entry"    onclick="cfgTab('entry')">📋 Entry List</button>
+    <button class="cfg-tab" data-tab="sessions" onclick="cfgTab('sessions')">📅 Sessions</button>
+    <button class="cfg-tab" data-tab="assists"  onclick="cfgTab('assists')">🛡 Regeln</button>
+    <button class="cfg-tab" data-tab="weather"  onclick="cfgTab('weather')">🌤 Wetter</button>
+    <button class="cfg-tab" data-tab="profile"  onclick="cfgTab('profile')">🎨 Serverprofil</button>
+    <button class="cfg-tab" data-tab="advanced" onclick="cfgTab('advanced')">🔧 Erweitert</button>
   </div>
-
-<!-- p-settings-overview ENTFERNT (Infos doppelt zu Dashboard) -->
-<!-- BEGIN cfg-pane placeholder (overview was here) -->
-<div style="display:none" id="p-settings-overview">
-  </div>
-
-  <div class="g2 gap" style="margin-bottom:16px">
-    <div class="card">
-      <div class="card-ttl">&#x2699;&#xFE0F; <span data-i18n="nav_server">Server</span></div>
-      <table class="itbl" style="margin-top:10px">
-        <tr><td data-i18n="lbl_name">Name</td><td><strong>{{ cfg.get('NAME','&#x2014;') }}</strong></td></tr>
-        <tr><td data-i18n="lbl_password">Passwort</td><td>{{ '&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;' if cfg.get('PASSWORD') else '&#x2014; (kein)' }}</td></tr>
-        <tr><td data-i18n="lbl_tcp_port">TCP/UDP Port</td><td>{{ cfg.get('UDP_PORT','&#x2014;') }}</td></tr>
-        <tr><td data-i18n="lbl_http_port">HTTP Port</td><td>{{ cfg.get('HTTP_PORT','&#x2014;') }}</td></tr>
-        <tr><td data-i18n="lbl_max_clients">Max Spieler</td><td>{{ cfg.get('MAX_CLIENTS','&#x2014;') }}</td></tr>
-        <tr><td data-i18n="lbl_daytime">Tageszeit</td><td id="ov-sun-angle" data-angle="{{ cfg.get('SUN_ANGLE','48') }}">{{ cfg.get('SUN_ANGLE','48') }}&#176;</td></tr>
-        <tr><td>Pickup Mode</td><td>{% if cfg.get('PICKUP_MODE_ENABLED','1')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td>Loop Mode</td><td>{% if cfg.get('LOOP_MODE','1')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td data-i18n="tog_public_lobby">&#214;ff. Lobby</td><td>{% if cfg.get('REGISTER_TO_LOBBY')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-      </table>
-    </div>
-    <div class="card">
-      <div class="card-ttl">&#x1F5FA;&#xFE0F; <span data-i18n="nav_track">Strecke &amp; Autos</span></div>
-      <table class="itbl" style="margin-top:10px">
-        <tr><td data-i18n="lbl_track">Strecke</td><td><strong>{{ track_ui.get(cfg.get('TRACK',''),{}).get('name', cfg.get('TRACK','&#x2014;')) }}</strong></td></tr>
-        <tr><td data-i18n="lbl_layout">Layout</td><td>{{ cfg.get('TRACK_LAYOUT','') or '&#x2014;' }}</td></tr>
-        <tr><td data-i18n="lbl_max_clients">Max Slots</td><td>{{ cfg.get('MAX_CLIENTS','&#x2014;') }}</td></tr>
-      </table>
-      <div style="margin-top:10px">
-        <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase" data-i18n="lbl_cars_section">Autos</div>
-        {% for c in selected_cars %}
-        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
-          <img src="/car_img/{{ c }}" onerror="this.style.display='none'" style="width:30px;height:20px;object-fit:contain;flex-shrink:0">
-          <span style="font-weight:600">{{ car_ui.get(c,{}).get('name',c) }}</span>
-          <span style="color:var(--muted);font-size:10px">{{ car_ui.get(c,{}).get('brand','') }}</span>
-        </div>
-        {% else %}<div style="color:var(--muted);font-size:12px">&#x2014;</div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
-  {% set prac = full_cfg.get('PRACTICE',{}) %}{% set qual = full_cfg.get('QUALIFY',{}) %}{% set race = full_cfg.get('RACE',{}) %}
-  {% set w0 = full_cfg.get('WEATHER_0',{}) %}{% set w1 = full_cfg.get('WEATHER_1',{}) %}{% set dt = full_cfg.get('DYNAMIC_TRACK',{}) %}
-
-  <div class="g2 gap" style="margin-bottom:16px">
-    <div class="card">
-      <div class="card-ttl">&#x1F6E1;&#xFE0F; <span data-i18n="nav_assists">Fahrhilfen</span></div>
-      <table class="itbl" style="margin-top:10px">
-        <tr><td>ABS</td><td>{% if cfg.get('ABS_ALLOWED','1')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td>TC</td><td>{% if cfg.get('TC_ALLOWED','1')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td data-i18n="tog_esp">ESP</td><td>{% if cfg.get('STABILITY_ALLOWED','0')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td data-i18n="tog_autoclutch">Auto-Kupplung</td><td>{% if cfg.get('AUTOCLUTCH_ALLOWED','0')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td data-i18n="tog_blanket">Reifenw&#228;rmer</td><td>{% if cfg.get('TYRE_BLANKETS_ALLOWED','0')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td data-i18n="lbl_fuel_rate">Kraftstoff</td><td>{{ cfg.get('FUEL_RATE','100') }}%</td></tr>
-        <tr><td data-i18n="lbl_dmg_rate">Schaden</td><td>{{ cfg.get('DAMAGE_MULTIPLIER','100') }}%</td></tr>
-        <tr><td data-i18n="lbl_tyre_wear">Reifenversch.</td><td>{{ cfg.get('TYRE_WEAR_RATE','100') }}%</td></tr>
-      </table>
-    </div>
-    <div class="card">
-      <div class="card-ttl">&#x1F4C5; <span data-i18n="nav_sessions">Sessions</span></div>
-      <table class="itbl" style="margin-top:10px">
-        <tr><td colspan="2" style="color:var(--muted);font-size:10px;text-transform:uppercase;padding-bottom:4px">&#x1F3C3; Practice</td></tr>
-        <tr><td data-i18n="lbl_duration_min">Dauer</td><td>{% if prac.get('TIME','9999') == '9999' %}<span style="color:var(--muted)" data-i18n="lbl_unlimited">&#x221E; Unbegrenzt</span>{% else %}{{ prac.get('TIME','9999') }} min{% endif %}</td></tr>
-        <tr><td data-i18n="lbl_open">Offen</td><td>{% if prac.get('IS_OPEN','1')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td colspan="2" style="color:var(--muted);font-size:10px;text-transform:uppercase;padding:8px 0 4px">&#x1F3CE; Qualifying</td></tr>
-        <tr><td data-i18n="lbl_duration_min">Dauer</td><td>{% if qual.get('TIME','0') == '0' %}<span style="color:var(--muted)">—</span>{% else %}{{ qual.get('TIME','0') }} min{% endif %}</td></tr>
-        <tr><td data-i18n="lbl_open">Offen</td><td>{% if qual.get('IS_OPEN','0')=='1' %}<span style="color:var(--green)">&#10003;</span>{% else %}<span style="color:var(--muted)">&#10005;</span>{% endif %}</td></tr>
-        <tr><td colspan="2" style="color:var(--muted);font-size:10px;text-transform:uppercase;padding:8px 0 4px">&#x1F3C1; Race</td></tr>
-        <tr><td data-i18n="lbl_laps_0time">Runden</td><td>{{ race.get('LAPS','0') }}</td></tr>
-        <tr><td data-i18n="lbl_wait_time">Wartezeit</td><td>{{ race.get('WAIT_TIME','0') }}s</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="g2 gap" style="margin-bottom:16px">
-    <div class="card">
-      <div class="card-ttl">&#x1F324;&#xFE0F; <span data-i18n="nav_weather">Wetter</span></div>
-      <table class="itbl" style="margin-top:10px">
-        <tr><td colspan="2" style="color:var(--muted);font-size:10px;text-transform:uppercase;padding-bottom:4px" data-i18n="card_weather_1">Slot 1</td></tr>
-        <tr><td>Preset</td><td id="ov-w0-graphics">{{ w0.get('GRAPHICS','3_clear') }}</td></tr>
-        <tr><td>Ambient</td><td id="ov-w0-ambient">{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}&#176;C</td></tr>
-        <tr><td data-i18n="lbl_road_temp">Stra&#223;e</td><td id="ov-w0-road">{{ (w0.get('BASE_TEMPERATURE_AMBIENT','18')|int + w0.get('BASE_TEMPERATURE_ROAD','8')|int) }}&#176;C</td></tr>
-        <tr><td colspan="2" style="color:var(--muted);font-size:10px;text-transform:uppercase;padding:8px 0 4px" data-i18n="card_weather_2">Slot 2</td></tr>
-        <tr><td>Preset</td><td id="ov-w1-graphics">{{ w1.get('GRAPHICS','7_heavy_clouds') }}</td></tr>
-        <tr><td>Ambient</td><td id="ov-w1-ambient">{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}&#176;C</td></tr>
-        <tr><td data-i18n="lbl_road_temp">Stra&#223;e</td><td id="ov-w1-road">{{ (w1.get('BASE_TEMPERATURE_AMBIENT','15')|int + w1.get('BASE_TEMPERATURE_ROAD','14')|int) }}&#176;C</td></tr>
-      </table>
-    </div>
-    <div class="card">
-      <div class="card-ttl">&#x1F6E3;&#xFE0F; <span data-i18n="card_dynamic_track">Dynamische Strecke</span></div>
-      <table class="itbl" style="margin-top:10px">
-        <tr><td>Start Grip</td><td>{{ dt.get('SESSION_START','95') }}%</td></tr>
-        <tr><td data-i18n="lbl_randomness">Zuf&#228;lligkeit</td><td>{{ dt.get('RANDOMNESS','1') }}</td></tr>
-        <tr><td>Transfer</td><td>{{ dt.get('SESSION_TRANSFER','80') }}%</td></tr>
-        <tr><td data-i18n="lbl_lap_gain">Runden-Gewinn</td><td>{{ dt.get('LAP_GAIN','132') }}</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-ttl">&#x1F527; AssettoServer (extra_cfg.yml)
-      <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:8px" id="ov-extra-status"></span>
-    </div>
-    <div id="ov-extra-content" style="margin-top:10px;color:var(--muted);font-size:12px" data-i18n="loading">Lade...</div>
-  </div>
-</div><!-- /p-settings-overview (hidden) -->
 
 <div class="cfg-pane active" id="cfgp-server">
   <div class="sec-hdr"><h2>⚙️ <span data-i18n="nav_server">Server</span></h2></div>
@@ -791,7 +685,10 @@
       <div class="fg"><label class="lbl" data-i18n="lbl_slots_per_car">Slots pro Auto</label><input class="inp num-inp" type="number" id="slots-per-car" min="1" max="5" value="2"></div>
     </div>
     <div class="card">
-      <div class="card-ttl" data-i18n="card_vehicles">Fahrzeuge</div>
+      <div class="sh">
+        <div class="sh-t" data-i18n="card_vehicles">Fahrzeuge</div>
+        <span id="car-sel-count" style="font-size:11px;color:var(--muted)">{{ selected_cars|length }} ausgewählt</span>
+      </div>
       <input class="inp" id="car-search" data-i18n-placeholder="ph_search" placeholder="Suchen..." oninput="filterCars()" style="margin-bottom:6px">
       <div class="clist" id="car-list">
         {% for c in cars %}
@@ -813,6 +710,28 @@
   <div class="save-footer">
     <button class="btn btn-red" onclick="saveTrackCars()" data-i18n="btn_save_track">💾 Strecke & Autos speichern</button>
     <button class="btn btn-gray" onclick="ctrl('restart')">↻ Neustart</button>
+  </div>
+
+  <!-- Dynamische Strecke gehört konzeptionell zu Strecke, nicht Wetter -->
+  {% set dt = full_cfg.get('DYNAMIC_TRACK', {}) %}
+  <div class="card gap" style="margin-top:0">
+    <div class="sh">
+      <div class="sh-t">🛣 Dynamische Strecke</div>
+      <span style="font-size:11px;color:var(--muted)">Gummi-Aufbau &amp; Grip-Simulation</span>
+    </div>
+    <div class="g2 gap" style="margin-top:8px">
+      <div>
+        <div class="num-row"><div><span class="tog-lbl">Start Grip %</span><div style="font-size:10px;color:var(--muted)">Grip zu Session-Beginn (0–100)</div></div><input class="inp num-inp" type="number" id="dt-start" min="0" max="100" value="{{ dt.get('SESSION_START','95') }}"></div>
+        <div class="num-row"><div><span class="tog-lbl" data-i18n="lbl_randomness">Zufälligkeit</span><div style="font-size:10px;color:var(--muted)">Grip-Variation (0–10)</div></div><input class="inp num-inp" type="number" id="dt-rand" min="0" max="10" value="{{ dt.get('RANDOMNESS','1') }}"></div>
+      </div>
+      <div>
+        <div class="num-row"><div><span class="tog-lbl">Session Transfer %</span><div style="font-size:10px;color:var(--muted)">Carry-Over zur nächsten Session</div></div><input class="inp num-inp" type="number" id="dt-transfer" min="0" max="100" value="{{ dt.get('SESSION_TRANSFER','80') }}"></div>
+        <div class="num-row"><div><span class="tog-lbl" data-i18n="lbl_lap_gain">Grip-Gewinn / Runde</span><div style="font-size:10px;color:var(--muted)">Standard: 132</div></div><input class="inp num-inp" type="number" id="dt-lap" min="0" max="500" value="{{ dt.get('LAP_GAIN','132') }}"></div>
+      </div>
+    </div>
+    <div class="save-footer" style="margin-top:8px;padding-top:8px">
+      <button class="btn btn-red btn-sm" onclick="saveWeather()">💾 Streckenparameter speichern</button>
+    </div>
   </div>
 </div>
 
@@ -869,26 +788,137 @@
   </div>
 </div>
 
+<div class="cfg-pane" id="cfgp-entry">
+  <div class="sec-hdr" style="display:flex;align-items:center;justify-content:space-between">
+    <h2>📋 Entry List</h2>
+    <span style="font-size:12px;color:var(--muted)">Konfiguriert, wer in welchem Auto startet</span>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="el-toolbar">
+    <div class="el-stats">
+      <span class="el-stat-item">Slots: <strong id="el-slot-count">0</strong></span>
+      <span class="el-stat-sep"></span>
+      <span class="el-stat-item" id="el-maxclients-info"></span>
+    </div>
+    <div class="el-toolbar-actions">
+      <!-- Quick Add -->
+      <div class="el-quickadd">
+        <select class="sel el-qa-car" id="el-qa-car" style="min-width:160px"></select>
+        <select class="sel el-qa-skin" id="el-qa-skin" style="min-width:130px"></select>
+        <input class="inp num-inp" type="number" id="el-qa-count" value="1" min="1" max="20" style="width:54px" title="Anzahl Slots">
+        <button class="btn btn-gray btn-sm" onclick="elQuickAdd()">+ Hinzufügen</button>
+      </div>
+      <span class="el-toolbar-sep"></span>
+      <!-- Presets -->
+      <select class="sel" id="el-preset-sel" style="min-width:130px">
+        <option value="">Preset laden…</option>
+      </select>
+      <button class="btn btn-gray btn-sm" onclick="elLoadPreset()">Laden</button>
+      <button class="btn btn-gray btn-sm" onclick="elSavePreset()">Speichern als…</button>
+      <span class="el-toolbar-sep"></span>
+      <!-- Import / Export -->
+      <button class="btn btn-gray btn-sm" onclick="elImportClick()">⬆ Import</button>
+      <input type="file" id="el-import-file" accept=".ini" style="display:none" onchange="elImportFile(this)">
+      <a class="btn btn-gray btn-sm" id="el-export-btn" href="/api/entry_list/export">⬇ Export</a>
+      <!-- Save -->
+      <button class="btn btn-red" onclick="elSave()">💾 Speichern</button>
+    </div>
+  </div>
+
+  <!-- Validation Banner -->
+  <div class="el-banner" id="el-banner" style="display:none"></div>
+
+  <!-- Multi-Edit Bar -->
+  <div class="el-multiedit" id="el-multiedit" style="display:none">
+    <span id="el-sel-count">0 ausgewählt</span>
+    <span class="el-toolbar-sep"></span>
+    <label class="lbl" style="color:var(--muted)">Ballast:</label>
+    <input class="inp num-inp" type="number" id="el-me-ballast" min="0" max="150" placeholder="—" style="width:60px">
+    <label class="lbl" style="color:var(--muted)">Restrictor:</label>
+    <input class="inp num-inp" type="number" id="el-me-restrictor" min="0" max="400" placeholder="—" style="width:60px">
+    <button class="btn btn-gray btn-sm" onclick="elMultiApply()">Anwenden</button>
+    <span class="el-toolbar-sep"></span>
+    <button class="btn btn-gray btn-sm" onclick="elMultiDelete()">🗑 Löschen</button>
+    <button class="btn btn-gray btn-sm" onclick="elClearSelection()">✕ Abwählen</button>
+  </div>
+
+  <!-- Slot Grid -->
+  <div class="el-grid" id="el-grid">
+    <div class="el-empty" id="el-empty">
+      <div style="font-size:32px;margin-bottom:8px">📋</div>
+      <div>Keine Slots. Quick-Add verwenden oder <strong>Import</strong> klicken.</div>
+    </div>
+  </div>
+</div>
+
 <div class="cfg-pane" id="cfgp-sessions">
   <div class="sec-hdr"><h2>📅 <span data-i18n="nav_sessions">Sessions</span></h2></div>
   {% set practice = full_cfg.get('PRACTICE', {}) %}
   {% set qualify  = full_cfg.get('QUALIFY',  {}) %}
   {% set race     = full_cfg.get('RACE',     {}) %}
+
+  <!-- Session-Flow Hinweis -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:12px;color:var(--muted)">
+    <span style="background:var(--bg3);border:1px solid var(--border);padding:3px 10px;border-radius:20px">🏃 Practice</span>
+    <span>→</span>
+    <span style="background:var(--bg3);border:1px solid var(--border);padding:3px 10px;border-radius:20px">🏎 Qualifying</span>
+    <span>→</span>
+    <span style="background:var(--bg3);border:1px solid var(--border);padding:3px 10px;border-radius:20px">🏁 Race</span>
+    <span style="margin-left:8px">· Qualifying/Race mit TIME=0 bzw. LAPS=0 deaktivieren</span>
+  </div>
+
   <div class="g3 gap">
+    <!-- Practice -->
     <div class="card">
-      <div class="card-ttl">🏃 Practice</div>
-      <div class="num-row"><span class="tog-lbl" data-i18n="lbl_duration_min">Dauer (min)</span><input class="inp num-inp" type="number" id="prc-time" value="{{ practice.get('TIME','9999') }}"></div>
-      <div class="tog-row"><div class="tog-lbl" data-i18n="lbl_open_practice">Offen (freier Beitritt)</div><label class="tog"><input type="checkbox" id="prc-open" {% if practice.get('IS_OPEN','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="sh">
+        <div class="sh-t">🏃 Practice</div>
+        <span style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--status-online);background:rgba(34,197,94,.12);padding:2px 8px;border-radius:10px">Immer aktiv</span>
+      </div>
+      <div class="num-row">
+        <div><span class="tog-lbl" data-i18n="lbl_duration_min">Dauer (min)</span><div style="font-size:10px;color:var(--muted)">9999 = unbegrenzt</div></div>
+        <input class="inp num-inp" type="number" id="prc-time" value="{{ practice.get('TIME','9999') }}">
+      </div>
+      <div class="tog-row">
+        <div><div class="tog-lbl" data-i18n="lbl_open_practice">Offener Beitritt</div><div class="tog-desc">Spieler können jederzeit beitreten</div></div>
+        <label class="tog"><input type="checkbox" id="prc-open" {% if practice.get('IS_OPEN','1')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+      </div>
     </div>
+
+    <!-- Qualifying -->
     <div class="card">
-      <div class="card-ttl">🏎 Qualifying</div>
-      <div class="num-row"><span class="tog-lbl" data-i18n="lbl_duration_min">Dauer (min)</span><input class="inp num-inp" type="number" id="qlf-time" value="{{ qualify.get('TIME','0') }}"></div>
-      <div class="tog-row"><div class="tog-lbl" data-i18n="lbl_open">Offen</div><label class="tog"><input type="checkbox" id="qlf-open" {% if qualify.get('IS_OPEN','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label></div>
+      <div class="sh">
+        <div class="sh-t">🏎 Qualifying</div>
+        <span style="font-size:10px;font-weight:700;text-transform:uppercase;color:{{ 'var(--status-online)' if qualify.get('TIME','0') != '0' else 'var(--muted)' }};background:{{ 'rgba(34,197,94,.12)' if qualify.get('TIME','0') != '0' else 'var(--bg3)' }};padding:2px 8px;border-radius:10px">{{ 'Aktiv' if qualify.get('TIME','0') != '0' else 'Deaktiviert' }}</span>
+      </div>
+      <div class="num-row">
+        <div><span class="tog-lbl" data-i18n="lbl_duration_min">Dauer (min)</span><div style="font-size:10px;color:var(--muted)">0 = kein Qualifying</div></div>
+        <input class="inp num-inp" type="number" id="qlf-time" value="{{ qualify.get('TIME','0') }}" min="0">
+      </div>
+      <div class="tog-row">
+        <div><div class="tog-lbl" data-i18n="lbl_open">Offener Beitritt</div><div class="tog-desc">Spieler können während Qualifying joinen</div></div>
+        <label class="tog"><input type="checkbox" id="qlf-open" {% if qualify.get('IS_OPEN','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+      </div>
     </div>
+
+    <!-- Race -->
     <div class="card">
-      <div class="card-ttl">🏁 Race</div>
-      <div class="num-row"><span class="tog-lbl" data-i18n="lbl_laps_0time">Runden (0=zeitbasiert)</span><input class="inp num-inp" type="number" id="race-laps" value="{{ race.get('LAPS','0') }}"></div>
-      <div class="num-row"><span class="tog-lbl" data-i18n="lbl_wait_time">Wartezeit (s)</span><input class="inp num-inp" type="number" id="race-wait" value="{{ race.get('WAIT_TIME','0') }}"></div>
+      <div class="sh">
+        <div class="sh-t">🏁 Race</div>
+        <span style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--status-online);background:rgba(34,197,94,.12);padding:2px 8px;border-radius:10px">Immer aktiv</span>
+      </div>
+      <div class="num-row">
+        <div><span class="tog-lbl" data-i18n="lbl_laps_0time">Runden</span><div style="font-size:10px;color:var(--muted)">0 = zeitbasiert</div></div>
+        <input class="inp num-inp" type="number" id="race-laps" value="{{ race.get('LAPS','0') }}" min="0">
+      </div>
+      <div class="num-row">
+        <div><span class="tog-lbl" data-i18n="lbl_wait_time">Wartezeit (s)</span><div style="font-size:10px;color:var(--muted)">Verzögerung nach Quali bis Race-Start</div></div>
+        <input class="inp num-inp" type="number" id="race-wait" value="{{ race.get('WAIT_TIME','0') }}" min="0">
+      </div>
+      <div class="tog-row">
+        <div><div class="tog-lbl">Offener Beitritt</div><div class="tog-desc">Spieler können nach Race-Start noch joinen</div></div>
+        <label class="tog"><input type="checkbox" id="race-open" {% if race.get('IS_OPEN','0')=='1' %}checked{% endif %}><span class="tog-sl"></span></label>
+      </div>
     </div>
   </div>
   <div class="save-footer">
@@ -938,110 +968,69 @@
 </div>
 
 <div class="cfg-pane" id="cfgp-weather">
-  <div class="sec-hdr"><h2>🌤️ <span data-i18n="nav_weather">Wetter</span> & <span data-i18n="sec_track">Strecke</span></h2></div>
+  <div class="sec-hdr"><h2>🌤 Wetter</h2></div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+    AC unterstützt 2 Wetter-Slots. Der Server wechselt abhängig vom Grafik-Preset zwischen beiden. Plugins (VotingWeather, LiveWeather) im Tab <strong>Erweitert → Plugins</strong>.
+  </div>
   {% set w0 = full_cfg.get('WEATHER_0', {}) %}
   {% set w1 = full_cfg.get('WEATHER_1', {}) %}
-  {% set dt = full_cfg.get('DYNAMIC_TRACK', {}) %}
-  <div class="g3 gap">
+  <div class="g2 gap">
+
+    <!-- Slot 1 -->
     <div class="card">
-      <div class="card-ttl" data-i18n="card_weather_1">Wetter Slot 1</div>
-      <div class="fg"><label class="lbl" data-i18n="lbl_graphics_preset">Grafik-Preset</label><select class="sel" id="w0-graphics">{% for wp in weather_presets %}<option value="{{ wp }}" {% if w0.get('GRAPHICS','3_clear')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}</select></div>
-      <div class="g2"><div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w0-amb" value="{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}"></div><div><label class="lbl" data-i18n="lbl_road_temp">Straße °C</label><input class="inp" type="number" id="w0-road" value="{{ (w0.get('BASE_TEMPERATURE_AMBIENT','18')|int + w0.get('BASE_TEMPERATURE_ROAD','8')|int) }}"></div></div>
+      <div class="sh">
+        <div class="sh-t">Wetter Slot 1</div>
+        <span id="w0-icon" style="font-size:20px">☀️</span>
+      </div>
+      <div class="fg">
+        <label class="lbl">Grafik-Preset</label>
+        <select class="sel" id="w0-graphics" onchange="updateWeatherIcon('w0')">
+          {% for wp in weather_presets %}<option value="{{ wp }}" {% if w0.get('GRAPHICS','3_clear')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="g2 gap" style="margin-top:10px">
+        <div>
+          <label class="lbl">Ambient °C</label>
+          <input class="inp" type="number" id="w0-amb" value="{{ w0.get('BASE_TEMPERATURE_AMBIENT','18') }}" min="-20" max="50">
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Lufttemperatur</div>
+        </div>
+        <div>
+          <label class="lbl">Straße °C</label>
+          <input class="inp" type="number" id="w0-road" value="{{ (w0.get('BASE_TEMPERATURE_AMBIENT','18')|int + w0.get('BASE_TEMPERATURE_ROAD','8')|int) }}" min="-20" max="80">
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Asphalttemperatur</div>
+        </div>
+      </div>
     </div>
+
+    <!-- Slot 2 -->
     <div class="card">
-      <div class="card-ttl" data-i18n="card_weather_2">Wetter Slot 2</div>
-      <div class="fg"><label class="lbl" data-i18n="lbl_graphics_preset">Grafik-Preset</label><select class="sel" id="w1-graphics">{% for wp in weather_presets %}<option value="{{ wp }}" {% if w1.get('GRAPHICS','7_heavy_clouds')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}</select></div>
-      <div class="g2"><div><label class="lbl">Ambient °C</label><input class="inp" type="number" id="w1-amb" value="{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}"></div><div><label class="lbl" data-i18n="lbl_road_temp">Straße °C</label><input class="inp" type="number" id="w1-road" value="{{ (w1.get('BASE_TEMPERATURE_AMBIENT','15')|int + w1.get('BASE_TEMPERATURE_ROAD','14')|int) }}"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-ttl" data-i18n="card_dynamic_track">Dynamische Strecke</div>
-      <div class="num-row"><span class="tog-lbl">Start Grip %</span><input class="inp num-inp" type="number" id="dt-start" min="0" max="100" value="{{ dt.get('SESSION_START','95') }}"></div>
-      <div class="num-row"><span class="tog-lbl" data-i18n="lbl_randomness">Zufälligkeit</span><input class="inp num-inp" type="number" id="dt-rand" min="0" max="10" value="{{ dt.get('RANDOMNESS','1') }}"></div>
-      <div class="num-row"><span class="tog-lbl">Session Transfer %</span><input class="inp num-inp" type="number" id="dt-transfer" min="0" max="100" value="{{ dt.get('SESSION_TRANSFER','80') }}"></div>
-      <div class="num-row"><span class="tog-lbl" data-i18n="lbl_lap_gain">Runden-Gewinn</span><input class="inp num-inp" type="number" id="dt-lap" min="0" max="500" value="{{ dt.get('LAP_GAIN','132') }}"></div>
+      <div class="sh">
+        <div class="sh-t">Wetter Slot 2</div>
+        <span id="w1-icon" style="font-size:20px">☁️</span>
+      </div>
+      <div class="fg">
+        <label class="lbl">Grafik-Preset</label>
+        <select class="sel" id="w1-graphics" onchange="updateWeatherIcon('w1')">
+          {% for wp in weather_presets %}<option value="{{ wp }}" {% if w1.get('GRAPHICS','7_heavy_clouds')==wp %}selected{% endif %}>{{ wp }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="g2 gap" style="margin-top:10px">
+        <div>
+          <label class="lbl">Ambient °C</label>
+          <input class="inp" type="number" id="w1-amb" value="{{ w1.get('BASE_TEMPERATURE_AMBIENT','15') }}" min="-20" max="50">
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Lufttemperatur</div>
+        </div>
+        <div>
+          <label class="lbl">Straße °C</label>
+          <input class="inp" type="number" id="w1-road" value="{{ (w1.get('BASE_TEMPERATURE_AMBIENT','15')|int + w1.get('BASE_TEMPERATURE_ROAD','14')|int) }}" min="-20" max="80">
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Asphalttemperatur</div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="save-footer">
-    <button class="btn btn-red" onclick="saveWeatherPage()" data-i18n="btn_save_weather">💾 Wetter & Strecke speichern</button>
+    <button class="btn btn-red" onclick="saveWeatherPage()">💾 Wetter speichern</button>
     <button class="btn btn-gray" onclick="ctrl('restart')">↻ Neustart</button>
-  </div>
-
-  <!-- AssettoServer Plugins -->
-  <h3 style="margin:24px 0 12px;font-size:14px;font-weight:700;color:var(--text)">🔌 AssettoServer Plugins</h3>
-  <div class="card gap">
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Status wird aus extra_cfg.yml gelesen:</div>
-    <div style="display:flex;flex-direction:column;gap:8px" id="plugin-status-list">
-      <div class="tog-row" style="background:var(--bg);border-radius:6px;padding:8px 10px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span id="dot-automod" style="font-size:13px">○</span>
-          <div><div style="font-size:12px;font-weight:600">AutoModerationPlugin</div><div style="font-size:10px;color:var(--muted)">Falsches Fahren, No-Parking, Contact-Limits</div></div>
-        </div>
-      </div>
-      <!-- VotingWeatherPlugin mit Toggle + Einstellungen -->
-      <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-        <div class="tog-row" style="margin-bottom:0">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="dot-voting" style="font-size:13px">○</span>
-            <div>
-              <div style="font-size:12px;font-weight:600">VotingWeatherPlugin</div>
-              <div style="font-size:10px;color:var(--muted)">Spieler stimmen per /weather im Chat ab</div>
-            </div>
-          </div>
-          <label class="tog"><input type="checkbox" id="vwp-toggle" onchange="toggleVotingWeather(this.checked)"><span class="tog-sl"></span></label>
-        </div>
-        <div id="vwp-config" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-          <div class="num-row" style="margin-bottom:6px">
-            <span class="tog-lbl" style="font-size:11px">Abstimmungs-Intervall (Min.)</span>
-            <input class="inp num-inp" type="number" id="vwp-interval" min="1" max="120" value="30">
-          </div>
-          <div class="num-row" style="margin-bottom:6px">
-            <span class="tog-lbl" style="font-size:11px">Abstimmungs-Dauer (Sek.)</span>
-            <input class="inp num-inp" type="number" id="vwp-duration" min="5" max="120" value="30">
-          </div>
-          <div class="tog-row" style="margin-bottom:8px">
-            <span class="tog-lbl" style="font-size:11px">Wetter nacheinander (nicht zufällig)</span>
-            <label class="tog"><input type="checkbox" id="vwp-sequential"><span class="tog-sl"></span></label>
-          </div>
-          <button class="btn btn-gray btn-sm" onclick="saveVotingWeather()">💾 Einstellungen speichern</button>
-        </div>
-      </div>
-      <!-- LiveWeatherPlugin mit Toggle -->
-      <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
-        <div class="tog-row" style="margin-bottom:0">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="dot-lwp" style="font-size:13px">○</span>
-            <div>
-              <div style="font-size:12px;font-weight:600">LiveWeatherPlugin</div>
-              <div style="font-size:10px;color:var(--muted)" id="lwp-status-txt">Deaktiviert — braucht OpenWeatherMap API-Key</div>
-            </div>
-          </div>
-          <label class="tog"><input type="checkbox" id="lwp-toggle" onchange="toggleLiveWeather(this.checked)"><span class="tog-sl"></span></label>
-        </div>
-        <div id="lwp-config" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-          <div class="fg" style="margin-bottom:6px">
-            <label class="lbl">OpenWeatherMap API-Key <a href="https://openweathermap.org/api" target="_blank" style="font-size:10px;color:var(--muted);font-weight:400">kostenlos →</a></label>
-            <input class="inp" id="lwp-apikey" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="font-family:monospace;font-size:12px">
-          </div>
-          <div class="num-row" style="margin-bottom:8px">
-            <span class="tog-lbl" style="font-size:11px">Aktualisierung (Minuten)</span>
-            <input class="inp num-inp" type="number" id="lwp-interval" min="5" max="60" value="10">
-          </div>
-          <button class="btn btn-red btn-sm" onclick="saveLiveWeather()">💾 Speichern &amp; Server neu starten</button>
-        </div>
-      </div>
-    </div>
-    <button class="btn btn-gray btn-sm" onclick="loadPluginStatus()" style="margin-top:8px;align-self:flex-start">↻ Status laden</button>
-  </div>
-
-  <!-- LiveWeather Log -->
-  <div class="card gap" style="margin-top:0" id="lwp-log-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div class="card-ttl" style="margin:0">LiveWeather Log</div>
-      <button class="btn btn-gray btn-sm" onclick="loadWeatherLog()">↻ Aktualisieren</button>
-    </div>
-    <div id="lwp-log" style="font-family:monospace;font-size:11px;display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto">
-      <div style="color:var(--muted);padding:16px 0;text-align:center">Log wird geladen…</div>
-    </div>
   </div>
 </div>
 
@@ -1071,24 +1060,92 @@
 </div><!-- /cfgp-profile -->
 
 <div class="cfg-pane" id="cfgp-advanced">
-  <div class="sec-hdr"><h2>🔧 AssettoServer <span style="font-size:13px;font-weight:400;color:var(--muted)">(extra_cfg.yml)</span></h2></div>
-  <div class="card gap">
-    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_server_details">Server Details aktivieren</div><div class="tog-desc" data-i18n="tog_server_details_desc">Pflicht für CM-Beschreibung</div></div><label class="tog"><input type="checkbox" id="ec-details"><span class="tog-sl"></span></label></div>
-    <div class="tog-row"><div><div class="tog-lbl">Anti-AFK Kick</div></div><label class="tog"><input type="checkbox" id="ec-afk"><span class="tog-sl"></span></label></div>
-    <div class="num-row"><span class="tog-lbl">AFK Timeout (min)</span><input class="inp num-inp" type="number" id="ec-afkmin" min="1" max="60" value="10"></div>
-    <div class="num-row"><span class="tog-lbl">Max Ping (ms)</span><input class="inp num-inp" type="number" id="ec-ping" min="100" max="2000" value="500"></div>
-    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_force_lights">Lichter erzwingen</div></div><label class="tog"><input type="checkbox" id="ec-lights"><span class="tog-sl"></span></label></div>
-    <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_weatherfx">WeatherFX (CSP Regen)</div><div class="tog-desc" data-i18n="tog_weatherfx_desc">Benötigt CSP 0.1.76+</div></div><label class="tog"><input type="checkbox" id="ec-wxfx"><span class="tog-sl"></span></label></div>
-    <div class="tog-row"><div><div class="tog-lbl">Client Messages (CSP)</div></div><label class="tog"><input type="checkbox" id="ec-clmsg"><span class="tog-sl"></span></label></div>
-    <div class="tog-row"><div><div class="tog-lbl">Real Time</div></div><label class="tog"><input type="checkbox" id="ec-realtime"><span class="tog-sl"></span></label></div>
-    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_min_csp">Min CSP Version (0=kein Limit)</span><input class="inp num-inp" type="number" id="ec-csp" min="0" value="0"></div>
-    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_security_level">Security Level (0 oder 1)</span><input class="inp num-inp" type="number" id="ec-sec" min="0" max="1" value="0"></div>
-    <div class="num-row"><span class="tog-lbl" data-i18n="lbl_rcon_port">RCON Port (0=aus)</span><input class="inp num-inp" type="number" id="ec-rcon" min="0" max="65535" value="9700"></div>
-    <div class="fg" style="margin-top:8px">
-      <label class="lbl">Loading Image URL</label>
-      <input class="inp" id="ec-loadimg" placeholder="https://...">
+  <div class="sec-hdr"><h2>🔧 Erweiterte Optionen</h2></div>
+  <div class="g2 gap">
+
+    <!-- extra_cfg.yml -->
+    <div class="card gap">
+      <div class="card-ttl">AssettoServer <span style="font-size:11px;font-weight:400;color:var(--muted)">(extra_cfg.yml)</span></div>
+      <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_server_details">Server Details aktivieren</div><div class="tog-desc" data-i18n="tog_server_details_desc">Pflicht für CM-Beschreibung &amp; Willkommensnachricht</div></div><label class="tog"><input type="checkbox" id="ec-details"><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Anti-AFK Kick</div><div class="tog-desc">Inaktive Fahrer automatisch trennen</div></div><label class="tog"><input type="checkbox" id="ec-afk"><span class="tog-sl"></span></label></div>
+      <div class="num-row"><div><span class="tog-lbl">AFK Timeout (min)</span><div style="font-size:10px;color:var(--muted)">Standard: 10 min</div></div><input class="inp num-inp" type="number" id="ec-afkmin" min="1" max="60" value="10"></div>
+      <div class="num-row"><div><span class="tog-lbl">Max Ping (ms)</span><div style="font-size:10px;color:var(--muted)">0 = kein Limit</div></div><input class="inp num-inp" type="number" id="ec-ping" min="100" max="2000" value="500"></div>
+      <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_force_lights">Lichter erzwingen</div><div class="tog-desc">Alle Spieler müssen Scheinwerfer verwenden</div></div><label class="tog"><input type="checkbox" id="ec-lights"><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl" data-i18n="tog_weatherfx">WeatherFX (CSP Regen)</div><div class="tog-desc" data-i18n="tog_weatherfx_desc">Benötigt CSP 0.1.76+</div></div><label class="tog"><input type="checkbox" id="ec-wxfx"><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Client Messages (CSP)</div></div><label class="tog"><input type="checkbox" id="ec-clmsg"><span class="tog-sl"></span></label></div>
+      <div class="tog-row"><div><div class="tog-lbl">Real Time</div></div><label class="tog"><input type="checkbox" id="ec-realtime"><span class="tog-sl"></span></label></div>
+      <div class="num-row"><div><span class="tog-lbl" data-i18n="lbl_min_csp">Min CSP Version</span><div style="font-size:10px;color:var(--muted)">0 = kein Limit</div></div><input class="inp num-inp" type="number" id="ec-csp" min="0" value="0"></div>
+      <div class="num-row"><div><span class="tog-lbl" data-i18n="lbl_security_level">Security Level</span><div style="font-size:10px;color:var(--muted)">0 oder 1</div></div><input class="inp num-inp" type="number" id="ec-sec" min="0" max="1" value="0"></div>
+      <div class="num-row"><div><span class="tog-lbl" data-i18n="lbl_rcon_port">RCON Port</span><div style="font-size:10px;color:var(--muted)">0 = deaktiviert</div></div><input class="inp num-inp" type="number" id="ec-rcon" min="0" max="65535" value="9700"></div>
+      <div class="fg" style="margin-top:8px">
+        <label class="lbl">Loading Image URL</label>
+        <input class="inp" id="ec-loadimg" placeholder="https://...">
+      </div>
+      <button class="btn btn-red" onclick="saveExtraCfg()">💾 Speichern &amp; Neustart</button>
     </div>
-    <button class="btn btn-red" onclick="saveExtraCfg()" data-i18n="btn_save_extra_cfg">💾 Speichern &amp; Server neu starten</button>
+
+    <!-- Plugins -->
+    <div>
+      <div class="card gap">
+        <div class="sh">
+          <div class="sh-t">🔌 AssettoServer Plugins</div>
+          <button class="btn btn-gray btn-sm" onclick="loadPluginStatus()">↻</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Status aus extra_cfg.yml — Änderungen erfordern Neustart.</div>
+        <div style="display:flex;flex-direction:column;gap:8px" id="plugin-status-list">
+          <div class="tog-row" style="background:var(--bg);border-radius:6px;padding:8px 10px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="dot-automod" style="font-size:13px">○</span>
+              <div><div style="font-size:12px;font-weight:600">AutoModerationPlugin</div><div style="font-size:10px;color:var(--muted)">Falsches Fahren, No-Parking, Contact-Limits</div></div>
+            </div>
+          </div>
+          <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+            <div class="tog-row" style="margin-bottom:0">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="dot-voting" style="font-size:13px">○</span>
+                <div><div style="font-size:12px;font-weight:600">VotingWeatherPlugin</div><div style="font-size:10px;color:var(--muted)">Spieler stimmen per /weather ab</div></div>
+              </div>
+              <label class="tog"><input type="checkbox" id="vwp-toggle" onchange="toggleVotingWeather(this.checked)"><span class="tog-sl"></span></label>
+            </div>
+            <div id="vwp-config" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+              <div class="num-row" style="margin-bottom:6px"><span class="tog-lbl" style="font-size:11px">Intervall (Min.)</span><input class="inp num-inp" type="number" id="vwp-interval" min="1" max="120" value="30"></div>
+              <div class="num-row" style="margin-bottom:6px"><span class="tog-lbl" style="font-size:11px">Dauer (Sek.)</span><input class="inp num-inp" type="number" id="vwp-duration" min="5" max="120" value="30"></div>
+              <div class="tog-row" style="margin-bottom:8px"><span class="tog-lbl" style="font-size:11px">Wetter nacheinander</span><label class="tog"><input type="checkbox" id="vwp-sequential"><span class="tog-sl"></span></label></div>
+              <button class="btn btn-gray btn-sm" onclick="saveVotingWeather()">💾 Speichern</button>
+            </div>
+          </div>
+          <div style="background:var(--bg);border-radius:6px;padding:8px 10px">
+            <div class="tog-row" style="margin-bottom:0">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="dot-lwp" style="font-size:13px">○</span>
+                <div><div style="font-size:12px;font-weight:600">LiveWeatherPlugin</div><div style="font-size:10px;color:var(--muted)" id="lwp-status-txt">Deaktiviert — benötigt OpenWeatherMap API-Key</div></div>
+              </div>
+              <label class="tog"><input type="checkbox" id="lwp-toggle" onchange="toggleLiveWeather(this.checked)"><span class="tog-sl"></span></label>
+            </div>
+            <div id="lwp-config" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+              <div class="fg" style="margin-bottom:6px">
+                <label class="lbl">OpenWeatherMap API-Key <a href="https://openweathermap.org/api" target="_blank" style="font-size:10px;color:var(--muted)">kostenlos →</a></label>
+                <input class="inp" id="lwp-apikey" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style="font-family:monospace;font-size:12px">
+              </div>
+              <div class="num-row" style="margin-bottom:8px"><span class="tog-lbl" style="font-size:11px">Aktualisierung (Min.)</span><input class="inp num-inp" type="number" id="lwp-interval" min="5" max="60" value="10"></div>
+              <button class="btn btn-red btn-sm" onclick="saveLiveWeather()">💾 Speichern &amp; Neustart</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LiveWeather Log -->
+      <div class="card gap" style="margin-top:14px" id="lwp-log-card">
+        <div class="sh">
+          <div class="sh-t">LiveWeather Log</div>
+          <button class="btn btn-gray btn-sm" onclick="loadWeatherLog()">↻</button>
+        </div>
+        <div id="lwp-log" style="font-family:monospace;font-size:11px;display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto">
+          <div style="color:var(--muted);padding:16px 0;text-align:center">Log wird geladen…</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div><!-- /cfgp-advanced -->
 
@@ -1193,67 +1250,8 @@
   </div>
 </div>
 
-<!-- ══ ENTRY LIST EDITOR ══════════════════════════════════════════════════ -->
-<div class="panel" id="p-entry-list">
-
-  <!-- Toolbar -->
-  <div class="el-toolbar">
-    <div class="el-stats">
-      <span class="el-stat-item">Slots: <strong id="el-slot-count">0</strong></span>
-      <span class="el-stat-sep"></span>
-      <span class="el-stat-item" id="el-maxclients-info"></span>
-    </div>
-    <div class="el-toolbar-actions">
-      <!-- Quick Add -->
-      <div class="el-quickadd">
-        <select class="sel el-qa-car" id="el-qa-car" style="min-width:160px"></select>
-        <select class="sel el-qa-skin" id="el-qa-skin" style="min-width:130px"></select>
-        <input class="inp num-inp" type="number" id="el-qa-count" value="1" min="1" max="20" style="width:54px" title="Anzahl Slots">
-        <button class="btn btn-gray btn-sm" onclick="elQuickAdd()">+ Hinzufügen</button>
-      </div>
-      <span class="el-toolbar-sep"></span>
-      <!-- Presets -->
-      <select class="sel" id="el-preset-sel" style="min-width:130px">
-        <option value="">Preset laden…</option>
-      </select>
-      <button class="btn btn-gray btn-sm" onclick="elLoadPreset()">Laden</button>
-      <button class="btn btn-gray btn-sm" onclick="elSavePreset()">Speichern als…</button>
-      <span class="el-toolbar-sep"></span>
-      <!-- Import / Export -->
-      <button class="btn btn-gray btn-sm" onclick="elImportClick()">⬆ Import</button>
-      <input type="file" id="el-import-file" accept=".ini" style="display:none" onchange="elImportFile(this)">
-      <a class="btn btn-gray btn-sm" id="el-export-btn" href="/api/entry_list/export">⬇ Export</a>
-      <!-- Save -->
-      <button class="btn btn-red" onclick="elSave()">💾 Speichern</button>
-    </div>
-  </div>
-
-  <!-- Validation Banner (hidden by default) -->
-  <div class="el-banner" id="el-banner" style="display:none"></div>
-
-  <!-- Multi-Edit Bar (hidden until selection) -->
-  <div class="el-multiedit" id="el-multiedit" style="display:none">
-    <span id="el-sel-count">0 ausgewählt</span>
-    <span class="el-toolbar-sep"></span>
-    <label class="lbl" style="color:var(--muted)">Ballast:</label>
-    <input class="inp num-inp" type="number" id="el-me-ballast" min="0" max="150" placeholder="—" style="width:60px">
-    <label class="lbl" style="color:var(--muted)">Restrictor:</label>
-    <input class="inp num-inp" type="number" id="el-me-restrictor" min="0" max="400" placeholder="—" style="width:60px">
-    <button class="btn btn-gray btn-sm" onclick="elMultiApply()">Anwenden</button>
-    <span class="el-toolbar-sep"></span>
-    <button class="btn btn-gray btn-sm" onclick="elMultiDelete()">🗑 Löschen</button>
-    <button class="btn btn-gray btn-sm" onclick="elClearSelection()">✕ Abwählen</button>
-  </div>
-
-  <!-- Slot Grid -->
-  <div class="el-grid" id="el-grid">
-    <div class="el-empty" id="el-empty">
-      <div style="font-size:32px;margin-bottom:8px">📋</div>
-      <div>Keine Slots. Quick-Add verwenden oder <strong>Import</strong> klicken.</div>
-    </div>
-  </div>
-
-</div>
+<!-- ENTRY LIST Editor: Inhalt in cfgp-entry (innerhalb p-config) verschoben -->
+<div class="panel" id="p-entry-list" style="display:none"></div>
 
 <!-- ══ PLAYERS ════════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-players">

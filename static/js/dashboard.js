@@ -689,6 +689,9 @@ function updateLayouts() {
 // ═══ CAR CONFIG (skin/ballast/restrictor) ════════════════════════════════
 function toggleCar(el, event) {
   el.querySelector('input[type=checkbox]').click();
+  const cnt = document.querySelectorAll('#car-list input[type=checkbox]:checked').length;
+  const el2 = document.getElementById('car-sel-count');
+  if (el2) el2.textContent = cnt + ' ausgewählt';
 }
 
 function toggleCarCfg(btn, carId) {
@@ -2320,6 +2323,7 @@ const _CFG_TAB_MAP = {
   'settings-server':'server', 'settings-track':'track', 'settings-assists':'assists',
   'settings-sessions':'sessions', 'settings-weather':'weather',
   'settings-profile':'profile', 'advanced':'advanced', 'settings-overview':null,
+  'entry-list':'entry',
 };
 
 function toggleGroup(name) {
@@ -2344,10 +2348,18 @@ function cfgTab(name) {
   if (tab) tab.classList.add('active');
   localStorage.setItem('acweb_cfg_tab', name);
   if (name === 'profile')   loadServerProfile();
-  if (name === 'advanced')  loadExtraCfg();
+  if (name === 'advanced')  { loadExtraCfg(); loadPluginStatus(); loadVotingWeather(); loadWeatherLog(); }
   if (name === 'assists')   loadCutActions();
   if (name === 'sessions')  { loadScheduledEvents(); _loadSchedPresets(); }
-  if (name === 'weather')   { loadPluginStatus(); loadVotingWeather(); loadWeatherLog(); }
+  if (name === 'weather')   { updateWeatherIcon('w0'); updateWeatherIcon('w1'); }
+  if (name === 'entry')     loadEntryList();
+}
+
+function updateWeatherIcon(slot) {
+  const sel = document.getElementById(slot + '-graphics');
+  const ico = document.getElementById(slot + '-icon');
+  if (!sel || !ico) return;
+  ico.textContent = _WEATHER_ICONS[sel.value] || '🌡';
 }
 
 // Restore accordion state on page load

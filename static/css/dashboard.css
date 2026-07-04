@@ -490,4 +490,53 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   .dash-main{grid-template-columns:1fr}
   .dash-hero{flex-direction:column;align-items:flex-start}
   .live-bottom{grid-template-columns:1fr}
+  .rec-filter-bar{flex-wrap:wrap}
+  .podium-row{grid-template-columns:1fr 1fr}
 }
+
+/* ── RECORDS SUB-TABS ────────────────────────────────────────────────────── */
+.rec-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px;overflow-x:auto}
+.rec-tab{padding:9px 18px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:color .15s,border-color .15s;white-space:nowrap;font-family:inherit}
+.rec-tab:hover{color:var(--text)}
+.rec-tab.active{color:var(--text);border-bottom-color:var(--red)}
+.rec-pane{display:none}
+.rec-pane.active{display:block}
+
+/* ── RECORDS FILTER BAR ──────────────────────────────────────────────────── */
+.rec-filter-bar{display:flex;gap:8px;align-items:flex-end;flex-wrap:nowrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.rec-filter-bar .dff{display:flex;flex-direction:column;gap:4px;min-width:100px}
+.rec-filter-bar .dff label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.rec-filter-actions{display:flex;gap:6px;align-items:flex-end;margin-left:auto;flex-shrink:0}
+
+/* ── SORTABLE COLUMN HEADERS ─────────────────────────────────────────────── */
+.sort-th{cursor:pointer;user-select:none;white-space:nowrap;transition:color .1s}
+.sort-th:hover{color:var(--red)}
+.sort-th::after{content:'';display:inline-block;width:12px;margin-left:3px;color:var(--muted);font-size:10px;line-height:1}
+.sort-th.asc::after{content:'↑';color:var(--red)}
+.sort-th.desc::after{content:'↓';color:var(--red)}
+
+/* ── KPI STAT CARDS ──────────────────────────────────────────────────────── */
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 12px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px}
+.kpi-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.kpi-val{font-size:26px;font-weight:900;line-height:1.1}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:1px}
+
+/* ── PODIUM (Results Detail) ─────────────────────────────────────────────── */
+.podium-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px}
+.podium-card{text-align:center;padding:14px 10px;border-radius:8px;border:1px solid var(--border)}
+.podium-card.p1{border-color:#f59e0b;background:rgba(245,158,11,.07)}
+.podium-card.p2{border-color:#9ca3af;background:rgba(156,163,175,.07)}
+.podium-card.p3{border-color:#b45309;background:rgba(180,83,9,.07)}
+.podium-medal{font-size:22px;line-height:1;margin-bottom:6px}
+.podium-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.podium-car{font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.podium-time{font-family:monospace;font-size:12px;font-weight:700;margin-top:8px;color:var(--red)}
+
+/* ── RESULT SESSION LIST ─────────────────────────────────────────────────── */
+.result-item{cursor:pointer;padding:10px 12px;border:1px solid var(--border);border-left:3px solid transparent;border-radius:8px;transition:border-color .15s,background .15s}
+.result-item:hover,.result-item:focus{border-left-color:var(--red);background:var(--bg3);outline:none}
+.result-item.active{border-color:var(--red);border-left-color:var(--red);background:var(--bg3)}
+.rtype{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:10px;flex-shrink:0}
+.rtype.P{background:rgba(34,197,94,.15);color:#22c55e}
+.rtype.Q{background:rgba(245,158,11,.15);color:#f59e0b}
+.rtype.R{background:rgba(232,21,12,.15);color:var(--red)}

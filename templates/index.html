@@ -333,95 +333,129 @@
 
 <!-- ══ RECORDS ════════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-records">
-  <!-- Bestzeiten -->
-  <div class="card gap">
-    <div class="sh">
-      <div class="sh-t">🏆 <span data-i18n="best_laps">Bestzeiten (pro Fahrer &amp; Strecke)</span></div>
-      <button class="btn btn-gray btn-sm" onclick="loadBestLaps()">↻</button>
-    </div>
-    <div class="tbl-wrap">
-      <table id="best-table">
-        <thead><tr>
-          <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th data-i18n="col_car">Auto</th><th data-i18n="col_track">Strecke</th>
-          <th data-i18n="col_best">Bestzeit</th><th data-i18n="col_cuts">Cuts</th><th data-i18n="col_date">Datum</th>
-        </tr></thead>
-        <tbody id="best-tbody">
-          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
-        </tbody>
-      </table>
+
+  <!-- Sub-Navigation -->
+  <div class="rec-tabs">
+    <button class="rec-tab active" data-tab="best" onclick="_recTab('best')">🏆 Bestzeiten</button>
+    <button class="rec-tab" data-tab="all" onclick="_recTab('all')">📋 Alle Runden</button>
+    <button class="rec-tab" data-tab="drivers" onclick="_recTab('drivers')">👤 Fahrer</button>
+  </div>
+
+  <!-- Pane: Bestzeiten -->
+  <div class="rec-pane active" id="recp-best">
+    <div class="card">
+      <div class="sh">
+        <div class="sh-t">🏆 Bestzeiten <span style="font-size:11px;color:var(--muted);font-weight:400">(schnellste Runde pro Fahrer &amp; Strecke)</span></div>
+        <button class="btn btn-gray btn-sm" onclick="loadBestLaps()">↻</button>
+      </div>
+      <div class="tbl-wrap">
+        <table id="best-table">
+          <thead><tr>
+            <th>Pos.</th>
+            <th class="sort-th" data-col-b="driver" onclick="_sortBest('driver')">Fahrer</th>
+            <th class="sort-th" data-col-b="car" onclick="_sortBest('car')">Auto</th>
+            <th class="sort-th" data-col-b="track" onclick="_sortBest('track')">Strecke</th>
+            <th class="sort-th" data-col-b="laptime" onclick="_sortBest('laptime')">Bestzeit</th>
+            <th>Cuts</th>
+            <th class="sort-th" data-col-b="ts" onclick="_sortBest('ts')">Datum</th>
+          </tr></thead>
+          <tbody id="best-tbody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <!-- Alle Rundenzeiten mit Filter -->
-  <div class="card">
-    <div class="sh">
-      <div class="sh-t">📋 <span data-i18n="all_laps">Alle Rundenzeiten</span></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span id="rec-count" style="font-size:11px;color:var(--muted)"></span>
-        <a id="rec-export-btn" href="/api/laptimes/export" class="btn btn-blue btn-sm">⬇ CSV</a>
-        <button class="btn btn-danger btn-sm" onclick="clearLaptimes()" data-i18n="clear_all">🗑 Alles löschen</button>
+  <!-- Pane: Alle Runden -->
+  <div class="rec-pane" id="recp-all">
+    <div class="card">
+      <!-- Filter Bar -->
+      <div class="rec-filter-bar">
+        <div class="dff">
+          <label>Fahrer</label>
+          <select class="sel" id="rec-filter-driver" onchange="loadAllLaps()">
+            <option value="">Alle Fahrer</option>
+          </select>
+        </div>
+        <div class="dff">
+          <label>Strecke</label>
+          <select class="sel" id="rec-filter-track" onchange="loadAllLaps()">
+            <option value="">Alle Strecken</option>
+          </select>
+        </div>
+        <div class="dff">
+          <label>Auto</label>
+          <select class="sel" id="rec-filter-car" onchange="loadAllLaps()">
+            <option value="">Alle Autos</option>
+          </select>
+        </div>
+        <div class="dff">
+          <label>Von</label>
+          <input type="date" class="inp" id="rec-filter-from" onchange="renderAllLapsPage()" style="width:128px">
+        </div>
+        <div class="dff">
+          <label>Bis</label>
+          <input type="date" class="inp" id="rec-filter-to" onchange="renderAllLapsPage()" style="width:128px">
+        </div>
+        <div class="dff" style="flex:2;min-width:150px">
+          <label>Suche</label>
+          <input type="search" class="inp" id="rec-filter-search" placeholder="Fahrer, Auto, Strecke…" oninput="renderAllLapsPage()">
+        </div>
+        <div class="rec-filter-actions">
+          <span id="rec-count" style="font-size:11px;color:var(--muted)"></span>
+          <a id="rec-export-btn" href="/api/laptimes/export" class="btn btn-blue btn-sm">⬇ CSV</a>
+          <button class="btn btn-danger btn-sm" onclick="clearLaptimes()" title="Alle Rundenzeiten löschen">🗑</button>
+        </div>
       </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Pos.</th>
+            <th class="sort-th" data-col="driver" onclick="_sortCol('driver')">Fahrer</th>
+            <th class="sort-th" data-col="car" onclick="_sortCol('car')">Auto</th>
+            <th class="sort-th" data-col="track" onclick="_sortCol('track')">Strecke</th>
+            <th class="sort-th" data-col="laptime" onclick="_sortCol('laptime')">Zeit</th>
+            <th>Cuts</th>
+            <th class="sort-th" data-col="ts" onclick="_sortCol('ts')">Datum</th>
+          </tr></thead>
+          <tbody id="all-tbody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="all-pagination" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
     </div>
-
-    <!-- Filter -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-      <div>
-        <label class="lbl" data-i18n="col_driver">Fahrer</label>
-        <select class="sel" id="rec-filter-driver" onchange="loadAllLaps()">
-          <option value="" data-i18n="all_drivers">Alle Fahrer</option>
-        </select>
-      </div>
-      <div>
-        <label class="lbl" data-i18n="col_track">Strecke</label>
-        <select class="sel" id="rec-filter-track" onchange="loadAllLaps()">
-          <option value="" data-i18n="all_tracks">Alle Strecken</option>
-        </select>
-      </div>
-      <div>
-        <label class="lbl" data-i18n="col_car">Auto</label>
-        <select class="sel" id="rec-filter-car" onchange="loadAllLaps()">
-          <option value="" data-i18n="all_cars">Alle Autos</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr>
-          <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th>GUID</th><th data-i18n="col_car">Auto</th><th data-i18n="col_track">Strecke</th>
-          <th data-i18n="col_time">Zeit</th><th data-i18n="col_cuts">Cuts</th><th data-i18n="col_date">Datum</th>
-        </tr></thead>
-        <tbody id="all-tbody">
-          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <!-- Pagination -->
-    <div id="all-pagination" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
   </div>
 
-  <!-- Fahrer Statistiken -->
-  <div class="card">
-    <div class="sh">
-      <div class="sh-t" data-i18n="driver_stats">Fahrer Statistiken</div>
-      <button class="btn btn-gray btn-sm" onclick="loadDriverStats()">↻</button>
-    </div>
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr>
-          <th data-i18n="col_driver">Fahrer</th>
-          <th data-i18n="stat_total_laps">Runden gesamt</th>
-          <th data-i18n="stat_clean_laps">Saubere Runden</th>
-          <th data-i18n="stat_best">Beste Zeit</th>
-          <th data-i18n="col_track">Beste Strecke</th>
-          <th data-i18n="col_car">Bestes Auto</th>
-        </tr></thead>
-        <tbody id="stats-tbody">
-          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
-        </tbody>
-      </table>
+  <!-- Pane: Fahrer -->
+  <div class="rec-pane" id="recp-drivers">
+    <div class="card">
+      <div class="sh">
+        <div class="sh-t">👤 Fahrer Statistiken</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="search" class="inp" id="stats-search" placeholder="Fahrer suchen…" oninput="_filterStats()" style="width:200px">
+          <button class="btn btn-gray btn-sm" onclick="loadDriverStats()">↻</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th class="sort-th" data-col-s="driver" onclick="_sortStats('driver')">Fahrer</th>
+            <th class="sort-th" data-col-s="total_laps" onclick="_sortStats('total_laps')">Runden</th>
+            <th class="sort-th" data-col-s="clean_laps" onclick="_sortStats('clean_laps')">Sauber</th>
+            <th class="sort-th" data-col-s="best_overall" onclick="_sortStats('best_overall')">Bestzeit</th>
+            <th>Beste Strecke</th>
+            <th>Bestes Auto</th>
+          </tr></thead>
+          <tbody id="stats-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
+
 </div>
 
 <!-- ══ ANALYTICS (Fahrerprofil) ═══════════════════════════════════════════ -->
@@ -441,21 +475,24 @@
 
   <div id="an-profile-wrap" style="display:none">
     <div class="g4 gap" style="margin:14px 0">
-      <div class="card" style="text-align:center">
-        <div class="card-ttl" data-i18n="an_best_lap">Beste Runde</div>
-        <div id="an-best" style="font-size:26px;font-weight:800;font-family:monospace">—</div>
+      <div class="kpi-card">
+        <div class="kpi-lbl">Beste Runde</div>
+        <div id="an-best" class="kpi-val" style="font-family:monospace;font-size:20px">—</div>
       </div>
-      <div class="card" style="text-align:center">
-        <div class="card-ttl" data-i18n="an_avg_speed">Ø Geschwindigkeit</div>
-        <div id="an-speed" style="font-size:26px;font-weight:800">—</div>
+      <div class="kpi-card">
+        <div class="kpi-lbl">Ø Geschwindigkeit</div>
+        <div id="an-speed" class="kpi-val">—</div>
+        <div class="kpi-sub">km/h schnellste Runde</div>
       </div>
-      <div class="card" style="text-align:center">
-        <div class="card-ttl" data-i18n="an_consistency">Konsistenz</div>
-        <div id="an-consistency" style="font-size:26px;font-weight:800">—</div>
+      <div class="kpi-card">
+        <div class="kpi-lbl">Konsistenz</div>
+        <div id="an-consistency" class="kpi-val">—</div>
+        <div class="kpi-sub">Std.abw. Rundenzeiten</div>
       </div>
-      <div class="card" style="text-align:center">
-        <div class="card-ttl" data-i18n="an_safety">Safety-Score</div>
-        <div id="an-safety" style="font-size:26px;font-weight:800">—</div>
+      <div class="kpi-card">
+        <div class="kpi-lbl">Safety-Score</div>
+        <div id="an-safety" class="kpi-val">—</div>
+        <div class="kpi-sub">Saubere Runden %</div>
       </div>
     </div>
 
@@ -492,15 +529,25 @@
   </div>
 
   <div class="card" style="margin-top:14px">
-    <div class="sh"><div class="sh-t" data-i18n="an_leaderboard">Fahrervergleich</div></div>
+    <div class="sh">
+      <div class="sh-t">Fahrervergleich <span style="font-size:11px;color:var(--muted);font-weight:400">(alle Fahrer)</span></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="search" class="inp" id="leaderboard-search" placeholder="Fahrer suchen…" oninput="_filterLeaderboard()" style="width:200px">
+        <button class="btn btn-gray btn-sm" onclick="loadAnalyticsDrivers()">↻</button>
+      </div>
+    </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th data-i18n="an_laps">Runden</th>
-          <th data-i18n="an_safety">Safety-Score</th><th data-i18n="an_consistency">Konsistenz</th><th data-i18n="stat_best">Beste Zeit</th>
+          <th>Pos.</th>
+          <th class="sort-th" data-col-lb="driver" onclick="_sortLeaderboard('driver')">Fahrer</th>
+          <th class="sort-th" data-col-lb="total_laps" onclick="_sortLeaderboard('total_laps')">Runden</th>
+          <th class="sort-th" data-col-lb="safety_score" onclick="_sortLeaderboard('safety_score')">Safety-Score</th>
+          <th class="sort-th" data-col-lb="consistency" onclick="_sortLeaderboard('consistency')">Konsistenz</th>
+          <th class="sort-th" data-col-lb="best_overall" onclick="_sortLeaderboard('best_overall')">Bestzeit</th>
         </tr></thead>
         <tbody id="an-leaderboard-tbody">
-          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px" data-i18n="loading">Lade...</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
         </tbody>
       </table>
     </div>
@@ -515,11 +562,21 @@
     <div>
       <div class="card">
         <div class="sh">
-          <div class="sh-t">🏁 <span data-i18n="nav_results">Ergebnisse</span></div>
+          <div class="sh-t">🏁 Ergebnisse</div>
           <button class="btn btn-gray btn-sm" onclick="loadResults()">↻</button>
         </div>
-        <div id="results-list" style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
-          <div style="color:var(--muted);font-size:13px;text-align:center;padding:32px" data-i18n="res_loading">Lade Ergebnisse…</div>
+        <!-- Filter -->
+        <div style="display:flex;gap:8px;margin:10px 0 8px">
+          <input type="search" class="inp" id="res-search" placeholder="Strecke, Fahrer…" oninput="filterResults()" style="flex:1">
+          <select class="sel" id="res-filter-type" onchange="filterResults()" style="width:120px">
+            <option value="">Alle Typen</option>
+            <option value="P">Practice</option>
+            <option value="Q">Qualifying</option>
+            <option value="R">Race</option>
+          </select>
+        </div>
+        <div id="results-list" style="display:flex;flex-direction:column;gap:6px">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">Lade Ergebnisse…</div>
         </div>
       </div>
     </div>
@@ -540,27 +597,32 @@
 
     <!-- LEFT: Liste + Erstellen -->
     <div>
-      <div class="card gap" style="margin-bottom:14px">
-        <div class="card-ttl" data-i18n="champ_create">Neue Meisterschaft</div>
-        <div class="fg">
-          <label class="lbl" data-i18n="lbl_name">Name</label>
-          <input class="inp" id="champ-name" placeholder="AC Liga 2025">
+      <div class="card" style="margin-bottom:14px">
+        <div class="sh" style="cursor:pointer" onclick="var f=document.getElementById('champ-create-form');var open=f.style.display!=='none';f.style.display=open?'none':'flex';this.querySelector('.ct').textContent=open?'▼':'▲'">
+          <div class="sh-t">➕ Neue Meisterschaft</div>
+          <span class="ct" style="color:var(--muted);font-size:12px">▼</span>
         </div>
-        <div class="fg">
-          <label class="lbl" data-i18n="champ_points_preset">Punkte-Preset</label>
-          <select class="sel" id="champ-preset" onchange="applyPointsPreset()">
-            <option value="F1">F1 (25-18-15-12-10…)</option>
-            <option value="Liga">Liga (20-15-12-10-8…)</option>
-            <option value="Simple">Simple (10-8-6-5-4…)</option>
-            <option value="IMSA">IMSA (35-32-30…)</option>
-            <option value="custom" data-i18n="champ_custom">Benutzerdefiniert</option>
-          </select>
+        <div id="champ-create-form" style="display:none;flex-direction:column;gap:10px;margin-top:12px">
+          <div class="fg">
+            <label class="lbl">Name</label>
+            <input class="inp" id="champ-name" placeholder="AC Liga 2025">
+          </div>
+          <div class="fg">
+            <label class="lbl">Punkte-Preset</label>
+            <select class="sel" id="champ-preset" onchange="applyPointsPreset()">
+              <option value="F1">F1 (25-18-15-12-10…)</option>
+              <option value="Liga">Liga (20-15-12-10-8…)</option>
+              <option value="Simple">Simple (10-8-6-5-4…)</option>
+              <option value="IMSA">IMSA (35-32-30…)</option>
+              <option value="custom">Benutzerdefiniert</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label class="lbl">Punkte-Schema (kommagetrennt)</label>
+            <input class="inp" id="champ-points" value="25,18,15,12,10,8,6,4,2,1">
+          </div>
+          <button class="btn btn-red" onclick="createChampionship()">🏆 Erstellen</button>
         </div>
-        <div class="fg">
-          <label class="lbl" data-i18n="champ_points_schema">Punkte-Schema (kommagetrennt)</label>
-          <input class="inp" id="champ-points" value="25,18,15,12,10,8,6,4,2,1">
-        </div>
-        <button class="btn btn-red" onclick="createChampionship()" data-i18n="champ_create_btn">🏆 Erstellen</button>
       </div>
 
       <div class="card">

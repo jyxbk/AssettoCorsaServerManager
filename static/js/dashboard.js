@@ -1430,15 +1430,36 @@ async function loadRecordFilters() {
   fill('rec-filter-car',    d.cars,    'all_cars');
 }
 
+// ─── Records Sub-Tab ──────────────────────────────────────────────────────
+function _recTab(name) {
+  document.querySelectorAll('.rec-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.rec-pane').forEach(p => p.classList.remove('active'));
+  const tab  = document.querySelector(`.rec-tab[data-tab="${name}"]`);
+  const pane = document.getElementById('recp-' + name);
+  if (tab)  tab.classList.add('active');
+  if (pane) pane.classList.add('active');
+}
+
+// ─── Best Laps ────────────────────────────────────────────────────────────
+let _bestLapsData = [], _sortBestState = { col: null, dir: 'asc' };
+
 async function loadBestLaps() {
   const d = await apiFetch('/api/laptimes/best').then(r => r.json()).catch(() => null);
   const tb = document.getElementById('best-tbody');
   if (!d || !d.entries.length) {
     tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+    _bestLapsData = [];
     return;
   }
-  tb.innerHTML = d.entries.map((e, i) => {
-    const pc = ['pos-1','pos-2','pos-3'][i] || '';
+  _bestLapsData = d.entries;
+  _renderBestLaps();
+}
+
+function _renderBestLaps() {
+  const tb = document.getElementById('best-tbody');
+  if (!_bestLapsData.length) { tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Keine Daten</td></tr>`; return; }
+  tb.innerHTML = _bestLapsData.map((e, i) => {
+    const pc    = ['pos-1','pos-2','pos-3'][i] || '';
     const medal = ['🥇','🥈','🥉'][i] || `#${i+1}`;
     return `<tr>
       <td class="${pc}">${medal}</td>
@@ -1452,9 +1473,24 @@ async function loadBestLaps() {
   }).join('');
 }
 
-// Pagination state
+function _sortBest(col) {
+  if (_sortBestState.col === col) _sortBestState.dir = _sortBestState.dir === 'asc' ? 'desc' : 'asc';
+  else { _sortBestState.col = col; _sortBestState.dir = 'asc'; }
+  document.querySelectorAll('.sort-th[data-col-b]').forEach(th => th.classList.remove('asc', 'desc'));
+  const th = document.querySelector(`.sort-th[data-col-b="${col}"]`);
+  if (th) th.classList.add(_sortBestState.dir);
+  const dir = _sortBestState.dir === 'asc' ? 1 : -1;
+  _bestLapsData.sort((a, b) => {
+    const va = a[col], vb = b[col];
+    return typeof va === 'number' ? dir * (va - vb) : dir * String(va||'').localeCompare(String(vb||''));
+  });
+  _renderBestLaps();
+}
+
+// ─── All Laps ─────────────────────────────────────────────────────────────
 let _allLapsData = [], _allLapsPage = 0;
 const _PAGE_SIZE = 50;
+const _sortState = { col: null, dir: 'asc' };
 
 async function loadAllLaps(resetPage) {
   if (resetPage !== false) _allLapsPage = 0;
@@ -1467,34 +1503,66 @@ async function loadAllLaps(resetPage) {
   if (car)    params.set('car',    car);
 
   const d = await apiFetch('/api/laptimes?' + params).then(r => r.json()).catch(() => null);
-  const tb = document.getElementById('all-tbody');
+  const tb  = document.getElementById('all-tbody');
   const cnt = document.getElementById('rec-count');
   if (!d || !d.entries.length) {
-    tb.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">${t('t_no_entries')}</td></tr>`;
-    cnt.textContent = t('t_entries',0);
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('t_no_entries')}</td></tr>`;
+    if (cnt) cnt.textContent = t('t_entries', 0);
     document.getElementById('all-pagination').innerHTML = '';
+    _allLapsData = [];
     return;
   }
   _allLapsData = d.entries;
-  cnt.textContent = t('t_entries',d.total);
   document.getElementById('rec-export-btn').href = '/api/laptimes/export?' + params;
   renderAllLapsPage();
 }
 
 function renderAllLapsPage() {
-  const data = _allLapsData;
+  const q    = (document.getElementById('rec-filter-search')?.value || '').toLowerCase();
+  const from = document.getElementById('rec-filter-from')?.value || '';
+  const to   = document.getElementById('rec-filter-to')?.value   || '';
+
+  let data = _allLapsData;
+
+  if (q || from || to) {
+    data = data.filter(e => {
+      if (q && !String(e.driver||'').toLowerCase().includes(q)
+            && !String(e.car||'').toLowerCase().includes(q)
+            && !String(e.track||'').toLowerCase().includes(q)) return false;
+      const ts = (e.ts || '').slice(0, 10);
+      if (from && ts < from) return false;
+      if (to   && ts > to)   return false;
+      return true;
+    });
+  }
+
+  if (_sortState.col) {
+    const col = _sortState.col, dir = _sortState.dir === 'asc' ? 1 : -1;
+    data = [...data].sort((a, b) => {
+      const va = a[col], vb = b[col];
+      return typeof va === 'number' ? dir * (va - vb) : dir * String(va||'').localeCompare(String(vb||''));
+    });
+  }
+
+  const cnt = document.getElementById('rec-count');
+  if (cnt) cnt.textContent = `${data.length} Einträge`;
+
   const start = _allLapsPage * _PAGE_SIZE;
   const page  = data.slice(start, start + _PAGE_SIZE);
   const tb    = document.getElementById('all-tbody');
 
+  if (!data.length) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Keine Einträge gefunden</td></tr>`;
+    document.getElementById('all-pagination').innerHTML = '';
+    return;
+  }
+
   tb.innerHTML = page.map((e, i) => {
     const gi = start + i;
     const pc = ['pos-1','pos-2','pos-3'][gi] || '';
-    const guidShort = e.guid ? e.guid.slice(-8) : '—';
     return `<tr>
       <td class="${pc}">${gi+1}</td>
       <td><strong>${esc(e.driver)}</strong></td>
-      <td style="font-size:10px;color:var(--muted);font-family:monospace" title="${esc(e.guid)}">${guidShort}</td>
       <td style="font-size:11px;color:var(--muted)">${esc(e.car)}</td>
       <td style="font-size:11px">${esc(e.track)}</td>
       <td class="${gi===0?'best-t':''}" style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
@@ -1503,7 +1571,6 @@ function renderAllLapsPage() {
     </tr>`;
   }).join('');
 
-  // Pagination controls
   const pages = Math.ceil(data.length / _PAGE_SIZE);
   const pag   = document.getElementById('all-pagination');
   if (pages <= 1) { pag.innerHTML = ''; return; }
@@ -1515,8 +1582,18 @@ function renderAllLapsPage() {
     html += `<button class="btn ${p===_allLapsPage?'btn-red':'btn-gray'} btn-sm" onclick="_allLapsPage=${p};renderAllLapsPage()">${p+1}</button>`;
   if (_allLapsPage < pages-1)
     html += `<button class="btn btn-gray btn-sm" onclick="_allLapsPage++;renderAllLapsPage()">›</button>`;
-  html += `<span style="font-size:11px;color:var(--muted)">Seite ${_allLapsPage+1}/${pages}</span>`;
+  html += `<span style="font-size:11px;color:var(--muted)">Seite ${_allLapsPage+1}/${pages} · ${data.length} Einträge</span>`;
   pag.innerHTML = html;
+}
+
+function _sortCol(col) {
+  if (_sortState.col === col) _sortState.dir = _sortState.dir === 'asc' ? 'desc' : 'asc';
+  else { _sortState.col = col; _sortState.dir = 'asc'; }
+  document.querySelectorAll('.sort-th[data-col]').forEach(th => th.classList.remove('asc', 'desc'));
+  const th = document.querySelector(`.sort-th[data-col="${col}"]`);
+  if (th) th.classList.add(_sortState.dir);
+  _allLapsPage = 0;
+  renderAllLapsPage();
 }
 
 function clearLaptimes() {
@@ -1527,20 +1604,28 @@ function clearLaptimes() {
   });
 }
 
+let _statsData = [], _sortStatsState = { col: null, dir: 'asc' };
+
 async function loadDriverStats() {
   const d = await apiFetch('/api/laptimes/stats').then(r=>r.json()).catch(()=>null);
-  const tb = document.getElementById('stats-tbody');
   if (!d || !d.stats.length) {
-    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Daten</td></tr>`;
+    document.getElementById('stats-tbody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Daten</td></tr>`;
+    _statsData = [];
     return;
   }
-  tb.innerHTML = d.stats.map((s, i) => {
-    const pc = ['pos-1','pos-2','pos-3'][i] || '';
-    // Find best track entry
-    const bestTrack = Object.entries(s.tracks).sort((a,b)=>((a[1].best||99999999)-(b[1].best||99999999)))[0];
+  _statsData = d.stats;
+  _filterStats();
+}
+
+function _renderStats(data) {
+  const tb = document.getElementById('stats-tbody');
+  if (!data.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Fahrer gefunden</td></tr>`; return; }
+  tb.innerHTML = data.map((s, i) => {
+    const pc       = ['pos-1','pos-2','pos-3'][i] || '';
+    const bestTrack= Object.entries(s.tracks||{}).sort((a,b)=>((a[1].best||99999999)-(b[1].best||99999999)))[0];
     const cleanPct = s.total_laps ? Math.round(s.clean_laps/s.total_laps*100) : 0;
     return `<tr>
-      <td class="${pc}"><strong>${esc(s.driver)}</strong><div style="font-size:10px;color:var(--muted);font-family:monospace">${esc(s.guid.slice(-8)||'')}</div></td>
+      <td class="${pc}"><strong>${esc(s.driver)}</strong></td>
       <td style="font-weight:700">${s.total_laps}</td>
       <td><span style="color:${cleanPct>=80?'var(--green)':cleanPct>=50?'var(--yellow)':'var(--red)'}">${s.clean_laps}</span> <span style="color:var(--muted);font-size:11px">(${cleanPct}%)</span></td>
       <td class="best-t" style="font-family:monospace">${fmtMs(s.best_overall)}</td>
@@ -1550,35 +1635,84 @@ async function loadDriverStats() {
   }).join('');
 }
 
+function _filterStats() {
+  const q = (document.getElementById('stats-search')?.value || '').toLowerCase();
+  let data = q ? _statsData.filter(s => s.driver.toLowerCase().includes(q)) : _statsData;
+  if (_sortStatsState.col) {
+    const col = _sortStatsState.col, dir = _sortStatsState.dir === 'asc' ? 1 : -1;
+    data = [...data].sort((a, b) => {
+      const va = a[col], vb = b[col];
+      return typeof va === 'number' ? dir * ((va||0)-(vb||0)) : dir * String(va||'').localeCompare(String(vb||''));
+    });
+  }
+  _renderStats(data);
+}
+
+function _sortStats(col) {
+  if (_sortStatsState.col === col) _sortStatsState.dir = _sortStatsState.dir === 'asc' ? 'desc' : 'asc';
+  else { _sortStatsState.col = col; _sortStatsState.dir = 'asc'; }
+  document.querySelectorAll('.sort-th[data-col-s]').forEach(th => th.classList.remove('asc', 'desc'));
+  const th = document.querySelector(`.sort-th[data-col-s="${col}"]`);
+  if (th) th.classList.add(_sortStatsState.dir);
+  _filterStats();
+}
+
 // ═══ ANALYTICS (Fahrerprofil) ═════════════════════════════════════════════
+let _leaderboardData = [], _sortLbState = { col: null, dir: 'asc' };
+
 async function loadAnalyticsDrivers() {
-  const d  = await apiFetch('/api/analytics/drivers').then(r => r.json()).catch(() => null);
+  const d   = await apiFetch('/api/analytics/drivers').then(r => r.json()).catch(() => null);
   const sel = document.getElementById('an-driver-select');
-  const tb  = document.getElementById('an-leaderboard-tbody');
   if (!d || !d.drivers.length) {
-    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+    document.getElementById('an-leaderboard-tbody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+    _leaderboardData = [];
     return;
   }
-
   const cur = sel.value;
   sel.innerHTML = `<option value="">${t('an_select_driver')}</option>` +
     d.drivers.map(s => `<option value="${esc(s.driver)}">${esc(s.driver)}</option>`).join('');
   if (cur) sel.value = cur;
+  _leaderboardData = d.drivers;
+  _filterLeaderboard();
+}
 
-  tb.innerHTML = d.drivers.map((s, i) => {
-    const pc      = ['pos-1','pos-2','pos-3'][i] || '';
-    const safety  = s.safety_score;
-    const cons    = s.consistency;
-    const scoreColor = v => v == null ? 'var(--muted)' : v >= 90 ? 'var(--green)' : v >= 70 ? 'var(--yellow)' : 'var(--red)';
+function _renderLeaderboard(data) {
+  const scoreColor = v => v == null ? 'var(--muted)' : v >= 90 ? 'var(--green)' : v >= 70 ? 'var(--yellow)' : 'var(--red)';
+  const tb = document.getElementById('an-leaderboard-tbody');
+  if (!data.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Fahrer gefunden</td></tr>`; return; }
+  tb.innerHTML = data.map((s, i) => {
+    const pc   = ['pos-1','pos-2','pos-3'][i] || '';
     return `<tr>
       <td class="${pc}">${i+1}</td>
       <td><strong>${esc(s.driver)}</strong></td>
       <td>${s.total_laps}</td>
-      <td style="color:${scoreColor(safety)}">${safety == null ? '—' : safety + '%'}</td>
-      <td style="color:${scoreColor(cons)}">${cons == null ? '—' : cons + '%'}</td>
+      <td style="color:${scoreColor(s.safety_score)}">${s.safety_score == null ? '—' : s.safety_score + '%'}</td>
+      <td style="color:${scoreColor(s.consistency)}">${s.consistency == null ? '—' : s.consistency + '%'}</td>
       <td class="best-t" style="font-family:monospace">${s.best_overall ? fmtMs(s.best_overall) : '—'}</td>
     </tr>`;
   }).join('');
+}
+
+function _filterLeaderboard() {
+  const q = (document.getElementById('leaderboard-search')?.value || '').toLowerCase();
+  let data = q ? _leaderboardData.filter(s => s.driver.toLowerCase().includes(q)) : _leaderboardData;
+  if (_sortLbState.col) {
+    const col = _sortLbState.col, dir = _sortLbState.dir === 'asc' ? 1 : -1;
+    data = [...data].sort((a, b) => {
+      const va = a[col], vb = b[col];
+      return typeof va === 'number' ? dir * ((va||0)-(vb||0)) : dir * String(va||'').localeCompare(String(vb||''));
+    });
+  }
+  _renderLeaderboard(data);
+}
+
+function _sortLeaderboard(col) {
+  if (_sortLbState.col === col) _sortLbState.dir = _sortLbState.dir === 'asc' ? 'desc' : 'asc';
+  else { _sortLbState.col = col; _sortLbState.dir = 'asc'; }
+  document.querySelectorAll('.sort-th[data-col-lb]').forEach(th => th.classList.remove('asc', 'desc'));
+  const th = document.querySelector(`.sort-th[data-col-lb="${col}"]`);
+  if (th) th.classList.add(_sortLbState.dir);
+  _filterLeaderboard();
 }
 
 async function loadDriverProfile() {
@@ -1864,40 +1998,72 @@ function resetScheduledEvent(id) {
 }
 
 // ═══ RESULTS ══════════════════════════════════════════════════════════════
-const _TYPE_COLOR = { RACE: 'var(--red)', QUALIFY: '#3498db', PRACTICE: '#27ae60' };
-const _TYPE_LABEL = { RACE: '🏆 Race', QUALIFY: '⏱ Quali', PRACTICE: '🔄 Practice' };
+const _TYPE_COLOR = { RACE: 'var(--red)', QUALIFY: '#f59e0b', PRACTICE: '#22c55e' };
+const _TYPE_LABEL = { RACE: 'Race', QUALIFY: 'Qualifying', PRACTICE: 'Practice' };
+const _TYPE_KEY   = { RACE: 'R', QUALIFY: 'Q', PRACTICE: 'P' };
+
+let _resultsData = [];
 
 function loadResults() {
   document.getElementById('results-list').innerHTML =
-    `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_loading')}</div>`;
+    `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">Lade Ergebnisse…</div>`;
   apiFetch('/api/results').then(r=>r.json()).then(d=>{
-    const el = document.getElementById('results-list');
     if (!d.ok || !d.results.length) {
-      el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_empty')}</div>`;
+      _resultsData = [];
+      document.getElementById('results-list').innerHTML =
+        `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_empty')}</div>`;
       return;
     }
-    el.innerHTML = d.results.map(r => {
-      const typeCol = _TYPE_COLOR[r.type] || 'var(--muted)';
-      const typeLbl = _TYPE_LABEL[r.type] || r.type;
-      const track   = r.config ? `${r.track} / ${r.config}` : r.track;
-      const date    = r.date ? r.date.slice(0, 16) : '—';
-      return `<div class="result-card" onclick="showResult('${esc(r.filename)}')" style="cursor:pointer;padding:10px 12px;border:1px solid var(--border);border-radius:8px;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--red)'" onmouseleave="this.style.borderColor='var(--border)'">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
-          <span style="font-size:11px;font-weight:700;color:${typeCol};text-transform:uppercase">${typeLbl}</span>
-          <span style="font-size:10px;color:var(--muted)">${date}</span>
-        </div>
-        <div style="font-size:13px;font-weight:600;margin-bottom:2px">${esc(track)||'—'}</div>
-        <div style="font-size:11px;color:var(--muted);display:flex;gap:12px">
-          <span>🏎 ${r.driver_count} Fahrer</span>
-          <span>📋 ${r.lap_count} Runden</span>
-          ${r.winner && r.winner !== '?' ? `<span>🥇 ${esc(r.winner)}</span>` : ''}
-        </div>
-      </div>`;
-    }).join('');
+    _resultsData = d.results;
+    _renderResultsList(_resultsData);
   }).catch(()=>{
     document.getElementById('results-list').innerHTML =
       `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_error')}</div>`;
   });
+}
+
+function _renderResultsList(items) {
+  const el = document.getElementById('results-list');
+  if (!items.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">Keine Ergebnisse gefunden</div>`;
+    return;
+  }
+  el.innerHTML = items.map(r => {
+    const typeKey = _TYPE_KEY[r.type] || '';
+    const typeLbl = _TYPE_LABEL[r.type] || r.type;
+    const track   = r.config ? `${r.track} / ${r.config}` : r.track;
+    const date    = r.date ? r.date.slice(0, 16) : '—';
+    return `<div class="result-item" tabindex="0" onclick="_selectResult(this,'${esc(r.filename)}')" onkeydown="if(event.key==='Enter')_selectResult(this,'${esc(r.filename)}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <span class="rtype ${typeKey}">${typeLbl}</span>
+        <span style="font-size:10px;color:var(--muted)">${date}</span>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:3px">${esc(track)||'—'}</div>
+      <div style="font-size:11px;color:var(--muted);display:flex;gap:12px">
+        <span>🏎 ${r.driver_count} Fahrer</span>
+        <span>📋 ${r.lap_count} Runden</span>
+        ${r.winner && r.winner !== '?' ? `<span>🥇 ${esc(r.winner)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterResults() {
+  const q    = (document.getElementById('res-search')?.value || '').toLowerCase();
+  const type = document.getElementById('res-filter-type')?.value || '';
+  let items  = _resultsData;
+  if (type) items = items.filter(r => _TYPE_KEY[r.type] === type);
+  if (q)    items = items.filter(r =>
+    (r.track||'').toLowerCase().includes(q) ||
+    (r.winner||'').toLowerCase().includes(q)
+  );
+  _renderResultsList(items);
+}
+
+function _selectResult(el, filename) {
+  document.querySelectorAll('.result-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  showResult(filename);
 }
 
 function showResult(filename) {
@@ -1905,16 +2071,28 @@ function showResult(filename) {
   det.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('loading')}</div>`;
   apiFetch(`/api/results/${encodeURIComponent(filename)}`).then(r=>r.json()).then(d=>{
     if (!d.ok) { det.innerHTML = `<div style="color:var(--muted);padding:32px">${t('res_error')}</div>`; return; }
-    const r        = d.result;
-    const typeCol  = _TYPE_COLOR[r.type] || 'var(--muted)';
-    const typeLbl  = _TYPE_LABEL[r.type] || r.type;
-    const track    = r.config ? `${r.track} / ${r.config}` : r.track;
-    const date     = r.date ? r.date.slice(0, 16) : '—';
+    const r       = d.result;
+    const typeKey = _TYPE_KEY[r.type] || '';
+    const typeLbl = _TYPE_LABEL[r.type] || r.type;
+    const track   = r.config ? `${r.track} / ${r.config}` : r.track;
+    const date    = r.date ? r.date.slice(0, 16) : '—';
 
-    // Finish positions table
+    // Podium (top 3 Finisher)
+    const top3 = (r.result || []).slice(0, 3);
+    const podium = top3.length >= 2 ? `
+      <div class="podium-row">
+        ${top3.map((e, i) => `<div class="podium-card p${i+1}">
+          <div class="podium-medal">${['🥇','🥈','🥉'][i]}</div>
+          <div class="podium-name" title="${esc(e.DriverName||'?')}">${esc(e.DriverName||'?')}</div>
+          <div class="podium-car">${esc(e.CarModel||'?')}</div>
+          <div class="podium-time">${e.best_fmt||'—'}</div>
+        </div>`).join('')}
+      </div>` : '';
+
+    // Finish order table (P4+)
     const rows = (r.result || []).map(e => {
-      const medal = ['🥇','🥈','🥉'][e.position-1] || `P${e.position}`;
-      const posCls= ['pos-1','pos-2','pos-3'][e.position-1] || '';
+      const medal  = ['🥇','🥈','🥉'][e.position-1] || `P${e.position}`;
+      const posCls = ['pos-1','pos-2','pos-3'][e.position-1] || '';
       return `<tr>
         <td class="${posCls}">${medal}</td>
         <td><strong>${esc(e.DriverName||'?')}</strong></td>
@@ -1926,42 +2104,42 @@ function showResult(filename) {
       </tr>`;
     }).join('');
 
-    // Lap-Zeiten pro Fahrer (beste 10)
+    // Fastest laps
     const bests = Object.entries(r.driver_bests || {})
-      .sort((a,b) => a[1]-b[1])
-      .slice(0,10)
+      .sort((a,b) => a[1]-b[1]).slice(0,10)
       .map(([name, ms], i) => {
-        const medal = ['🥇','🥈','🥉'][i] || '';
         const mins = Math.floor(ms/60000), secs = (ms%60000)/1000;
         return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
-          <span>${medal} ${esc(name)}</span>
+          <span>${['🥇','🥈','🥉'][i]||''} ${esc(name)}</span>
           <span class="best-t">${mins}:${secs.toFixed(3).padStart(6,'0')}</span>
         </div>`;
       }).join('');
 
     det.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div>
-          <span style="font-size:11px;font-weight:700;color:${typeCol};text-transform:uppercase">${typeLbl}</span>
-          <div style="font-size:16px;font-weight:700;margin-top:2px">${esc(track)||'—'}</div>
-          <div style="font-size:11px;color:var(--muted)">${date}${r.collision_count?' &nbsp;·&nbsp; 💥 '+r.collision_count+' Kollisionen':''}</div>
+          <span class="rtype ${typeKey}" style="margin-bottom:6px;display:inline-block">${typeLbl}</span>
+          <div style="font-size:16px;font-weight:700">${esc(track)||'—'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${date}${r.collision_count?` · 💥 ${r.collision_count} Kollisionen`:''}</div>
         </div>
       </div>
 
+      ${podium}
+
       ${r.result?.length ? `
-      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">${t('res_finish_order')}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Ergebnis</div>
       <div class="tbl-wrap" style="margin-bottom:16px">
         <table>
           <thead><tr>
-            <th>${t('col_pos')}</th><th>${t('col_driver')}</th><th>${t('col_vehicle')}</th>
-            <th>${t('col_best')}</th><th>${t('res_total_time')}</th><th>Gap</th><th>Ballast</th>
+            <th>Pos.</th><th>Fahrer</th><th>Auto</th>
+            <th>Bestzeit</th><th>Gesamtzeit</th><th>Gap</th><th>Ballast</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>` : ''}
 
       ${bests ? `
-      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">${t('res_fastest_laps')}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Schnellste Runden</div>
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px">${bests}</div>
       ` : ''}
     `;

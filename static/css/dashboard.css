@@ -556,3 +556,52 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
 .rtype.P{background:rgba(34,197,94,.15);color:#22c55e}
 .rtype.Q{background:rgba(245,158,11,.15);color:#f59e0b}
 .rtype.R{background:rgba(232,21,12,.15);color:var(--red)}
+/* ══ SPRINT 7 ══════════════════════════════════════════════════════════════ */
+
+/* ── Error Banner ─────────────────────────────────────────────────────────── */
+#_err-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:#7f1d1d;color:#fca5a5;font-size:13px;font-weight:600;padding:10px 16px;text-align:center;display:none;align-items:center;justify-content:center;gap:12px;border-bottom:2px solid #991b1b}
+#_err-banner.show{display:flex}
+#_err-banner button{background:none;border:none;color:inherit;cursor:pointer;font-size:20px;line-height:1;padding:0 4px;opacity:.8}
+#_err-banner button:hover{opacity:1}
+
+/* ── Logs Panel ───────────────────────────────────────────────────────────── */
+.log-filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.log-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.log-chip{padding:4px 13px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.log-chip:hover{border-color:var(--muted);color:var(--text)}
+.log-chip.active{color:#fff}
+.log-chip[data-type=""].active{background:var(--bg4);border-color:var(--muted);color:var(--text)}
+.log-chip[data-type="connect"].active{background:#15803d;border-color:#16a34a}
+.log-chip[data-type="disconnect"].active{background:#b91c1c;border-color:#dc2626}
+.log-chip[data-type="lap"].active{background:#4338ca;border-color:#6366f1}
+.log-chip[data-type="error"].active{background:#b45309;border-color:#d97706;color:#fef3c7}
+.log-chip[data-type="warn"].active{background:#92400e;border-color:#b45309;color:#fde68a}
+.log-chip[data-type="system"].active{background:#374151;border-color:#6b7280}
+.log-container{background:var(--bg2);border:1px solid var(--border);border-radius:8px;max-height:520px;overflow-y:auto;font-family:'Consolas','Fira Mono',monospace;font-size:12px;line-height:1.5}
+.log-entry{display:grid;grid-template-columns:80px 18px 1fr;gap:8px;padding:5px 12px;border-bottom:1px solid rgba(255,255,255,.04);align-items:start}
+.log-entry:last-child{border-bottom:none}
+.log-entry:hover{background:var(--bg3)}
+.log-ts{color:var(--muted);font-size:11px;white-space:nowrap;padding-top:1px;font-family:inherit}
+.log-icon{text-align:center;line-height:1.5;font-size:11px}
+.log-msg{word-break:break-all;white-space:pre-wrap;color:var(--text)}
+.log-e-connect  .log-msg{color:#4ade80}
+.log-e-disconnect .log-msg{color:#f87171}
+.log-e-lap      .log-msg{color:#a5b4fc}
+.log-e-error    .log-msg{color:#fbbf24;font-weight:600}
+.log-e-warn     .log-msg{color:#fb923c}
+.log-empty{color:var(--muted);text-align:center;padding:32px;font-size:13px}
+
+/* ── Keyboard Focus (WCAG 2.1) ────────────────────────────────────────────── */
+:focus-visible{outline:2px solid var(--red);outline-offset:2px;border-radius:3px}
+a:focus-visible,button:focus-visible,.nav-item:focus-visible,.rec-tab:focus-visible,.log-chip:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+
+/* ── Micro-interactions ───────────────────────────────────────────────────── */
+.btn:active:not(:disabled){transform:scale(.97)}
+.result-item{transition:border-color .12s,background .12s}
+.sm-bar{transition:width .5s ease}
+
+/* ── Konsistente Tabellen-Hierarchie ──────────────────────────────────────── */
+.tbl th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--border)}
+.tbl td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:var(--bg3)}

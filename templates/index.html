@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body>
+<!-- Error Banner: wird durch JS bei API-Ausfällen eingeblendet -->
+<div id="_err-banner"><span id="_err-msg"></span><button onclick="_hideErrorBanner()" title="Schließen">×</button></div>
 
 <!-- Mobile hamburger -->
 <button class="hamburger" onclick="toggleSidebar()">☰</button>
@@ -1555,26 +1557,46 @@
 
 <!-- ══ LOGS ════════════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-logs">
-  <div class="card">
-    <div class="sh">
-      <div class="sh-t"><span data-i18n="server_logs">Server Logs</span></div>
+  <div class="page">
+    <div class="sec-hdr" style="margin-bottom:16px">
+      <h2>📋 Server Logs</h2>
       <div style="display:flex;align-items:center;gap:10px">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--muted)">
-          <input type="checkbox" id="log-auto" checked style="accent-color:var(--red)"> <span data-i18n="auto_refresh">Auto-Refresh (3s)</span>
+          <input type="checkbox" id="log-follow" checked style="accent-color:var(--red)"> Live Follow
         </label>
-        <button class="btn btn-gray btn-sm" onclick="loadLogs()">↻</button>
+        <button class="btn btn-gray btn-sm" onclick="loadLogs()">↻ Laden</button>
       </div>
     </div>
-    <div class="logbox" id="logbox" data-i18n="logs_initial_msg">Klicke Neu laden oder warte auf Auto-Refresh...</div>
+
+    <!-- Filter Bar -->
+    <div class="log-filter-bar">
+      <div class="log-chips">
+        <button class="log-chip active" data-type="" onclick="_setLogType('')">Alle</button>
+        <button class="log-chip" data-type="connect"    onclick="_setLogType('connect')">🟢 Connect</button>
+        <button class="log-chip" data-type="disconnect" onclick="_setLogType('disconnect')">🔴 Disconnect</button>
+        <button class="log-chip" data-type="lap"        onclick="_setLogType('lap')">🏁 Lap</button>
+        <button class="log-chip" data-type="error"      onclick="_setLogType('error')">⚠ Error</button>
+        <button class="log-chip" data-type="warn"       onclick="_setLogType('warn')">⚡ Warn</button>
+        <button class="log-chip" data-type="system"     onclick="_setLogType('system')">⚙ System</button>
+      </div>
+      <input type="search" class="inp" id="log-search" placeholder="Suche…" oninput="_onLogSearch()" style="max-width:200px">
+      <span id="log-count" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
+    </div>
+
+    <!-- Log-Einträge -->
+    <div class="log-container" id="log-container">
+      <div class="log-empty">Lade Logs…</div>
+    </div>
+
     <!-- RCON Console -->
-    <div style="margin-top:14px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">RCON Console</div>
+    <div class="card gap" style="margin-top:16px">
+      <div class="card-ttl">RCON Console</div>
       <div id="rcon-history" style="background:#080808;border:1px solid var(--border);border-radius:6px;padding:8px;font-family:monospace;font-size:11px;max-height:120px;overflow-y:auto;margin-bottom:6px;display:flex;flex-direction:column;gap:2px">
-        <span style="color:var(--muted)" data-i18n="lbl_cmd_history">Befehlsverlauf...</span>
+        <span style="color:var(--muted)" data-i18n="lbl_cmd_history">Befehlsverlauf…</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input class="inp" id="rcon-inp" data-i18n-placeholder="rcon_ph" placeholder="RCON Befehl (z.B. /say Hallo)" style="flex:1;font-family:monospace" onkeydown="if(event.key==='Enter')sendRcon()">
-        <button class="btn btn-gray" onclick="sendRcon()">▶ <span data-i18n="btn_send">Senden</span></button>
+        <input class="inp" id="rcon-inp" placeholder="RCON Befehl (z.B. /say Hallo)" style="flex:1;font-family:monospace" onkeydown="if(event.key==='Enter')sendRcon()">
+        <button class="btn btn-gray" onclick="sendRcon()">▶ Senden</button>
       </div>
     </div>
   </div>

@@ -9,7 +9,7 @@ import time
 from flask import Blueprint, Response, jsonify, request
 
 from helpers.auth import csrf_protect, login_required
-from helpers.laptimes import clear_laptimes, load_laptimes
+from helpers.laptimes import clear_laptimes, load_laptimes, load_laptimes_filtered
 
 bp = Blueprint("laptimes", __name__)
 
@@ -30,24 +30,16 @@ def _csv_safe(value) -> str:
 @bp.route("/api/laptimes")
 @login_required
 def api_laptimes():
-    entries = load_laptimes()
     driver  = request.args.get("driver", "").strip().lower()
     track   = request.args.get("track",  "").strip().lower()
     car     = request.args.get("car",    "").strip().lower()
     q       = request.args.get("q",      "").strip().lower()
     from_dt = request.args.get("from",   "").strip()
     to_dt   = request.args.get("to",     "").strip()
-    if driver:  entries = [e for e in entries if driver in e.get("driver", "").lower()]
-    if track:   entries = [e for e in entries if track  in e.get("track",  "").lower()]
-    if car:     entries = [e for e in entries if car    in e.get("car",    "").lower()]
-    if q:       entries = [e for e in entries if (
-                    q in e.get("driver", "").lower() or
-                    q in e.get("car",    "").lower() or
-                    q in e.get("track",  "").lower())]
-    if from_dt: entries = [e for e in entries if e.get("ts", "")[:10] >= from_dt]
-    if to_dt:   entries = [e for e in entries if e.get("ts", "")[:10] <= to_dt]
-    entries_sorted = sorted(entries, key=lambda e: e.get("laptime", 99999999))
-    return jsonify({"ok": True, "entries": entries_sorted, "total": len(entries_sorted)})
+    # Filterung + Sortierung vollständig in SQL (mit Indizes)
+    entries = load_laptimes_filtered(driver=driver, track=track, car=car,
+                                     q=q, from_dt=from_dt, to_dt=to_dt)
+    return jsonify({"ok": True, "entries": entries, "total": len(entries)})
 
 
 # ── Best lap per driver per track ─────────────────────────────────────────────
@@ -92,26 +84,15 @@ def api_laptimes_clear():
 @bp.route("/api/laptimes/export")
 @login_required
 def api_laptimes_export():
-    """
-    Bug fix #3: Verwendet csv.writer für korrektes Escaping von Anführungszeichen,
-    Kommas und Sonderzeichen in Fahrernamen/Strecken.
-    """
-    entries = load_laptimes()
+    """CSV-Export mit SQL-seitiger Filterung und sicherem Quote-Escaping (csv.writer)."""
     driver  = request.args.get("driver", "").strip().lower()
     track   = request.args.get("track",  "").strip().lower()
     car     = request.args.get("car",    "").strip().lower()
     q       = request.args.get("q",      "").strip().lower()
     from_dt = request.args.get("from",   "").strip()
     to_dt   = request.args.get("to",     "").strip()
-    if driver:  entries = [e for e in entries if driver in e.get("driver", "").lower()]
-    if track:   entries = [e for e in entries if track  in e.get("track",  "").lower()]
-    if car:     entries = [e for e in entries if car    in e.get("car",    "").lower()]
-    if q:       entries = [e for e in entries if (
-                    q in e.get("driver", "").lower() or
-                    q in e.get("car",    "").lower() or
-                    q in e.get("track",  "").lower())]
-    if from_dt: entries = [e for e in entries if e.get("ts", "")[:10] >= from_dt]
-    if to_dt:   entries = [e for e in entries if e.get("ts", "")[:10] <= to_dt]
+    entries = load_laptimes_filtered(driver=driver, track=track, car=car,
+                                     q=q, from_dt=from_dt, to_dt=to_dt)
     entries = sorted(entries, key=lambda x: x.get("ts", ""))
 
     buf = io.StringIO()

@@ -55,6 +55,10 @@ app.register_blueprint(championship_bp)
 app.register_blueprint(scheduler_bp)
 app.register_blueprint(analytics_bp)
 
+# ── Datenbank-Initialisierung (Schema + JSON-Migration) ──────────────────────
+from helpers.db import init_db
+init_db()
+
 # ── Background threads ────────────────────────────────────────────────────────
 from helpers.discord   import start_discord_monitor
 from helpers.laptimes  import start_lap_tracker

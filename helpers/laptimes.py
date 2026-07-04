@@ -1,12 +1,11 @@
 """Lap-Time-Tracker: journalctl-Parsing, persistente Speicherung, Discord-Notifications."""
-import json
 import re
 import subprocess
 import threading
 import time
 import urllib.request
 
-from constants import CHAT_NOTIFY_FILE, CUT_ACTIONS_FILE, LAPTIMES_FILE, SERVICE_NAME
+from constants import CHAT_NOTIFY_FILE, CUT_ACTIONS_FILE, SERVICE_NAME
 from helpers.config_io import read_server_cfg
 from helpers.discord import (
     _load_discord_config, discord_embed, discord_notify,
@@ -32,37 +31,66 @@ _RE_ISO_DATE   = re.compile(r'^(\d{4}-\d{2}-\d{2})')
 _RE_LOG_TIME   = re.compile(r'\[(\d{2}:\d{2}:\d{2})\s+INF\]')
 
 
-# ── Persistent storage ────────────────────────────────────────────────────────
+# ── Persistent storage (SQLite) ───────────────────────────────────────────────
 
 def load_laptimes() -> list:
-    if LAPTIMES_FILE.exists():
-        try:
-            return json.loads(LAPTIMES_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    return []
+    """Lädt alle Rundenzeiten aus SQLite, neueste zuerst."""
+    from helpers.db import db_conn as _db
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT ts, driver, guid, car, skin, track, laptime, cuts"
+            " FROM laptimes ORDER BY ts DESC"
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
-def _save_laptimes(entries: list):
-    LAPTIMES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    LAPTIMES_FILE.write_text(json.dumps(entries, ensure_ascii=False), encoding="utf-8")
+def load_laptimes_filtered(
+    driver: str = "", track: str = "", car: str = "",
+    q: str = "", from_dt: str = "", to_dt: str = "",
+) -> list:
+    """SQL-seitige Filterung für maximale Performance bei großen Datensätzen."""
+    from helpers.db import db_conn as _db
+    conds, params = [], []
+    if driver:
+        conds.append("LOWER(driver) LIKE ?"); params.append(f"%{driver}%")
+    if track:
+        conds.append("LOWER(track) LIKE ?");  params.append(f"%{track}%")
+    if car:
+        conds.append("LOWER(car) LIKE ?");    params.append(f"%{car}%")
+    if q:
+        conds.append("(LOWER(driver) LIKE ? OR LOWER(car) LIKE ? OR LOWER(track) LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+    if from_dt:
+        conds.append("SUBSTR(ts,1,10) >= ?"); params.append(from_dt)
+    if to_dt:
+        conds.append("SUBSTR(ts,1,10) <= ?"); params.append(to_dt)
+    where = ("WHERE " + " AND ".join(conds)) if conds else ""
+    sql = f"SELECT ts, driver, guid, car, skin, track, laptime, cuts FROM laptimes {where} ORDER BY laptime ASC"
+    with _db() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [dict(r) for r in rows]
 
 
 def append_laptime(entry: dict):
-    with _lt_lock:
-        entries = load_laptimes()
-        for e in entries:
-            if (e.get("driver") == entry["driver"]
-                    and e.get("laptime") == entry["laptime"]
-                    and e.get("track")  == entry["track"]):
-                return  # Duplikat
-        entries.append(entry)
-        _save_laptimes(entries)
+    """Fügt eine Rundenzeit ein; UNIQUE-Index auf (driver, laptime, track) verhindert Duplikate."""
+    from helpers.db import db_conn as _db
+    with _db() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO laptimes"
+            " (ts, driver, guid, car, skin, track, laptime, cuts)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            (
+                entry.get("ts", ""), entry.get("driver", ""), entry.get("guid", ""),
+                entry.get("car", ""), entry.get("skin", ""), entry.get("track", ""),
+                entry.get("laptime", 0), entry.get("cuts", 0),
+            ),
+        )
 
 
 def clear_laptimes():
-    with _lt_lock:
-        _save_laptimes([])
+    from helpers.db import db_conn as _db
+    with _db() as conn:
+        conn.execute("DELETE FROM laptimes")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -229,12 +257,10 @@ def _preload_journal_history():
         lines = r.stdout.splitlines()
     except Exception:
         return
-    with _lt_lock:
-        existing = load_laptimes()
-        known = {f"{e['driver']}|{e['laptime']}|{e['ts']}" for e in existing}
-        new_entries = _parse_journal_block(lines, known)
-        if new_entries:
-            _save_laptimes(existing + new_entries)
+    # Leeres known-Set: DB-UNIQUE-Index (driver, laptime, track) verhindert Duplikate via INSERT OR IGNORE
+    new_entries = _parse_journal_block(lines, set())
+    for entry in new_entries:
+        append_laptime(entry)
     _preload_personal_bests()
 
 

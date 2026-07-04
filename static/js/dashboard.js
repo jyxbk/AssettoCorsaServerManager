@@ -19,17 +19,32 @@ function t(key, ...args) {
 // ═══ FETCH HELPER (session-based, CSRF-protected) ════════════════════════════
 const _csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-function apiFetch(url, opts) {
-  const options = Object.assign({credentials: 'same-origin'}, opts || {});
+function apiFetch(url, opts, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), timeoutMs);
+  const options = Object.assign({ credentials: 'same-origin', signal: controller.signal }, opts || {});
   const method = (options.method || 'GET').toUpperCase();
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-    options.headers = Object.assign({'X-CSRF-Token': _csrfToken}, options.headers || {});
+    options.headers = Object.assign({ 'X-CSRF-Token': _csrfToken }, options.headers || {});
   }
   return fetch(url, options)
-    .then(r => {
-      if (r.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); }
-      return r;
-    });
+    .then(r  => { clearTimeout(tid); if (r.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); } return r; })
+    .catch(e => { clearTimeout(tid); throw e; });
+}
+
+// ── Error Banner ─────────────────────────────────────────────────────────────
+let _liveFailCount = 0;
+const _LIVE_FAIL_MAX = 4;
+
+function _showErrorBanner(msg) {
+  const b = document.getElementById('_err-banner');
+  const m = document.getElementById('_err-msg');
+  if (b && m) { m.textContent = '⚠️ ' + msg; b.classList.add('show'); }
+}
+function _hideErrorBanner() {
+  const b = document.getElementById('_err-banner');
+  if (b) b.classList.remove('show');
+  _liveFailCount = 0;
 }
 
 // ═══ STATE ════════════════════════════════════════════════════════════════
@@ -219,7 +234,17 @@ function refreshLive() {
       _renderChat(d.chat||[], "dash-chat-box");
       _renderChat(d.chat||[], "chat-box");
       drawMap(d);
-    }).catch(e => { if (e !== 'Unauthorized') console.warn("refreshLive:", e); });
+      // Verbindung wiederhergestellt
+      if (_liveFailCount > 0) _hideErrorBanner();
+      _liveFailCount = 0;
+    }).catch(e => {
+      if (e?.name === 'AbortError' || (e !== 'Unauthorized' && typeof e !== 'string')) {
+        _liveFailCount++;
+        if (_liveFailCount >= _LIVE_FAIL_MAX)
+          _showErrorBanner('API nicht erreichbar – Verbindung unterbrochen');
+      }
+      if (e !== 'Unauthorized') console.warn("refreshLive:", e);
+    });
 }
 
 const _WEATHER_ICONS = {
@@ -938,7 +963,64 @@ function sendChat() { _sendChatMsg(document.getElementById('dash-chat-inp') || d
 function sendChatFrom(id) { const el = document.getElementById(id); if (el) _sendChatMsg(el); }
 
 // ═══ LOGS + RCON ══════════════════════════════════════════════════════════
-function loadLogs(){apiFetch("/logs").then(r=>r.json()).then(d=>{const box=document.getElementById("logbox");box.innerHTML=d.logs.split("\n").map(l=>{const s=esc(l);if(/ERR|FAIL|error/i.test(l))return`<span style="color:#ff6b6b">${s}</span>`;if(/WRN|WARN/i.test(l))return`<span style="color:var(--yellow)">${s}</span>`;if(/INF\b|INFO/i.test(l))return`<span style="color:#74b9ff">${s}</span>`;return s;}).join("\n");box.scrollTop=box.scrollHeight;});}
+// ── Logs ─────────────────────────────────────────────────────────────────────
+let _logType          = '';
+let _logFollowTimer   = null;
+let _logSearchDebounce = null;
+
+const _LOG_ICONS = { connect:'🟢', disconnect:'🔴', lap:'🏁', error:'⚠️', warn:'⚡', system:'·' };
+const _LOG_CLS   = { connect:'log-e-connect', disconnect:'log-e-disconnect', lap:'log-e-lap', error:'log-e-error', warn:'log-e-warn', system:'' };
+
+function _setLogType(type) {
+  _logType = type;
+  document.querySelectorAll('.log-chip').forEach(c => c.classList.toggle('active', c.dataset.type === type));
+  loadLogs();
+}
+
+function _onLogSearch() {
+  clearTimeout(_logSearchDebounce);
+  _logSearchDebounce = setTimeout(loadLogs, 280);
+}
+
+async function loadLogs() {
+  const q   = document.getElementById('log-search')?.value.trim() || '';
+  const params = new URLSearchParams({ n: 300 });
+  if (_logType) params.set('type', _logType);
+  if (q)        params.set('q',    q);
+
+  const container = document.getElementById('log-container');
+  const cnt       = document.getElementById('log-count');
+
+  const d = await apiFetch('/api/logs?' + params).then(r => r.json()).catch(() => null);
+
+  if (!d) {
+    if (container) container.innerHTML = '<div class="log-empty">Logs konnten nicht geladen werden.</div>';
+    return;
+  }
+  if (cnt) cnt.textContent = d.total ? `${d.total} Einträge` : '';
+
+  if (!d.entries.length) {
+    if (container) container.innerHTML = '<div class="log-empty">Keine Einträge gefunden.</div>';
+    return;
+  }
+
+  const follow = document.getElementById('log-follow')?.checked;
+  const prevScroll = container?.scrollTop;
+  const wasAtBottom = container && (container.scrollHeight - prevScroll - container.clientHeight < 60);
+
+  container.innerHTML = d.entries.map(e => {
+    const cls  = _LOG_CLS[e.type]  || '';
+    const icon = _LOG_ICONS[e.type] || '·';
+    const ts   = (e.ts || '').slice(11, 19) || (e.ts || '').slice(0, 10);
+    return `<div class="log-entry ${cls}">
+      <span class="log-ts">${esc(ts)}</span>
+      <span class="log-icon">${icon}</span>
+      <span class="log-msg">${esc(e.msg)}</span>
+    </div>`;
+  }).join('');
+
+  if (follow && wasAtBottom && container) container.scrollTop = container.scrollHeight;
+}
 
 const _rconHistory = [];
 function sendRcon() {
@@ -2722,7 +2804,13 @@ function navTo(id) {
   if (id === 'config')         { const t = localStorage.getItem('acweb_cfg_tab') || 'server'; cfgTab(t); }
   if (id === 'live')           { loadEvents(); if (live) { updateLaps(live); _renderChat(live.chat||[], "chat-box"); drawMap(live); } }
   if (id === 'server-monitor') updateServerMonitor(live);
-  if (id === 'logs')           loadLogs();
+  if (id === 'logs') {
+    loadLogs();
+    if (_logFollowTimer) clearInterval(_logFollowTimer);
+    _logFollowTimer = setInterval(() => { if (document.getElementById('log-follow')?.checked) loadLogs(); }, 4000);
+  } else if (_logFollowTimer) {
+    clearInterval(_logFollowTimer); _logFollowTimer = null;
+  }
   if (id === 'players')        { if (_isStale('players')) { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); _markLoaded('players'); } }
   if (id === 'integrations')   { if (_isStale('integrations')) { loadDiscord(); loadChatNotify(); loadTelegram(); _markLoaded('integrations'); } }
   if (id === 'content')        { if (_isStale('content')) { loadInstalledContent(); _markLoaded('content'); } }

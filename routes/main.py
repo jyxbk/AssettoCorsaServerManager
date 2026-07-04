@@ -422,3 +422,58 @@ def logs():
         return jsonify({"logs": r.stdout})
     except Exception as e:
         return jsonify({"logs": f"Error: {e}"})
+
+
+import re as _re_log
+_LOG_ISO  = _re_log.compile(r'^(\d{4}-\d{2}-\d{2}T[\d:+\-]+)\s+\S+\s+\S+:\s*(.*)')
+_LOG_CAT  = _re_log.compile(r'^\[[\d:]+\s+\w+\]\s*(.*)')
+
+
+def _classify_log(line: str) -> dict:
+    """Parst eine journalctl short-iso Zeile und klassifiziert ihren Typ."""
+    m   = _LOG_ISO.match(line)
+    ts  = m.group(1)[:19].replace("T", " ") if m else ""
+    msg = m.group(2) if m else (_LOG_CAT.sub(r'\1', line) or line)
+    ml  = msg.lower()
+    if _re_log.search(r'has connected|enterat\b', ml):
+        typ = "connect"
+    elif _re_log.search(r'has disconnected|disconnected\b|timed out', ml):
+        typ = "disconnect"
+    elif _re_log.search(r'lap completed|laptime\b', ml):
+        typ = "lap"
+    elif _re_log.search(r'error\b|fail(?:ed)?\b|exception\b|traceback\b|critical\b', ml):
+        typ = "error"
+    elif _re_log.search(r'warn(?:ing)?\b', ml):
+        typ = "warn"
+    else:
+        typ = "system"
+    return {"ts": ts, "msg": msg.strip(), "type": typ}
+
+
+@bp.route("/api/logs")
+@login_required
+def api_logs():
+    """Strukturierter Logs-Endpunkt mit Typ-Klassifizierung und Volltextsuche."""
+    n       = min(request.args.get("n", 300, type=int), 1000)
+    typ     = request.args.get("type", "").strip()
+    q       = request.args.get("q",    "").strip().lower()
+    try:
+        r = subprocess.run(
+            ["journalctl", "-u", SERVICE_NAME, "-n", str(n), "--no-pager", "-o", "short-iso"],
+            capture_output=True, text=True, timeout=10,
+        )
+        lines   = r.stdout.strip().splitlines()
+        typ_set = set(typ.split(",")) if typ else set()
+        entries = []
+        for line in lines:
+            if not line.strip():
+                continue
+            entry = _classify_log(line)
+            if typ_set and entry["type"] not in typ_set:
+                continue
+            if q and q not in (entry["msg"] + entry["ts"]).lower():
+                continue
+            entries.append(entry)
+        return jsonify({"ok": True, "entries": entries, "total": len(entries)})
+    except Exception as exc:
+        return jsonify({"ok": False, "entries": [], "error": str(exc)})

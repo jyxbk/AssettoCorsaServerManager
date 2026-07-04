@@ -26,6 +26,7 @@ function apiFetch(url, opts) {
 let live = null, spPts = [], currentZip = null;
 let mapImg = null, _mapLoading = false;
 let _lapBases = {};
+let _prevLapCounts = {};
 const COLORS = ['#e8150c','#3498db','#27ae60','#f39c12','#9b59b6','#e67e22','#1abc9c','#e91e63'];
 
 function autoRestart() {
@@ -136,11 +137,20 @@ function refreshLive() {
       const activeIds = new Set();
       (d.drivers || []).forEach(drv => {
         activeIds.add(String(drv.id));
+        const prevBase  = _lapBases[drv.id];
+        const prevCount = _prevLapCounts[drv.id] ?? -1;
         if (drv.lapTime > 0) {
+          // UDP liefert echten Live-Wert
           _lapBases[drv.id] = { base: drv.lapTime, t: now, lapCount: drv.lapCount };
+        } else if (drv.lapCount > prevCount) {
+          // Neue Runde begonnen (lapCount gestiegen) → Timer bei 0 starten
+          _lapBases[drv.id] = { base: 0, t: now, lapCount: drv.lapCount };
+        } else if (prevBase && prevBase.lapCount === drv.lapCount) {
+          // Gleiche Runde wie vorher → Timer weiterlaufen lassen
         } else {
           delete _lapBases[drv.id];
         }
+        _prevLapCounts[drv.id] = drv.lapCount;
       });
       for (const id of Object.keys(_lapBases)) {
         if (!activeIds.has(id)) delete _lapBases[id];

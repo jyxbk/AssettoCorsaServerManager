@@ -468,34 +468,112 @@ function loadMapImage() {
   _mapLoading = true;
   const img = new Image();
   img.onload = () => { mapImg = img; _mapLoading = false; drawMap(live); };
-  img.onerror = () => { _mapLoading = false; };
+  img.onerror   = () => { _mapLoading = false; };
   img.src = "/map";
 }
+
 function drawMap(data) {
   const c = document.getElementById("map-canvas");
   if (!c) return;
   const ctx = c.getContext("2d"), W = c.width, H = c.height;
-  ctx.clearRect(0,0,W,H); ctx.fillStyle = "#0d0d0d"; ctx.fillRect(0,0,W,H);
-  if (!mapImg) { ctx.fillStyle="#444";ctx.font="13px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("Lade Streckenübersicht...",W/2,H/2); loadMapImage(); return; }
-  const pad=20, scale=Math.min((W-pad*2)/mapImg.width,(H-pad*2)/mapImg.height);
-  const iw=mapImg.width*scale, ih=mapImg.height*scale, ix=(W-iw)/2, iy=(H-ih)/2;
-  ctx.fillStyle="#111"; ctx.fillRect(ix-4,iy-4,iw+8,ih+8);
-  ctx.globalAlpha=0.6; ctx.drawImage(mapImg,ix,iy,iw,ih); ctx.globalAlpha=1;
-  const drivers = data?.drivers||[];
-  if (!drivers.length) { document.getElementById("map-hint").textContent=t('map_no_drivers'); return; }
-  const perim=2*(iw+ih);
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0d0d0d';
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  const pad = 28;
+  const dw = W - pad*2, dh = H - pad*2;
+
+  // Spline-basierte Streckendarstellung (fast_lane.ai → spPts)
+  if (spPts && spPts.length > 10) {
+    // Äußerer Strecken-Schatten
+    ctx.beginPath();
+    spPts.forEach(([x,y], i) => {
+      const cx = pad + x*dw, cy = pad + y*dh;
+      i === 0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 14;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+
+    // Fahrbahn
+    ctx.beginPath();
+    spPts.forEach(([x,y], i) => {
+      const cx = pad + x*dw, cy = pad + y*dh;
+      i === 0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 8; ctx.stroke();
+
+    // Mittellinie (gestrichelt)
+    ctx.beginPath();
+    spPts.forEach(([x,y], i) => {
+      const cx = pad + x*dw, cy = pad + y*dh;
+      i === 0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = '#5a5a5a'; ctx.lineWidth = 2;
+    ctx.setLineDash([6,10]); ctx.stroke(); ctx.setLineDash([]);
+
+    // Start/Ziel-Markierung (spPts[0])
+    const sx = pad + spPts[0][0]*dw, sy = pad + spPts[0][1]*dh;
+    ctx.beginPath(); ctx.arc(sx,sy,5,0,Math.PI*2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = '#e8150c'; ctx.lineWidth = 2; ctx.stroke();
+  } else {
+    // Kein Spline: Fallback auf map.png
+    if (!mapImg) {
+      ctx.fillStyle='#555'; ctx.font='13px system-ui';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('Lade Strecke…', W/2, H/2);
+      loadMapImage(); return;
+    }
+    const sc=Math.min(dw/mapImg.width,dh/mapImg.height);
+    const iw=mapImg.width*sc, ih=mapImg.height*sc;
+    const ix=(W-iw)/2, iy=(H-ih)/2;
+    ctx.globalAlpha=0.5; ctx.drawImage(mapImg,ix,iy,iw,ih); ctx.globalAlpha=1;
+  }
+
+  // Fahrer-Punkte
+  const drivers = (data?.drivers||[]).filter(d => d.mapX != null && d.mapY != null);
+  const hint = document.getElementById("map-hint");
+
+  if (!drivers.length) {
+    if (hint) hint.textContent = t('map_no_drivers');
+    return;
+  }
+
   drivers.forEach((d,i) => {
-    const sp=d.spLine||0, col=COLORS[i%COLORS.length], dist=sp*perim;
-    let x,y;
-    if(dist<=iw){x=ix+dist;y=iy;}else if(dist<=iw+ih){x=ix+iw;y=iy+(dist-iw);}else if(dist<=2*iw+ih){x=ix+iw-(dist-iw-ih);y=iy+ih;}else{x=ix;y=iy+ih-(dist-2*iw-ih);}
-    const g=ctx.createRadialGradient(x,y,0,x,y,15);g.addColorStop(0,col+"90");g.addColorStop(1,"transparent");
-    ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
-    ctx.font="bold 10px system-ui";ctx.textAlign="center";
-    ctx.fillStyle="rgba(0,0,0,.7)";ctx.fillText(d.name.slice(0,12),x+1,y-12);
-    ctx.fillStyle="#fff";ctx.fillText(d.name.slice(0,12),x,y-13);
+    const x = pad + d.mapX * dw;
+    const y = pad + d.mapY * dh;
+    const col = COLORS[i % COLORS.length];
+
+    // Glow
+    const g = ctx.createRadialGradient(x,y,0,x,y,13);
+    g.addColorStop(0, col+'55'); g.addColorStop(1,'transparent');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,13,0,Math.PI*2); ctx.fill();
+
+    // Fahrer-Dot
+    ctx.beginPath(); ctx.arc(x,y,6,0,Math.PI*2);
+    ctx.fillStyle=col; ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+
+    // Positionsnummer
+    ctx.font='bold 8px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='#000'; ctx.fillText(i+1, x, y);
+
+    // Name-Label
+    const label = d.name.slice(0,14);
+    ctx.font='bold 10px system-ui'; ctx.textBaseline='alphabetic';
+    const lw = ctx.measureText(label).width;
+    const lx = Math.min(Math.max(x, pad+lw/2+2), W-pad-lw/2-2);
+    const ly = y < 30 ? y+20 : y-11;
+    ctx.fillStyle='rgba(0,0,0,0.8)';
+    ctx.fillRect(lx-lw/2-3, ly-11, lw+6, 14);
+    ctx.fillStyle='#fff'; ctx.textAlign='center';
+    ctx.fillText(label, lx, ly);
   });
-  document.getElementById("map-hint").textContent=`${drivers.length} Fahrer`;
+
+  if (hint) hint.textContent = `${drivers.length} Fahrer auf der Strecke`;
 }
 
 

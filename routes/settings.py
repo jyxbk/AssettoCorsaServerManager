@@ -183,14 +183,25 @@ def get_chat_notify():
 @csrf_protect
 def set_chat_notify():
     data = request.json or {}
+    splits_raw = data.get("split_points", [])
+    splits = [
+        {"pos": float(s["pos"]), "name": str(s["name"])}
+        for s in splits_raw
+        if 0.0 < float(s.get("pos", 0)) < 1.0 and s.get("name")
+    ]
     cfg = {
-        "enabled":    bool(data.get("enabled", False)),
-        "show_delta": bool(data.get("show_delta", True)),
-        "show_cuts":  bool(data.get("show_cuts",  True)),
-        "prefix":     str(data.get("prefix",  ">> ")),
+        "enabled":      bool(data.get("enabled", False)),
+        "show_delta":   bool(data.get("show_delta", True)),
+        "show_cuts":    bool(data.get("show_cuts",  True)),
+        "show_splits":  bool(data.get("show_splits", False)),
+        "prefix":       str(data.get("prefix",  ">> ")),
+        "split_points": splits,
     }
     try:
         save_chat_notify_config(cfg)
+        # Split-Config sofort in UDP-Listener übernehmen
+        from helpers.system import set_split_config
+        set_split_config(splits if cfg["show_splits"] else [])
         return jsonify({"ok": True, "cfg": cfg})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500

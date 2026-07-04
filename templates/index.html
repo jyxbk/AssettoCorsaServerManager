@@ -1308,7 +1308,13 @@
         <div class="tog-row"><div><div class="tog-lbl" data-i18n="lbl_cn_enabled">Aktiviert</div><div class="tog-desc" data-i18n="lbl_cn_enabled_desc">Rundenzeiten im Spiel-Chat ansagen (via RCON)</div></div><label class="tog"><input type="checkbox" id="cn-enabled"><span class="tog-sl"></span></label></div>
         <div class="tog-row"><div><div class="tog-lbl" data-i18n="lbl_cn_delta">Delta anzeigen</div><div class="tog-desc" data-i18n="lbl_cn_delta_desc">+/- zur eigenen Bestzeit</div></div><label class="tog"><input type="checkbox" id="cn-delta" checked><span class="tog-sl"></span></label></div>
         <div class="tog-row"><div><div class="tog-lbl" data-i18n="lbl_cn_cuts">Cuts anzeigen</div></div><label class="tog"><input type="checkbox" id="cn-cuts" checked><span class="tog-sl"></span></label></div>
+        <div class="tog-row"><div><div class="tog-lbl">Splittzeiten im Chat</div><div class="tog-desc">Sendet Zwischenzeiten beim Überfahren konfigurierter Track-Positionen</div></div><label class="tog"><input type="checkbox" id="cn-splits" onchange="document.getElementById('cn-splits-editor').style.display=this.checked?'block':'none'"><span class="tog-sl"></span></label></div>
         <div class="fg"><label class="lbl" data-i18n="lbl_cn_prefix">Prefix</label><input class="inp" id="cn-prefix" placeholder=">> " maxlength="10"></div>
+        <div id="cn-splits-editor" style="display:none;margin-top:4px">
+          <div class="lbl" style="margin-bottom:6px">Split-Punkte <span style="font-size:11px;color:var(--muted)">(Track-Position 0.0–1.0)</span></div>
+          <div id="cn-splits-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button class="btn btn-blue" onclick="cnAddSplit()" style="font-size:12px;padding:4px 10px">+ Split hinzufügen</button>
+        </div>
         <button class="btn btn-red" onclick="saveChatNotify()" data-i18n="btn_save">💾 Speichern</button>
       </div>
 

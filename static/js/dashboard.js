@@ -1977,14 +1977,55 @@ function loadChatNotify() {
     document.getElementById('cn-delta').checked   = d.show_delta !== false;
     document.getElementById('cn-cuts').checked    = d.show_cuts  !== false;
     document.getElementById('cn-prefix').value    = d.prefix || '>> ';
+    const showSplits = !!d.show_splits;
+    document.getElementById('cn-splits').checked  = showSplits;
+    document.getElementById('cn-splits-editor').style.display = showSplits ? 'block' : 'none';
+    cnRenderSplits(d.split_points || []);
   }).catch(()=>{});
+}
+function cnRenderSplits(splits) {
+  const list = document.getElementById('cn-splits-list');
+  list.innerHTML = '';
+  splits.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:6px;align-items:center';
+    row.innerHTML = `
+      <input class="inp" style="width:90px" type="number" min="0.01" max="0.99" step="0.01"
+             value="${s.pos}" data-si="${i}" data-field="pos" oninput="cnSplitChange(this)">
+      <input class="inp" style="flex:1" type="text" placeholder="Split 1"
+             value="${s.name}" data-si="${i}" data-field="name" oninput="cnSplitChange(this)">
+      <button onclick="cnRemoveSplit(${i})" style="background:var(--red);border:none;color:#fff;border-radius:4px;padding:4px 8px;cursor:pointer">✕</button>`;
+    list.appendChild(row);
+  });
+}
+function cnAddSplit() {
+  const splits = cnGetSplits();
+  splits.push({ pos: parseFloat((0.1 + splits.length * 0.3).toFixed(2)), name: `Split ${splits.length + 1}` });
+  cnRenderSplits(splits);
+}
+function cnRemoveSplit(i) {
+  const splits = cnGetSplits();
+  splits.splice(i, 1);
+  cnRenderSplits(splits);
+}
+function cnSplitChange(el) {
+  // live update handled by cnGetSplits() reading current DOM values
+}
+function cnGetSplits() {
+  const rows = document.querySelectorAll('#cn-splits-list > div');
+  return Array.from(rows).map(row => ({
+    pos:  parseFloat(row.querySelector('[data-field="pos"]').value) || 0,
+    name: row.querySelector('[data-field="name"]').value.trim() || 'Split',
+  })).filter(s => s.pos > 0 && s.pos < 1);
 }
 function saveChatNotify() {
   const data = {
-    enabled:    document.getElementById('cn-enabled').checked,
-    show_delta: document.getElementById('cn-delta').checked,
-    show_cuts:  document.getElementById('cn-cuts').checked,
-    prefix:     document.getElementById('cn-prefix').value,
+    enabled:      document.getElementById('cn-enabled').checked,
+    show_delta:   document.getElementById('cn-delta').checked,
+    show_cuts:    document.getElementById('cn-cuts').checked,
+    show_splits:  document.getElementById('cn-splits').checked,
+    prefix:       document.getElementById('cn-prefix').value,
+    split_points: cnGetSplits(),
   };
   apiFetch('/api/chat_notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
     .then(r=>r.json()).then(d=>toast(d.ok?t('t_saved'):'✗ '+d.msg,d.ok?'ok':'err'));

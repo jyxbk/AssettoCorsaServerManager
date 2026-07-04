@@ -240,6 +240,32 @@ def _preload_journal_history():
 
 # ── Live monitor ──────────────────────────────────────────────────────────────
 
+def _split_sender():
+    """Hintergrund-Thread: liest Split-Events aus der Queue und sendet sie per RCON."""
+    from helpers.system import get_split_events, server_json as _sjson, rcon_send as _rcon
+    while True:
+        time.sleep(0.5)
+        events = get_split_events()
+        if not events:
+            continue
+        chat_cfg = _load_chat_notify_config()
+        if not (chat_cfg.get("enabled") and chat_cfg.get("show_splits")):
+            continue
+        # Car-ID → Fahrername
+        js = _sjson()
+        car_names: dict = {}
+        if js:
+            for _i, _c in enumerate(js.get("Cars", [])):
+                if _c.get("IsConnected") and _c.get("DriverName"):
+                    car_names[_i] = _c["DriverName"]
+        prefix = chat_cfg.get("prefix", ">> ")
+        for evt in events:
+            driver = car_names.get(evt["car_id"], "")
+            if not driver:
+                continue
+            _rcon(f"/say {prefix}{driver} | {evt['name']}: {_fmt_ms(evt['ms'])}")
+
+
 def _laptime_monitor():
     """Verfolgt journalctl live und persistiert neue Runden + Discord-Meldungen."""
     try:
@@ -407,6 +433,7 @@ def _laptime_monitor():
 
 
 def start_lap_tracker():
-    """Startet Preload + Live-Monitor als Background-Threads."""
+    """Startet Preload + Live-Monitor + Split-Sender als Background-Threads."""
     threading.Thread(target=_preload_journal_history, daemon=True).start()
     threading.Thread(target=_laptime_monitor, daemon=True).start()
+    threading.Thread(target=_split_sender, daemon=True).start()

@@ -66,6 +66,13 @@ start_telegram_monitor()
 start_scheduler()
 start_lap_tracker()
 
+# Split-Config aus chat_notify.json beim Start laden
+from helpers.laptimes import _load_chat_notify_config
+from helpers.system   import set_split_config
+_cn = _load_chat_notify_config()
+if _cn.get("show_splits") and _cn.get("split_points"):
+    set_split_config(_cn["split_points"])
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=False)

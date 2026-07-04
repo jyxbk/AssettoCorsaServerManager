@@ -24,7 +24,27 @@ _udp_pkt        = [0]
 _udp_err        = ["none"]
 _udp_ready      = False
 _udp_lock       = threading.Lock()
-_udp_start_lock = threading.Lock()  # verhindert doppelten Listener-Start
+_udp_start_lock = threading.Lock()
+
+# ── Split-Zeit Tracking ───────────────────────────────────────────────────────
+import queue as _queue
+_split_queue:  _queue.Queue = _queue.Queue()
+_split_config: list         = []   # [{"pos": 0.33, "name": "Split 1"}, ...]
+_split_lock                 = threading.Lock()
+
+def set_split_config(splits: list):
+    global _split_config
+    with _split_lock:
+        _split_config = sorted(splits, key=lambda x: x["pos"])
+
+def get_split_events() -> list:
+    events = []
+    while True:
+        try:
+            events.append(_split_queue.get_nowait())
+        except _queue.Empty:
+            break
+    return events
 
 
 def _udp_listener():
@@ -52,7 +72,37 @@ def _udp_listener():
                     try:
                         sp = struct.unpack_from("<f", data, 29)[0]
                         if 0.0 <= sp <= 1.0:
-                            entry["spLine"] = round(sp, 4)
+                            sp = round(sp, 4)
+                            prev_sp = entry.get("spLine", -1.0)
+                            now_t   = time.time()
+
+                            # Neue Runde: spLine springt von >0.85 auf <0.15
+                            if prev_sp > 0.85 and sp < 0.15:
+                                entry["_lapStartTime"]    = now_t
+                                entry["_passedSplits"]    = set()
+                            # Erste Positionsmeldung für dieses Auto
+                            if "_lapStartTime" not in entry:
+                                entry["_lapStartTime"]  = now_t
+                                entry["_passedSplits"]  = set()
+
+                            # Split-Überquerungen erkennen (nur vorwärts)
+                            if prev_sp >= 0.0 and sp > prev_sp:
+                                with _split_lock:
+                                    splits = list(_split_config)
+                                passed = entry.get("_passedSplits", set())
+                                for spl in splits:
+                                    spos = spl["pos"]
+                                    if spos not in passed and prev_sp < spos <= sp:
+                                        elapsed_ms = int((now_t - entry["_lapStartTime"]) * 1000)
+                                        _split_queue.put({
+                                            "car_id": cid,
+                                            "name":   spl["name"],
+                                            "ms":     elapsed_ms,
+                                        })
+                                        passed.add(spos)
+                                entry["_passedSplits"] = passed
+
+                            entry["spLine"] = sp
                     except Exception:
                         pass
                 if size >= 45:

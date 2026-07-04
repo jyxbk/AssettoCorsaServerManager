@@ -960,15 +960,7 @@
 <!-- ══ SETTINGS: PROFIL ════════════════════════════════════════════════════ -->
 <div class="panel" id="p-settings-profile">
   <div class="sec-hdr"><h2>🎨 <span data-i18n="nav_profile">Serverprofil</span></h2></div>
-  <div class="card gap">
-    <div class="card-ttl" data-i18n="card_server_logo">Server-Logo</div>
-    <div style="display:flex;gap:1rem;align-items:flex-start">
-      <img id="logo-preview" src="/api/server_logo" onerror="this.style.display='none';document.getElementById('logo-placeholder').style.display='flex'" onload="this.style.display='';document.getElementById('logo-placeholder').style.display='none'" style="width:100px;height:100px;object-fit:contain;border:1px solid var(--border);border-radius:6px;background:#111">
-      <div id="logo-placeholder" style="display:none;width:100px;height:100px;border:1px dashed var(--border);border-radius:6px;align-items:center;justify-content:center;color:var(--muted);font-size:11px;flex-shrink:0" data-i18n="lbl_no_logo">kein Logo</div>
-      <div style="flex:1"><label class="lbl">PNG / JPG</label><input type="file" id="logo-inp" accept="image/png,image/jpeg,image/webp" style="display:block;margin-bottom:8px;color:var(--text);font-size:12px" onchange="previewLogo(this)"><button class="btn btn-gray btn-sm" onclick="uploadLogo()" data-i18n="btn_upload_image">Bild hochladen</button></div>
-    </div>
-  </div>
-  <div class="card" style="margin-top:16px">
+  <div class="card" style="margin-top:0">
     <div class="card-ttl"><span data-i18n="card_welcome">Willkommensnachricht</span> <span style="font-weight:400;color:var(--muted);float:right" id="welcome-chars">0 <span data-i18n="lbl_chars">Zeichen</span></span></div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:8px" data-i18n="lbl_welcome_desc">Wird im Content Manager angezeigt wenn ein Spieler diesen Server auswählt.</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">

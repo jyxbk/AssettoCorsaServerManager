@@ -694,13 +694,8 @@ async function loadServerProfile() {
     const d=await apiFetch("/api/server_profile").then(r=>r.json());
     document.getElementById("welcome-msg").value=d.welcome||"";
     updateWelcomePreview();
-    const img=document.getElementById("logo-preview"), ph=document.getElementById("logo-placeholder");
-    if(d.has_logo){img.src="/api/server_logo?"+Date.now();img.style.display="";ph.style.display="none";}
-    else{img.style.display="none";ph.style.display="flex";}
   }catch(e){}
 }
-function previewLogo(inp){const f=inp.files[0];if(!f)return;const img=document.getElementById("logo-preview"),ph=document.getElementById("logo-placeholder");img.src=URL.createObjectURL(f);img.style.display="";ph.style.display="none";}
-async function uploadLogo(){const inp=document.getElementById("logo-inp");if(!inp.files[0]){toast(t('t_no_image'),"err");return;}const fd=new FormData();fd.append("logo",inp.files[0]);const r=await fetch("/api/server_logo",{method:"POST",credentials:'same-origin',body:fd});const d=await r.json();toast(d.ok?t('t_logo_saved'):d.msg,d.ok?'ok':'err');}
 async function saveServerProfile(){
   const welcome=document.getElementById("welcome-msg").value;
   const r=await apiFetch("/api/server_profile",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({welcome})});

@@ -291,19 +291,18 @@ def load_spline_points(track: str, layout: str) -> tuple:
     try:
         with open(ai_path, "rb") as f:
             data = f.read()
-        if len(data) < 8:
+        if len(data) < 36:
             return ()
         count = struct.unpack_from("<i", data, 4)[0]
-        if not (0 < count < 300000):
-            count = struct.unpack_from("<i", data, 0)[0]
-        if not (0 < count < 300000):
+        if not (0 < count < 1_000_000):
             return ()
-        rec = (len(data) - 8) // count
-        if rec < 12:
-            return ()
+        # AC fast_lane.ai v7: 8-Byte Header + 8 Bytes Vorlauf, dann count*20-Byte Einträge
+        # Jeder Eintrag: float x, float y_height, float z, float dist, int32 idx
+        DATA_START = 16
+        STRIDE     = 20
         pts = []
         for i in range(count):
-            off = 8 + i * rec
+            off = DATA_START + i * STRIDE
             if off + 12 > len(data):
                 break
             x, _y, z = struct.unpack_from("<fff", data, off)

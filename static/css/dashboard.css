@@ -1,9 +1,11 @@
 ﻿*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --red:#e8150c;--red-dark:#a00e09;
+  --accent:var(--red);--accent-dark:var(--red-dark);
   --bg:#0d0d0d;--bg2:#141414;--bg3:#1c1c1c;--bg4:#242424;
   --border:#2a2a2a;--text:#e4e4e4;--muted:#777;
   --green:#27ae60;--yellow:#f39c12;--blue:#2980b9;
+  --status-online:#22c55e;--status-offline:#ef4444;--status-warn:#f59e0b;
   --sidebar:220px;
 }
 [data-theme="blue"]{
@@ -412,4 +414,80 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer}
   .el-slot{grid-template-columns:28px 1fr 1fr;grid-template-rows:auto auto auto}
   .el-skin-col,.el-num-col{grid-column:span 1}
   .el-handle{display:none}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPRINT 2 — DASHBOARD HERO + LIVE PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── STATUS DOT (semantic) ──────────────────────────────────────────────── */
+@keyframes pulse-on { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5)} 50%{box-shadow:0 0 0 5px transparent} }
+@keyframes pulse-off { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)} 50%{box-shadow:0 0 0 4px transparent} }
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.online{background:var(--status-online);animation:pulse-on 2s infinite}
+.status-dot.offline{background:var(--status-offline);animation:pulse-off 2s infinite}
+.status-dot.warn{background:var(--status-warn)}
+
+/* ── BADGE (semantic) ────────────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.badge-online{background:rgba(34,197,94,.12);color:var(--status-online)}
+.badge-online::before{background:var(--status-online);animation:pulse-on 2s infinite}
+.badge-offline{background:rgba(239,68,68,.12);color:var(--status-offline)}
+.badge-offline::before{background:var(--status-offline)}
+.badge-warn{background:rgba(245,158,11,.12);color:var(--status-warn)}
+.badge-warn::before{background:var(--status-warn)}
+
+/* ── DASHBOARD HERO BAR ─────────────────────────────────────────────────── */
+.dash-hero{display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;flex-wrap:wrap}
+.dash-hero-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.dash-hero-state{font-size:15px;font-weight:800;color:var(--text);line-height:1.2}
+.dash-hero-track{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.dash-hero-meta{display:flex;align-items:center;gap:10px;font-size:12px;flex-wrap:wrap}
+.dash-meta-sep{width:1px;height:14px;background:var(--border);flex-shrink:0}
+.dash-meta-item{color:var(--text)}
+.dash-meta-item span{color:var(--muted)}
+.dash-hero-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ── DASHBOARD MAIN 3-COL ────────────────────────────────────────────────── */
+.dash-main{display:grid;grid-template-columns:220px 1fr 180px;gap:14px;margin-bottom:14px;align-items:start}
+.dash-map-mini{display:flex;flex-direction:column;height:100%}
+.dash-map-mini canvas{width:100%;height:auto;display:block;border-radius:6px}
+.dash-map-link{font-size:11px;color:var(--muted);cursor:pointer;text-align:center;margin-top:8px;padding:4px;border-radius:4px;transition:all .15s}
+.dash-map-link:hover{color:var(--text);background:var(--bg3)}
+.dash-drivers-card{display:flex;flex-direction:column;min-height:200px}
+
+/* ── DASHBOARD SYSTEM METRICS ─────────────────────────────────────────────── */
+.dash-sys{display:flex;flex-direction:column;gap:8px}
+.dash-sys-row{display:grid;grid-template-columns:24px 1fr auto;align-items:center;gap:6px;font-size:12px}
+.dash-sys-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.dash-today{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.dash-today-row{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.dash-today-lbl{color:var(--muted)}
+
+/* ── LIVE PANEL ──────────────────────────────────────────────────────────── */
+.live-layout{display:grid;grid-template-columns:42% 1fr;gap:14px;min-height:calc(100vh - 180px)}
+.live-map-col{display:flex;flex-direction:column}
+.live-map-col .map-wrap{flex:1;min-height:300px}
+.live-map-col canvas{width:100%;height:100%;display:block}
+.live-right-col{display:flex;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(100vh - 180px)}
+.live-timing{flex:0 0 auto}
+.live-bottom{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1}
+.live-events{display:flex;flex-direction:column;overflow:hidden}
+.live-events-feed{flex:1;overflow-y:auto;max-height:280px;display:flex;flex-direction:column;gap:3px}
+.live-chat{display:flex;flex-direction:column}
+.live-chat-box{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:220px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px}
+.live-driver-count{font-size:11px;color:var(--muted)}
+
+/* ── RESPONSIVE ──────────────────────────────────────────────────────────── */
+@media(max-width:1100px){
+  .dash-main{grid-template-columns:1fr 1fr}
+  .dash-map-mini{grid-column:1/-1}
+  .live-layout{grid-template-columns:1fr}
+  .live-right-col{max-height:none}
+}
+@media(max-width:768px){
+  .dash-main{grid-template-columns:1fr}
+  .dash-hero{flex-direction:column;align-items:flex-start}
+  .live-bottom{grid-template-columns:1fr}
 }

@@ -44,14 +44,7 @@
   <!-- Navigation -->
   <div class="nav-item active" data-nav="dashboard" onclick="navTo('dashboard')"><span class="nav-icon">⌂</span> <span data-i18n="nav_dashboard">Dashboard</span></div>
 
-  <div class="ng" id="ng-live">
-    <div class="ng-hdr" id="ngh-live" onclick="toggleGroup('live')"><span class="ng-icon">◉</span><span class="ng-label" data-i18n="nav_sec_live">Live</span><span class="ng-chevron" id="ngc-live">›</span></div>
-    <div class="ng-items" id="ngi-live">
-      <div class="nav-item nav-sub" data-nav="drivers" onclick="navTo('drivers')"><span data-i18n="nav_drivers_map">Karte & Fahrer</span></div>
-      <div class="nav-item nav-sub" data-nav="laps" onclick="navTo('laps')"><span data-i18n="nav_laps">Timing</span></div>
-      <div class="nav-item nav-sub" data-nav="events" onclick="navTo('events')"><span data-i18n="nav_events">Event-Feed</span></div>
-    </div>
-  </div>
+  <div class="nav-item" data-nav="live" onclick="navTo('live')"><span class="nav-icon">◉</span> <span data-i18n="nav_live">Live</span></div>
 
   <div class="ng" id="ng-daten">
     <div class="ng-hdr" id="ngh-daten" onclick="toggleGroup('daten')"><span class="ng-icon">▤</span><span class="ng-label" data-i18n="nav_sec_statistics">Daten</span><span class="ng-chevron" id="ngc-daten">›</span></div>
@@ -97,167 +90,245 @@
 
 <!-- ══ DASHBOARD ═══════════════════════════════════════════════════════════ -->
 <div class="panel active" id="p-dashboard">
-  <!-- Quick Stats Bar -->
-  <div style="display:flex;gap:10px;margin-bottom:14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
-      <span style="color:var(--muted)" data-i18n="qs_laps_today">Runden heute:</span>
-      <strong id="qs-laps">—</strong>
+
+  <!-- 1 ── STATUS HERO: Server-Zustand + primäre Aktionen auf einen Blick -->
+  <div class="dash-hero">
+    <div class="dash-hero-left">
+      <div class="status-dot offline" id="dh-dot"></div>
+      <div>
+        <div class="dash-hero-state" id="dh-state">Offline</div>
+        <div class="dash-hero-track" id="dh-track">{{ cfg.get('TRACK','—') }}</div>
+      </div>
+      <div class="dash-hero-meta">
+        <div class="dash-meta-sep"></div>
+        <div class="dash-meta-item"><strong id="dh-drivers">0</strong>/<span id="dh-maxdrv">{{ cfg.get('MAX_CLIENTS','?') }}</span> <span data-i18n="players_online">Fahrer</span></div>
+        <div class="dash-meta-sep"></div>
+        <div class="dash-meta-item" id="dh-session">Practice</div>
+        <div class="dash-meta-sep"></div>
+        <div class="dash-meta-item" id="dh-weather-bar" style="display:none"></div>
+        <div class="dash-meta-item">
+          <a id="inv-link" href="#" style="color:var(--muted);font-size:11px" target="_blank">CM ↗</a>
+        </div>
+      </div>
     </div>
-    <div style="width:1px;background:var(--border)"></div>
-    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
-      <span style="color:var(--muted)" data-i18n="qs_drivers_today">Fahrer heute:</span>
-      <strong id="qs-drivers">—</strong>
-    </div>
-    <div style="width:1px;background:var(--border)"></div>
-    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
-      <span style="color:var(--muted)" data-i18n="qs_best_today">Beste heute:</span>
-      <strong id="qs-best" class="best-t">—</strong>
-      <span id="qs-best-driver" style="color:var(--muted);font-size:11px"></span>
+    <div class="dash-hero-actions">
+      <button class="btn btn-green btn-sm" onclick="ctrl('start')">▶ <span data-i18n="btn_start">Starten</span></button>
+      <button class="btn btn-gray btn-sm" onclick="ctrl('stop')">■ <span data-i18n="btn_stop">Stoppen</span></button>
+      <button class="btn btn-gray btn-sm" onclick="ctrl('restart')">↻ <span data-i18n="btn_restart">Neustart</span></button>
     </div>
   </div>
 
-  <div class="g4 gap">
-    <div class="card">
-      <div class="card-ttl" data-i18n="status">Status</div>
-      <div class="stat-val"><span id="d-badge" class="bdg">—</span></div>
-      <div class="stat-sub" id="d-up" style="margin-top:8px">—</div>
+  <!-- 2 ── HAUPTBEREICH: Minimap | Aktive Fahrer | System + Tagesstatistik -->
+  <div class="dash-main gap">
+
+    <!-- 2a. Minimap (kleines Strecken-Preview) -->
+    <div class="card dash-map-mini">
+      <div class="sh" style="margin-bottom:8px">
+        <div class="sh-t" data-i18n="track_positions">Track</div>
+        <div class="status-dot online" style="width:6px;height:6px;animation:pulse-on 2s infinite"></div>
+      </div>
+      <canvas id="map-canvas-dash" width="400" height="280" style="border-radius:6px;background:var(--bg);width:100%;height:auto"></canvas>
+      <div class="dash-map-link" onclick="navTo('live')">Live-Ansicht →</div>
     </div>
-    <div class="card">
-      <div class="card-ttl" data-i18n="players_online">Spieler Online</div>
-      <div class="stat-val"><span id="d-cl">0</span><span style="font-size:16px;color:var(--muted)"> / <span id="d-mcl">{{ cfg.get('MAX_CLIENTS','8') }}</span></span></div>
-      <div class="stat-sub" data-i18n="active_connections">Aktive Verbindungen</div>
+
+    <!-- 2b. Aktive Fahrer -->
+    <div class="card dash-drivers-card">
+      <div class="sh">
+        <div class="sh-t" data-i18n="active_drivers">Aktive Fahrer</div>
+        <div class="status-dot online" style="width:6px;height:6px;animation:pulse-on 2s infinite"></div>
+      </div>
+      <div class="dg" id="d-drivers">
+        <div class="empty"><div class="empty-ico">🏁</div><div data-i18n="no_drivers">Keine Fahrer verbunden</div></div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-ttl">CPU</div>
-      <div class="stat-val"><span id="d-cpu">0</span><span style="font-size:16px">%</span></div>
-      <div class="bar"><div class="bar-fill bar-cpu" id="cpu-bar" style="width:0%"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-ttl">RAM</div>
-      <div class="stat-val"><span id="d-ram">0</span><span style="font-size:16px">%</span></div>
-      <div class="bar"><div class="bar-fill bar-ram" id="ram-bar" style="width:0%"></div></div>
-      <div class="stat-sub"><span id="d-ram-det"></span></div>
+
+    <!-- 2c. System-Health + Tagesstatistik -->
+    <div>
+      <div class="card">
+        <div class="card-ttl">System</div>
+        <div class="dash-sys">
+          <div class="dash-sys-row">
+            <span class="dash-sys-lbl">CPU</span>
+            <div class="bar"><div class="bar-fill bar-cpu" id="cpu-bar" style="width:0%"></div></div>
+            <span style="font-size:11px;font-weight:700;min-width:32px;text-align:right"><span id="d-cpu">0</span>%</span>
+          </div>
+          <div class="dash-sys-row">
+            <span class="dash-sys-lbl">RAM</span>
+            <div class="bar"><div class="bar-fill bar-ram" id="ram-bar" style="width:0%"></div></div>
+            <span style="font-size:11px;font-weight:700;min-width:32px;text-align:right"><span id="d-ram">0</span>%</span>
+          </div>
+          <div class="dash-sys-row">
+            <span class="dash-sys-lbl">TX</span>
+            <span style="font-size:11px;color:var(--muted)" id="d-tx">—</span>
+          </div>
+          <div class="dash-sys-row">
+            <span class="dash-sys-lbl">RX</span>
+            <span style="font-size:11px;color:var(--muted)" id="d-rx">—</span>
+          </div>
+        </div>
+        <div class="dash-today">
+          <div class="dash-today-row"><span class="dash-today-lbl" data-i18n="qs_laps_today">Runden heute</span><strong id="qs-laps">—</strong></div>
+          <div class="dash-today-row"><span class="dash-today-lbl" data-i18n="qs_drivers_today">Fahrer heute</span><strong id="qs-drivers">—</strong></div>
+          <div class="dash-today-row"><span class="dash-today-lbl" data-i18n="qs_best_today">Bestzeit</span><strong id="qs-best" class="best-t">—</strong></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px" id="d-up">—</div>
+      </div>
     </div>
   </div>
 
-  <div class="g2 gap">
-    <div class="card">
-      <div class="card-ttl" data-i18n="server_info">Server Info</div>
-      <table class="itbl">
-        <tr><td data-i18n="lbl_name">Name</td><td id="i-name">{{ info.name if info else '—' }}</td></tr>
-        <tr><td data-i18n="lbl_track">Strecke</td><td id="i-track">{{ info.track if info else cfg.get('TRACK','—') }}</td></tr>
-        <tr><td data-i18n="lbl_layout">Layout</td><td id="i-layout">{{ cfg.get('TRACK_LAYOUT','—') or '—' }}</td></tr>
-        <tr><td data-i18n="lbl_session">Session</td><td id="i-sess">Practice</td></tr>
-        <tr><td data-i18n="lbl_password">Passwort</td><td>{{ '🔒 Ja' if cfg.get('PASSWORD') else '🔓 Keins' }}</td></tr>
-        <tr><td data-i18n="lbl_max_clients">Max Spieler</td><td>{{ cfg.get('MAX_CLIENTS','—') }}</td></tr>
-        <tr><td data-i18n="lbl_tcp_port">TCP/UDP Port</td><td>{{ cfg.get('TCP_PORT','9600') }}</td></tr>
-        <tr><td data-i18n="lbl_http_port">HTTP Port</td><td>{{ cfg.get('HTTP_PORT','8081') }}</td></tr>
-        <tr><td data-i18n="lbl_uptime">Uptime</td><td id="i-uptime">—</td></tr>
-      </table>
-    </div>
-    <div class="card">
-      <div class="card-ttl" data-i18n="network">Netzwerk</div>
-      <table class="itbl">
-        <tr>
-          <td data-i18n="lbl_local_ip">Lokale IP</td>
-          <td><div class="ip-row">
-            <span class="ip-val">{{ local_ip }}</span>
-            <span class="cp-btn" onclick="copy('{{ local_ip }}:9600')">📋</span>
-          </div></td>
-        </tr>
-        <tr>
-          <td data-i18n="lbl_public_ip">Öffentliche IP</td>
-          <td><div class="ip-row">
-            <span class="ip-val" id="pub-ip">{{ info.ip if info else '—' }}</span>
-            <span class="cp-btn" onclick="copyPub()">📋</span>
-          </div></td>
-        </tr>
-        <tr><td data-i18n="lbl_invite">Invite Link</td><td><a id="inv-link" href="#" style="color:var(--red);font-size:12px" target="_blank" data-i18n="lbl_open_cm">In CM öffnen ↗</a></td></tr>
-        <tr><td data-i18n="lbl_lobby">Lobby</td><td>{{ 'Öffentlich' if cfg.get('REGISTER_TO_LOBBY')=='1' else 'Privat (LAN)' }}</td></tr>
-      </table>
-    </div>
-  </div>
+  <!-- 3 ── UNTERER BEREICH: Events | Chat | Presets -->
+  <div class="g3 gap" style="margin-top:0">
 
-  <div class="g2 gap">
+    <!-- Letzte Events -->
     <div class="card">
-      <div class="sh"><div class="sh-t" data-i18n="active_drivers">Aktive Fahrer</div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
-      <div class="dg" id="d-drivers"><div class="empty"><div class="empty-ico">🏁</div><div data-i18n="no_drivers">Keine Fahrer verbunden</div></div></div>
+      <div class="sh">
+        <div class="sh-t">Letzte Events</div>
+        <a onclick="navTo('live')" style="font-size:11px;color:var(--muted);cursor:pointer">Live →</a>
+      </div>
+      <div id="dash-event-log" style="display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto">
+        <div style="color:var(--muted);font-size:12px;padding:8px 0" id="dash-ev-placeholder">—</div>
+      </div>
     </div>
+
+    <!-- Chat -->
     <div class="card">
-      <div class="sh"><div class="sh-t">💬 <span data-i18n="chat">Server Chat</span></div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
-      <div id="dash-chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:180px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px">
+      <div class="sh"><div class="sh-t">💬 <span data-i18n="chat">Chat</span></div></div>
+      <div id="dash-chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:150px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px">
         <div style="color:var(--muted)" data-i18n="waiting_chat">Warte auf Chat...</div>
       </div>
       <div style="display:flex;gap:6px;margin-top:8px">
-        <input class="inp" id="chat-send-inp" data-i18n-placeholder="chat_ph" placeholder="Nachricht an alle senden..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')sendChat()">
-        <button class="btn btn-red btn-sm" onclick="sendChat()" data-i18n="btn_send">Senden</button>
+        <input class="inp" id="dash-chat-inp" data-i18n-placeholder="chat_ph" placeholder="Nachricht..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')sendChatFrom('dash-chat-inp')">
+        <button class="btn btn-red btn-sm" onclick="sendChatFrom('dash-chat-inp')" data-i18n="btn_send">Senden</button>
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="card">
+      <div class="sh">
+        <div class="sh-t" data-i18n="presets">Strecken-Presets</div>
+        <button class="btn btn-gray btn-sm" onclick="loadPresetList()">↻</button>
+      </div>
+      <div class="preset-list" id="preset-list"><div style="color:var(--muted);font-size:13px" data-i18n="loading">Lade...</div></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input class="inp" id="preset-name" data-i18n-placeholder="preset_name_ph" placeholder="Preset-Name..." style="flex:1">
+        <button class="btn btn-red btn-sm" onclick="savePreset()" data-i18n="save_preset">💾</button>
       </div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:0">
-    <div class="sh">
-      <div class="sh-t">📋 Letzte Events</div>
-      <a onclick="navTo('events')" style="font-size:11px;color:var(--muted);cursor:pointer;text-decoration:underline">Alle anzeigen →</a>
-    </div>
-    <div id="dash-event-log" style="display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto">
-      <div style="color:var(--muted);font-size:12px;padding:8px 0" id="dash-ev-placeholder">—</div>
-    </div>
-  </div>
+  <!-- Hidden compat IDs used by old updateDash() -->
+  <span id="d-badge" style="display:none"></span>
+  <span id="d-cl" style="display:none">0</span>
+  <span id="d-mcl" style="display:none">{{ cfg.get('MAX_CLIENTS','8') }}</span>
+  <span id="d-ram-det" style="display:none"></span>
+  <span id="qs-best-driver" style="display:none"></span>
+  <span id="i-name" style="display:none">{{ info.name if info else '' }}</span>
+  <span id="i-track" style="display:none">{{ info.track if info else cfg.get('TRACK','—') }}</span>
+  <span id="i-layout" style="display:none">{{ cfg.get('TRACK_LAYOUT','—') or '—' }}</span>
+  <span id="i-sess" style="display:none">Practice</span>
+  <span id="i-uptime" style="display:none">—</span>
+  <span id="pub-ip" style="display:none">{{ info.ip if info else '—' }}</span>
 
-  <div class="card">
-    <div class="sh">
-      <div class="sh-t" data-i18n="presets">Strecken-Presets</div>
-      <button class="btn btn-gray btn-sm" onclick="loadPresetList()">↻</button>
-    </div>
-    <div class="preset-list" id="preset-list"><div style="color:var(--muted);font-size:13px" data-i18n="loading">Lade...</div></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <input class="inp" id="preset-name" data-i18n-placeholder="preset_name_ph" placeholder="Preset-Name (z.B. Nordschleife Tourist)" style="flex:1">
-      <button class="btn btn-red" onclick="savePreset()" data-i18n="save_preset">💾 Aktuell speichern</button>
-    </div>
-  </div>
 </div>
 
-<!-- ══ DRIVERS ══════════════════════════════════════════════════════════════ -->
-<div class="panel" id="p-drivers">
-  <div class="g2 gap">
-    <div class="card">
-      <div class="sh"><div class="sh-t" data-i18n="live_drivers">Live Fahrer</div><div class="dot pulse on" style="width:6px;height:6px"></div></div>
-      <div class="dg" id="f-drivers"><div class="empty"><div class="empty-ico">🏎️</div><div data-i18n="waiting_drivers">Warte auf Fahrer...</div></div></div>
-    </div>
-    <div class="card">
-      <div class="sh-t" style="margin-bottom:12px" data-i18n="track_positions">Track Positionen</div>
-      <div class="map-wrap"><canvas id="map-canvas" width="700" height="460"></canvas></div>
+<!-- ══ LIVE (unified: Karte · Timing · Events · Chat) ══════════════════════ -->
+<div class="panel" id="p-live">
+  <div class="live-layout">
+
+    <!-- Linke Spalte: großer Minimap-Canvas -->
+    <div class="card live-map-col">
+      <div class="sh" style="flex-shrink:0">
+        <div class="sh-t" data-i18n="track_positions">Track Positionen</div>
+        <div class="live-driver-count" id="live-drv-count">0 Fahrer</div>
+      </div>
+      <div class="map-wrap" style="flex:1;min-height:320px">
+        <canvas id="map-canvas" width="700" height="460"></canvas>
+      </div>
       <div class="map-hint" id="map-hint" data-i18n="loading_map">Lade Streckenübersicht...</div>
     </div>
-  </div>
-  <div class="card">
-    <div class="sh"><div class="sh-t">💬 <span data-i18n="chat">Server Chat</span></div></div>
-    <div id="chat-box" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;max-height:260px;overflow-y:auto;font-size:13px;display:flex;flex-direction:column;gap:4px">
-      <div style="color:var(--muted)" data-i18n="waiting_chat">Warte auf Chat...</div>
+
+    <!-- Rechte Spalte: Timing-Tabelle + Events/Chat -->
+    <div class="live-right-col">
+
+      <!-- Live Timing -->
+      <div class="card live-timing">
+        <div class="sh">
+          <div class="sh-t" data-i18n="lap_times">Live Timing</div>
+          <button class="btn btn-gray btn-sm" onclick="refreshLive()">↻</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th data-i18n="col_vehicle">Fahrzeug</th>
+              <th data-i18n="col_laps">Runden</th><th data-i18n="col_best">Beste</th><th data-i18n="col_last">Letzte</th><th data-i18n="col_current">Aktuell</th><th data-i18n="col_gap">Gap</th>
+            </tr></thead>
+            <tbody id="lap-tbody">
+              <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:48px" data-i18n="no_data">Keine Daten – warte auf Fahrer</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Fahrerkarten kompakt -->
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div class="dg" id="f-drivers"><div class="empty"><div class="empty-ico">🏎️</div><div data-i18n="waiting_drivers">Warte auf Fahrer...</div></div></div>
+        </div>
+      </div>
+
+      <!-- Events + Chat nebeneinander -->
+      <div class="live-bottom">
+
+        <!-- Event-Feed -->
+        <div class="card live-events">
+          <div class="sh" style="flex-shrink:0">
+            <div class="sh-t">Event-Feed</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <label style="font-size:11px;color:var(--muted);cursor:pointer">
+                <input type="checkbox" id="ev-auto" checked style="accent-color:var(--red)"> Auto
+              </label>
+              <button class="btn btn-gray btn-sm" onclick="loadEvents()">↻</button>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <select class="sel" id="ev-filter" style="flex:1;font-size:11px" onchange="loadEvents()">
+                <option value="">Alle Events</option>
+                <option value="connection">Verbindungen</option>
+                <option value="lap">Runden</option>
+                <option value="chat">Chat</option>
+                <option value="collision">Kollisionen</option>
+              </select>
+              <input class="inp" id="ev-search" placeholder="Suche..." style="flex:1;font-size:11px">
+            </div>
+          </div>
+          <div class="live-events-feed" id="event-log"></div>
+        </div>
+
+        <!-- Chat -->
+        <div class="card live-chat">
+          <div class="sh" style="flex-shrink:0">
+            <div class="sh-t">💬 <span data-i18n="chat">Server Chat</span></div>
+            <div class="status-dot online" style="width:6px;height:6px;animation:pulse-on 2s infinite"></div>
+          </div>
+          <div class="live-chat-box" id="chat-box">
+            <div style="color:var(--muted)" data-i18n="waiting_chat">Warte auf Chat...</div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <input class="inp" id="chat-send-inp" data-i18n-placeholder="chat_ph" placeholder="Nachricht an alle..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')sendChatFrom('chat-send-inp')">
+            <button class="btn btn-red btn-sm" onclick="sendChatFrom('chat-send-inp')" data-i18n="btn_send">Senden</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ══ LAPS ═════════════════════════════════════════════════════════════════ -->
-<div class="panel" id="p-laps">
-  <div class="card">
-    <div class="sh">
-      <div class="sh-t" data-i18n="lap_times">Rundenzeiten</div>
-      <button class="btn btn-gray btn-sm" onclick="refreshLive()">↻</button>
-    </div>
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr>
-          <th data-i18n="col_pos">Pos.</th><th data-i18n="col_driver">Fahrer</th><th data-i18n="col_vehicle">Fahrzeug</th>
-          <th data-i18n="col_laps">Runden</th><th data-i18n="col_best">Beste</th><th data-i18n="col_last">Letzte</th><th data-i18n="col_current">Aktuell</th><th data-i18n="col_gap">Gap</th>
-        </tr></thead>
-        <tbody id="lap-tbody">
-          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:48px" data-i18n="no_data">Keine Daten – warte auf Fahrer</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+<!-- ══ DRIVERS (Legacy-Shell → leitet zu p-live weiter) ═══════════════════ -->
+<div class="panel" id="p-drivers" style="display:none">
+  <!-- Weiterleitung erfolgt via navTo() Redirect-Map -->
+</div>
+
+<!-- ══ LAPS (Legacy-Shell → leitet zu p-live weiter) ═════════════════════ -->
+<div class="panel" id="p-laps" style="display:none">
+  <!-- Weiterleitung erfolgt via navTo() Redirect-Map -->
 </div>
 
 <!-- ══ RECORDS ════════════════════════════════════════════════════════════ -->

@@ -239,31 +239,70 @@ function updateHeader(d) {
 
 function updateDash(d) {
   const active = d.status === "active";
-  const badge = document.getElementById("d-badge");
-  badge.textContent = active ? "Online" : d.status;
-  badge.className = "bdg " + (active?"bdg-on":d.status==="failed"?"bdg-err":"bdg-off");
-  document.getElementById("d-up").textContent = active ? t('t_server_running') : t('t_server_offline');
-  document.getElementById("d-cl").textContent = d.info?.clients ?? d.drivers.length;
-  document.getElementById("d-mcl").textContent = d.info?.maxclients || "?";
+
+  // ── Hero Bar ──────────────────────────────────────────────────────────────
+  const dot = document.getElementById("dh-dot");
+  const state = document.getElementById("dh-state");
+  const track = document.getElementById("dh-track");
+  const drvCount = document.getElementById("dh-drivers");
+
+  if (dot) {
+    dot.className = "status-dot " + (active ? "online" : d.status === "failed" ? "warn" : "offline");
+  }
+  if (state) {
+    state.textContent = active ? "Online" : (d.status === "failed" ? "Fehler" : "Offline");
+  }
+  if (track && d.info) {
+    const layout = d.info.trackconfig ? ` · ${d.info.trackconfig}` : "";
+    track.textContent = (d.info.track || "—") + layout;
+  }
+  if (drvCount) drvCount.textContent = d.info?.clients ?? d.drivers.length;
+
+  const sess = document.getElementById("dh-session");
+  if (sess && d.info) {
+    sess.textContent = ([t('sess_practice'),t('sess_qualify'),t('sess_race')])[d.info.session] || t('sess_practice');
+  }
+  if (d.info) {
+    const ip = d.info.ip || "";
+    const hp = d.info.cport || 8081;
+    const inv = document.getElementById("inv-link");
+    if (inv && ip) inv.href = `https://acstuff.ru/s/q:race/online/join?ip=${ip}&httpPort=${hp}`;
+  }
+
+  // ── System-Metriken ───────────────────────────────────────────────────────
   const cpu = d.system?.cpu ?? 0, ram = d.system?.mem_percent ?? 0;
   document.getElementById("d-cpu").textContent = cpu.toFixed(1);
   document.getElementById("cpu-bar").style.width = cpu + "%";
   document.getElementById("cpu-bar").className = "bar-fill bar-cpu" + (cpu>80?" bar-hot":"");
   document.getElementById("d-ram").textContent = ram.toFixed(1);
   document.getElementById("ram-bar").style.width = ram + "%";
-  const used = d.system?.mem_used_mb??0, total = d.system?.mem_total_mb??0;
-  document.getElementById("d-ram-det").textContent = total ? used+" / "+total+" MB" : "";
+
+  // Netzwerk (aus system_stats)
+  const tx = d.system?.net_tx_kbps, rx = d.system?.net_rx_kbps;
+  const txEl = document.getElementById("d-tx"), rxEl = document.getElementById("d-rx");
+  if (txEl) txEl.textContent = tx != null ? tx.toFixed(0) + " KB/s" : "—";
+  if (rxEl) rxEl.textContent = rx != null ? rx.toFixed(0) + " KB/s" : "—";
+
+  // Uptime
+  const upEl = document.getElementById("d-up");
+  if (upEl) upEl.textContent = active ? t('t_server_running') : t('t_server_offline');
+
+  // ── Compat-IDs (hidden) ───────────────────────────────────────────────────
+  const badge = document.getElementById("d-badge");
+  if (badge) { badge.textContent = active ? "Online" : d.status; badge.className = "bdg " + (active?"bdg-on":d.status==="failed"?"bdg-err":"bdg-off"); }
+  const clEl = document.getElementById("d-cl"); if (clEl) clEl.textContent = d.info?.clients ?? d.drivers.length;
+  const mclEl = document.getElementById("d-mcl"); if (mclEl) mclEl.textContent = d.info?.maxclients || "?";
+  const ramDet = document.getElementById("d-ram-det");
+  if (ramDet) { const used = d.system?.mem_used_mb??0, total = d.system?.mem_total_mb??0; ramDet.textContent = total ? used+" / "+total+" MB" : ""; }
   if (d.info) {
-    document.getElementById("i-name").textContent = (d.info.name||"").replace(/\s*ℹ\d+$/, "") || "—";
-    document.getElementById("i-track").textContent = d.info.track || "—";
-    document.getElementById("i-layout").textContent = d.info.trackconfig || "—";
-    const ip = d.info.ip || "";
-    document.getElementById("pub-ip").textContent = ip || "—";
-    const hp = d.info.cport || 8081;
-    const inv = document.getElementById("inv-link");
-    if (ip) inv.href = `https://acstuff.ru/s/q:race/online/join?ip=${ip}&httpPort=${hp}`;
-    document.getElementById("i-sess").textContent = ([t('sess_practice'),t('sess_qualify'),t('sess_race')])[d.info.session] || t('sess_practice');
+    const iName = document.getElementById("i-name"); if (iName) iName.textContent = (d.info.name||"").replace(/\s*ℹ\d+$/, "") || "—";
+    const iTrack = document.getElementById("i-track"); if (iTrack) iTrack.textContent = d.info.track || "—";
+    const iLayout = document.getElementById("i-layout"); if (iLayout) iLayout.textContent = d.info.trackconfig || "—";
+    const pubIp = document.getElementById("pub-ip"); if (pubIp) pubIp.textContent = d.info.ip || "—";
+    const iSess = document.getElementById("i-sess"); if (iSess) iSess.textContent = ([t('sess_practice'),t('sess_qualify'),t('sess_race')])[d.info.session] || t('sess_practice');
   }
+
+  // ── Dashboard Driver-Cards ────────────────────────────────────────────────
   renderCards("d-drivers", d.drivers, false);
 }
 
@@ -472,27 +511,25 @@ function loadMapImage() {
   img.src = "/map";
 }
 
-function drawMap(data) {
-  const c = document.getElementById("map-canvas");
-  if (!c) return;
+function _drawMapOnCanvas(c, data, mini) {
   const ctx = c.getContext("2d"), W = c.width, H = c.height;
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0d0d0d';
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
 
-  const pad = 28;
+  const pad = mini ? 10 : 28;
   const dw = W - pad*2, dh = H - pad*2;
 
-  // Spline-basierte Streckendarstellung (fast_lane.ai → spPts)
   if (spPts && spPts.length > 10) {
-    // Äußerer Strecken-Schatten
+    // Glow-Halo
     ctx.beginPath();
     spPts.forEach(([x,y], i) => {
       const cx = pad + x*dw, cy = pad + y*dh;
       i === 0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy);
     });
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 14;
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = mini ? 6 : 14;
     ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
 
     // Fahrbahn
@@ -502,78 +539,91 @@ function drawMap(data) {
       i === 0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy);
     });
     ctx.closePath();
-    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 8; ctx.stroke();
+    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = mini ? 3 : 8; ctx.stroke();
 
-    // Mittellinie (gestrichelt)
-    ctx.beginPath();
-    spPts.forEach(([x,y], i) => {
-      const cx = pad + x*dw, cy = pad + y*dh;
-      i === 0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy);
-    });
-    ctx.closePath();
-    ctx.strokeStyle = '#5a5a5a'; ctx.lineWidth = 2;
-    ctx.setLineDash([6,10]); ctx.stroke(); ctx.setLineDash([]);
-
-    // Start/Ziel-Markierung (spPts[0])
-    const sx = pad + spPts[0][0]*dw, sy = pad + spPts[0][1]*dh;
-    ctx.beginPath(); ctx.arc(sx,sy,5,0,Math.PI*2);
-    ctx.fillStyle = '#fff'; ctx.fill();
-    ctx.strokeStyle = '#e8150c'; ctx.lineWidth = 2; ctx.stroke();
-  } else {
-    // Kein Spline: Fallback auf map.png
-    if (!mapImg) {
-      ctx.fillStyle='#555'; ctx.font='13px system-ui';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('Lade Strecke…', W/2, H/2);
-      loadMapImage(); return;
+    if (!mini) {
+      // Mittellinie (gestrichelt – nur im großen Canvas)
+      ctx.beginPath();
+      spPts.forEach(([x,y], i) => {
+        const cx = pad + x*dw, cy = pad + y*dh;
+        i === 0 ? ctx.moveTo(cx,cy) : ctx.lineTo(cx,cy);
+      });
+      ctx.closePath();
+      ctx.strokeStyle = '#5a5a5a'; ctx.lineWidth = 2;
+      ctx.setLineDash([6,10]); ctx.stroke(); ctx.setLineDash([]);
     }
-    const sc=Math.min(dw/mapImg.width,dh/mapImg.height);
-    const iw=mapImg.width*sc, ih=mapImg.height*sc;
-    const ix=(W-iw)/2, iy=(H-ih)/2;
+
+    // Start/Ziel
+    const sx = pad + spPts[0][0]*dw, sy = pad + spPts[0][1]*dh;
+    ctx.beginPath(); ctx.arc(sx, sy, mini ? 3 : 5, 0, Math.PI*2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = '#e8150c'; ctx.lineWidth = mini ? 1 : 2; ctx.stroke();
+  } else {
+    if (!mapImg) {
+      if (!mini) {
+        ctx.fillStyle='#555'; ctx.font='13px system-ui';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('Lade Strecke…', W/2, H/2);
+        loadMapImage();
+      }
+      return;
+    }
+    const sc = Math.min(dw/mapImg.width, dh/mapImg.height);
+    const iw = mapImg.width*sc, ih = mapImg.height*sc;
+    const ix = (W-iw)/2, iy = (H-ih)/2;
     ctx.globalAlpha=0.5; ctx.drawImage(mapImg,ix,iy,iw,ih); ctx.globalAlpha=1;
   }
 
   // Fahrer-Punkte
   const drivers = (data?.drivers||[]).filter(d => d.mapX != null && d.mapY != null);
-  const hint = document.getElementById("map-hint");
+  if (!drivers.length) return;
 
-  if (!drivers.length) {
-    if (hint) hint.textContent = t('map_no_drivers');
-    return;
-  }
+  const dotR = mini ? 4 : 6;
+  const glowR = mini ? 8 : 13;
 
   drivers.forEach((d,i) => {
     const x = pad + d.mapX * dw;
     const y = pad + d.mapY * dh;
     const col = COLORS[i % COLORS.length];
 
-    // Glow
-    const g = ctx.createRadialGradient(x,y,0,x,y,13);
+    const g = ctx.createRadialGradient(x,y,0,x,y,glowR);
     g.addColorStop(0, col+'55'); g.addColorStop(1,'transparent');
-    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,13,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,glowR,0,Math.PI*2); ctx.fill();
 
-    // Fahrer-Dot
-    ctx.beginPath(); ctx.arc(x,y,6,0,Math.PI*2);
+    ctx.beginPath(); ctx.arc(x,y,dotR,0,Math.PI*2);
     ctx.fillStyle=col; ctx.fill();
-    ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=mini ? 1 : 1.5; ctx.stroke();
 
-    // Positionsnummer
-    ctx.font='bold 8px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle='#000'; ctx.fillText(i+1, x, y);
+    if (!mini) {
+      ctx.font='bold 8px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='#000'; ctx.fillText(i+1, x, y);
 
-    // Name-Label
-    const label = d.name.slice(0,14);
-    ctx.font='bold 10px system-ui'; ctx.textBaseline='alphabetic';
-    const lw = ctx.measureText(label).width;
-    const lx = Math.min(Math.max(x, pad+lw/2+2), W-pad-lw/2-2);
-    const ly = y < 30 ? y+20 : y-11;
-    ctx.fillStyle='rgba(0,0,0,0.8)';
-    ctx.fillRect(lx-lw/2-3, ly-11, lw+6, 14);
-    ctx.fillStyle='#fff'; ctx.textAlign='center';
-    ctx.fillText(label, lx, ly);
+      const label = d.name.slice(0,14);
+      ctx.font='bold 10px system-ui'; ctx.textBaseline='alphabetic';
+      const lw = ctx.measureText(label).width;
+      const lx = Math.min(Math.max(x, pad+lw/2+2), W-pad-lw/2-2);
+      const ly = y < 30 ? y+20 : y-11;
+      ctx.fillStyle='rgba(0,0,0,0.8)';
+      ctx.fillRect(lx-lw/2-3, ly-11, lw+6, 14);
+      ctx.fillStyle='#fff'; ctx.textAlign='center';
+      ctx.fillText(label, lx, ly);
+    }
   });
+}
 
-  if (hint) hint.textContent = `${drivers.length} Fahrer auf der Strecke`;
+function drawMap(data) {
+  const large = document.getElementById("map-canvas");
+  if (large) _drawMapOnCanvas(large, data, false);
+
+  const mini = document.getElementById("map-canvas-dash");
+  if (mini) _drawMapOnCanvas(mini, data, true);
+
+  // Fahrerzähler im Live-Panel
+  const drivers = (data?.drivers||[]).filter(d => d.mapX != null && d.mapY != null);
+  const hint = document.getElementById("map-hint");
+  const cnt = document.getElementById("live-drv-count");
+  if (hint) hint.textContent = drivers.length ? `${drivers.length} Fahrer auf der Strecke` : t('map_no_drivers');
+  if (cnt) cnt.textContent = `${data?.drivers?.length||0} Fahrer`;
 }
 
 
@@ -826,16 +876,17 @@ function applyPreset(name){if(!confirm(`Preset "${name}" laden und Server neu st
 function removePreset(name){if(!confirm(`Preset "${name}" löschen?`))return;apiFetch(`/api/presets/${encodeURIComponent(name)}`,{method:"DELETE"}).then(r=>r.json()).then(d=>{toast(d.ok?t('t_deleted'):"✗ "+d.msg,d.ok?"ok":"err");loadPresetList();});}
 
 // ═══ CHAT SEND ════════════════════════════════════════════════════════════
-function sendChat() {
-  const inp = document.getElementById('chat-send-inp');
-  const msg = inp.value.trim();
+function _sendChatMsg(inpEl) {
+  const msg = inpEl.value.trim();
   if (!msg) return;
   apiFetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})})
     .then(r=>r.json()).then(d=>{
       toast(d.ok?'✓ Gesendet':'✗ '+d.msg, d.ok?'ok':'err');
-      if (d.ok) inp.value='';
+      if (d.ok) inpEl.value='';
     });
 }
+function sendChat() { _sendChatMsg(document.getElementById('dash-chat-inp') || document.getElementById('chat-send-inp')); }
+function sendChatFrom(id) { const el = document.getElementById(id); if (el) _sendChatMsg(el); }
 
 // ═══ LOGS + RCON ══════════════════════════════════════════════════════════
 function loadLogs(){apiFetch("/logs").then(r=>r.json()).then(d=>{const box=document.getElementById("logbox");box.innerHTML=d.logs.split("\n").map(l=>{const s=esc(l);if(/ERR|FAIL|error/i.test(l))return`<span style="color:#ff6b6b">${s}</span>`;if(/WRN|WARN/i.test(l))return`<span style="color:var(--yellow)">${s}</span>`;if(/INF\b|INFO/i.test(l))return`<span style="color:#74b9ff">${s}</span>`;return s;}).join("\n");box.scrollTop=box.scrollHeight;});}
@@ -2257,8 +2308,10 @@ function updateServerMonitor(d) {
 
 // ═══ NAVIGATION (SIDEBAR) ════════════════════════════════════════════════
 // ─── NAV GROUP ACCORDION ───────────────────────────────────────────────────
+// Sprint 2: drivers/laps/events leiten zu p-live weiter (unified panel)
+const _LIVE_REDIRECT = new Set(['drivers','laps','events']);
+
 const _NAV_GROUP_MAP = {
-  drivers:'live', laps:'live', events:'live',
   records:'daten', analytics:'daten', results:'daten', championship:'daten',
   players:'verwaltung', content:'verwaltung', 'entry-list':'verwaltung', integrations:'verwaltung',
   'server-monitor':'system', logs:'system',
@@ -2309,6 +2362,9 @@ function cfgTab(name) {
 })();
 
 function navTo(id) {
+  // Redirect drivers/laps/events → unified live panel (Sprint 2)
+  if (_LIVE_REDIRECT.has(id)) { navTo('live'); return; }
+
   // Redirect old settings IDs → unified config panel
   if (id in _CFG_TAB_MAP) {
     const tab = _CFG_TAB_MAP[id];
@@ -2321,7 +2377,7 @@ function navTo(id) {
   document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   const target = document.getElementById('p-' + id);
   if (target) { target.classList.add('active'); }
-  // Nav item highlight — including sub-items
+  // Nav item highlight
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll(`.nav-item[data-nav="${id}"]`).forEach(n => n.classList.add('active'));
   // Group header highlight
@@ -2330,7 +2386,6 @@ function navTo(id) {
   if (grp) {
     const hdr = document.getElementById('ngh-' + grp);
     if (hdr) hdr.classList.add('has-active');
-    // Auto-open group if closed
     const items = document.getElementById('ngi-' + grp);
     if (items && !items.classList.contains('open')) toggleGroup(grp);
   }
@@ -2339,6 +2394,7 @@ function navTo(id) {
   if (_cnt) _cnt.scrollTop = 0;
   // Side effects
   if (id === 'config')         { const t = localStorage.getItem('acweb_cfg_tab') || 'server'; cfgTab(t); }
+  if (id === 'live')           { loadEvents(); if (live) { updateLaps(live); _renderChat(live.chat||[], "chat-box"); drawMap(live); } }
   if (id === 'server-monitor') updateServerMonitor(live);
   if (id === 'logs')           loadLogs();
   if (id === 'players')        { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
@@ -2349,7 +2405,6 @@ function navTo(id) {
   if (id === 'results')        loadResults();
   if (id === 'championship')   loadChampionships();
   if (id === 'schedule')       { loadScheduledEvents(); _loadSchedPresets(); }
-  if (id === 'events')         loadEvents();
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('open');

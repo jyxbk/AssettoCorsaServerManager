@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, redirect, render_template, request, send_f
 from constants import (
     ACWEB_PASS, ACWEB_USER, CARS_DIR, TRACKS_DIR, WEATHER_PRESETS,
 )
+from helpers.laptimes import load_laptimes
 from helpers.auth import api_rate_limit, check_rate_limit, csrf_protect, login_required, _get_client_ip
 from helpers.config_io import read_full_server_cfg, read_server_cfg
 from constants import EXTRA_CFG_FILE
@@ -99,6 +100,23 @@ def api_live():
 
     drivers = []
     info    = None
+    # Best- und Letzte-Zeit aus laptimes.json: guid → (best_ms, last_ms)
+    _lt_all    = load_laptimes()
+    _track_key = f"{track}-{layout}" if layout else track
+    _best_by_guid: dict = {}
+    _last_by_guid: dict = {}
+    for _e in _lt_all:
+        if _e.get("track", "").replace("/", "-") == _track_key.replace("/", "-"):
+            _g = _e.get("guid", "")
+            _t = _e.get("laptime", 0)
+            if not _g or not _t:
+                continue
+            if _t < _best_by_guid.get(_g, 99999999):
+                _best_by_guid[_g] = _t
+            # Letzten Eintrag per Timestamp merken
+            if _g not in _last_by_guid or _e.get("ts", "") > _last_by_guid[_g]["ts"]:
+                _last_by_guid[_g] = {"ts": _e.get("ts", ""), "laptime": _t}
+
     if active:
         info = server_info()
         js   = server_json()
@@ -109,11 +127,19 @@ def api_live():
                 name = car.get("DriverName") or car.get("driver", {}).get("name", "")
                 if not name:
                     continue
-                udp = get_car_data(i)
+                udp  = get_car_data(i)
+                guid = car.get("ID", "")
+                # Fallback auf laptimes.json wenn UDP 0 liefert
+                best_udp = udp.get("bestLapMs", 0)
+                last_udp = udp.get("lastLapMs", 0)
+                best_lap = best_udp or _best_by_guid.get(guid, 0)
+                last_lt  = (_last_by_guid.get(guid) or {}).get("laptime", 0)
+                last_ts  = (_last_by_guid.get(guid) or {}).get("ts", "")
+                last_lap = last_udp or last_lt
                 drv = {
                     "id":       i,
                     "name":     name,
-                    "guid":     car.get("ID", ""),
+                    "guid":     guid,
                     "model":    car.get("Model", car.get("model", "")),
                     "skin":     car.get("Skin",  car.get("skin",  "")),
                     "team":     car.get("DriverTeam", ""),
@@ -121,8 +147,9 @@ def api_live():
                     "spLine":   udp.get("spLine", 0),
                     "lapCount": udp.get("lapCount", 0),
                     "lapTime":  udp.get("lapTimeMs", 0),
-                    "lastLap":  udp.get("lastLapMs", 0),
-                    "bestLap":  udp.get("bestLapMs", 0),
+                    "lastLap":  last_lap,
+                    "lastLapTs": last_ts,
+                    "bestLap":  best_lap,
                     "mapX":     None,
                     "mapY":     None,
                 }

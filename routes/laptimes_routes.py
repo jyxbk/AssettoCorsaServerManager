@@ -34,9 +34,18 @@ def api_laptimes():
     driver  = request.args.get("driver", "").strip().lower()
     track   = request.args.get("track",  "").strip().lower()
     car     = request.args.get("car",    "").strip().lower()
-    if driver: entries = [e for e in entries if driver in e.get("driver", "").lower()]
-    if track:  entries = [e for e in entries if track  in e.get("track",  "").lower()]
-    if car:    entries = [e for e in entries if car    in e.get("car",    "").lower()]
+    q       = request.args.get("q",      "").strip().lower()
+    from_dt = request.args.get("from",   "").strip()
+    to_dt   = request.args.get("to",     "").strip()
+    if driver:  entries = [e for e in entries if driver in e.get("driver", "").lower()]
+    if track:   entries = [e for e in entries if track  in e.get("track",  "").lower()]
+    if car:     entries = [e for e in entries if car    in e.get("car",    "").lower()]
+    if q:       entries = [e for e in entries if (
+                    q in e.get("driver", "").lower() or
+                    q in e.get("car",    "").lower() or
+                    q in e.get("track",  "").lower())]
+    if from_dt: entries = [e for e in entries if e.get("ts", "")[:10] >= from_dt]
+    if to_dt:   entries = [e for e in entries if e.get("ts", "")[:10] <= to_dt]
     entries_sorted = sorted(entries, key=lambda e: e.get("laptime", 99999999))
     return jsonify({"ok": True, "entries": entries_sorted, "total": len(entries_sorted)})
 
@@ -88,12 +97,21 @@ def api_laptimes_export():
     Kommas und Sonderzeichen in Fahrernamen/Strecken.
     """
     entries = load_laptimes()
-    driver = request.args.get("driver", "").strip().lower()
-    track  = request.args.get("track",  "").strip().lower()
-    car    = request.args.get("car",    "").strip().lower()
-    if driver: entries = [e for e in entries if driver in e.get("driver", "").lower()]
-    if track:  entries = [e for e in entries if track  in e.get("track",  "").lower()]
-    if car:    entries = [e for e in entries if car    in e.get("car",    "").lower()]
+    driver  = request.args.get("driver", "").strip().lower()
+    track   = request.args.get("track",  "").strip().lower()
+    car     = request.args.get("car",    "").strip().lower()
+    q       = request.args.get("q",      "").strip().lower()
+    from_dt = request.args.get("from",   "").strip()
+    to_dt   = request.args.get("to",     "").strip()
+    if driver:  entries = [e for e in entries if driver in e.get("driver", "").lower()]
+    if track:   entries = [e for e in entries if track  in e.get("track",  "").lower()]
+    if car:     entries = [e for e in entries if car    in e.get("car",    "").lower()]
+    if q:       entries = [e for e in entries if (
+                    q in e.get("driver", "").lower() or
+                    q in e.get("car",    "").lower() or
+                    q in e.get("track",  "").lower())]
+    if from_dt: entries = [e for e in entries if e.get("ts", "")[:10] >= from_dt]
+    if to_dt:   entries = [e for e in entries if e.get("ts", "")[:10] <= to_dt]
     entries = sorted(entries, key=lambda x: x.get("ts", ""))
 
     buf = io.StringIO()

@@ -39,6 +39,52 @@ let _lapBases = {};
 let _prevLastLapTs = {};
 const COLORS = ['#e8150c','#3498db','#27ae60','#f39c12','#9b59b6','#e67e22','#1abc9c','#e91e63'];
 
+// ═══ PERFORMANCE: CACHE + LAZY LOADING ════════════════════════════════════
+const _apiCache  = new Map();
+const _CACHE_TTL = 45_000;  // 45s — balances Aktualität vs. Requests
+
+async function cachedFetch(url) {
+  const hit = _apiCache.get(url);
+  if (hit && Date.now() - hit.t < _CACHE_TTL) return hit.d;
+  const d = await apiFetch(url).then(r => r.json()).catch(() => null);
+  if (d) _apiCache.set(url, { d, t: Date.now() });
+  return d;
+}
+
+function invalidateCache(...prefixes) {
+  for (const k of _apiCache.keys())
+    if (prefixes.some(p => k.startsWith(p))) _apiCache.delete(k);
+}
+
+// Tab-Lazy-Loading: Timestamps pro Panel + Sub-Tab
+const _tabLoaded    = {};  // panel id → last load timestamp
+const _recTabLoaded = {};  // record sub-tab → last load timestamp
+const _TAB_TTL      = 60_000;
+
+function _isStale(id, store = _tabLoaded) {
+  return !store[id] || Date.now() - store[id] > _TAB_TTL;
+}
+function _markLoaded(id, store = _tabLoaded) {
+  store[id] = Date.now();
+}
+function _invalidateTab(id) {
+  delete _tabLoaded[id];
+  delete _recTabLoaded[id];
+}
+
+// Skeleton rows (animated placeholder)
+function _skelRows(n, cols) {
+  const cells = `<td><div class="skel"></div></td>`.repeat(cols);
+  return `<tr class="skel-row">${cells}</tr>`.repeat(n);
+}
+
+// Search debounce for Alle-Runden filter
+let _searchDebounce = null;
+function _onSearchInput() {
+  clearTimeout(_searchDebounce);
+  _searchDebounce = setTimeout(() => loadAllLaps(), 280);
+}
+
 function autoRestart() {
   const el = document.getElementById('auto-restart');
   return el ? el.checked : false;  // Bug fix: Null-Check
@@ -1430,7 +1476,7 @@ async function loadRecordFilters() {
   fill('rec-filter-car',    d.cars,    'all_cars');
 }
 
-// ─── Records Sub-Tab ──────────────────────────────────────────────────────
+// ─── Records Sub-Tab (lazy loading per tab) ───────────────────────────────
 function _recTab(name) {
   document.querySelectorAll('.rec-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.rec-pane').forEach(p => p.classList.remove('active'));
@@ -1438,16 +1484,33 @@ function _recTab(name) {
   const pane = document.getElementById('recp-' + name);
   if (tab)  tab.classList.add('active');
   if (pane) pane.classList.add('active');
+
+  if (!_isStale(name, _recTabLoaded)) return;
+  _markLoaded(name, _recTabLoaded);
+
+  if (name === 'best') {
+    document.getElementById('best-tbody').innerHTML = _skelRows(6, 7);
+    loadBestLaps();
+  }
+  if (name === 'all') {
+    document.getElementById('all-tbody').innerHTML = _skelRows(6, 7);
+    loadAllLaps();
+  }
+  if (name === 'drivers') {
+    document.getElementById('stats-tbody').innerHTML = _skelRows(6, 6);
+    loadDriverStats();
+  }
 }
 
 // ─── Best Laps ────────────────────────────────────────────────────────────
 let _bestLapsData = [], _sortBestState = { col: null, dir: 'asc' };
 
 async function loadBestLaps() {
-  const d = await apiFetch('/api/laptimes/best').then(r => r.json()).catch(() => null);
   const tb = document.getElementById('best-tbody');
+  if (tb && !_bestLapsData.length) tb.innerHTML = _skelRows(6, 7);
+  const d = await cachedFetch('/api/laptimes/best');
   if (!d || !d.entries.length) {
-    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+    if (tb) tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
     _bestLapsData = [];
     return;
   }
@@ -1489,52 +1552,51 @@ function _sortBest(col) {
 
 // ─── All Laps ─────────────────────────────────────────────────────────────
 let _allLapsData = [], _allLapsPage = 0;
-const _PAGE_SIZE = 50;
-const _sortState = { col: null, dir: 'asc' };
+const _PAGE_SIZE    = 50;
+const _VS_THRESHOLD = 200;  // rows above this → virtual scroller
+const _VS_ROW_H     = 35;   // px per row (matches table row CSS)
+const _sortState    = { col: null, dir: 'asc' };
+let   _vsActive     = false;
 
 async function loadAllLaps(resetPage) {
   if (resetPage !== false) _allLapsPage = 0;
-  const driver = document.getElementById('rec-filter-driver').value;
-  const track  = document.getElementById('rec-filter-track').value;
-  const car    = document.getElementById('rec-filter-car').value;
+  const driver = document.getElementById('rec-filter-driver')?.value || '';
+  const track  = document.getElementById('rec-filter-track')?.value  || '';
+  const car    = document.getElementById('rec-filter-car')?.value    || '';
+  const q      = document.getElementById('rec-filter-search')?.value || '';
+  const from   = document.getElementById('rec-filter-from')?.value   || '';
+  const to     = document.getElementById('rec-filter-to')?.value     || '';
+
   const params = new URLSearchParams();
   if (driver) params.set('driver', driver);
   if (track)  params.set('track',  track);
   if (car)    params.set('car',    car);
+  if (q)      params.set('q',      q);
+  if (from)   params.set('from',   from);
+  if (to)     params.set('to',     to);
+
+  const tb = document.getElementById('all-tbody');
+  if (tb && !_allLapsData.length) tb.innerHTML = _skelRows(6, 7);
 
   const d = await apiFetch('/api/laptimes?' + params).then(r => r.json()).catch(() => null);
-  const tb  = document.getElementById('all-tbody');
   const cnt = document.getElementById('rec-count');
   if (!d || !d.entries.length) {
-    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('t_no_entries')}</td></tr>`;
-    if (cnt) cnt.textContent = t('t_entries', 0);
+    if (tb) tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('t_no_entries')}</td></tr>`;
+    if (cnt) cnt.textContent = '0 Einträge';
     document.getElementById('all-pagination').innerHTML = '';
     _allLapsData = [];
+    _vsActive = false;
+    document.getElementById('all-tbl-wrap')?.classList.remove('tbl-vscroll');
     return;
   }
   _allLapsData = d.entries;
-  document.getElementById('rec-export-btn').href = '/api/laptimes/export?' + params;
+  const exportBtn = document.getElementById('rec-export-btn');
+  if (exportBtn) exportBtn.href = '/api/laptimes/export?' + params;
   renderAllLapsPage();
 }
 
 function renderAllLapsPage() {
-  const q    = (document.getElementById('rec-filter-search')?.value || '').toLowerCase();
-  const from = document.getElementById('rec-filter-from')?.value || '';
-  const to   = document.getElementById('rec-filter-to')?.value   || '';
-
   let data = _allLapsData;
-
-  if (q || from || to) {
-    data = data.filter(e => {
-      if (q && !String(e.driver||'').toLowerCase().includes(q)
-            && !String(e.car||'').toLowerCase().includes(q)
-            && !String(e.track||'').toLowerCase().includes(q)) return false;
-      const ts = (e.ts || '').slice(0, 10);
-      if (from && ts < from) return false;
-      if (to   && ts > to)   return false;
-      return true;
-    });
-  }
 
   if (_sortState.col) {
     const col = _sortState.col, dir = _sortState.dir === 'asc' ? 1 : -1;
@@ -1547,32 +1609,46 @@ function renderAllLapsPage() {
   const cnt = document.getElementById('rec-count');
   if (cnt) cnt.textContent = `${data.length} Einträge`;
 
-  const start = _allLapsPage * _PAGE_SIZE;
-  const page  = data.slice(start, start + _PAGE_SIZE);
-  const tb    = document.getElementById('all-tbody');
+  const wrap = document.getElementById('all-tbl-wrap');
+  const tb   = document.getElementById('all-tbody');
+  const pag  = document.getElementById('all-pagination');
 
   if (!data.length) {
-    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Keine Einträge gefunden</td></tr>`;
-    document.getElementById('all-pagination').innerHTML = '';
+    if (tb) tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Keine Einträge gefunden</td></tr>`;
+    if (pag) pag.innerHTML = '';
+    if (wrap) wrap.classList.remove('tbl-vscroll');
+    _vsActive = false;
     return;
   }
 
-  tb.innerHTML = page.map((e, i) => {
-    const gi = start + i;
-    const pc = ['pos-1','pos-2','pos-3'][gi] || '';
-    return `<tr>
-      <td class="${pc}">${gi+1}</td>
-      <td><strong>${esc(e.driver)}</strong></td>
-      <td style="font-size:11px;color:var(--muted)">${esc(e.car)}</td>
-      <td style="font-size:11px">${esc(e.track)}</td>
-      <td class="${gi===0?'best-t':''}" style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
-      <td style="color:${e.cuts>0?'var(--yellow)':'var(--muted)'};">${e.cuts}</td>
-      <td style="color:var(--muted);font-size:11px">${esc(e.ts||'')}</td>
-    </tr>`;
-  }).join('');
+  // ── Virtual Scroller (large datasets) ────────────────────────────────────
+  if (data.length > _VS_THRESHOLD) {
+    if (!_vsActive && wrap) {
+      wrap.classList.add('tbl-vscroll');
+      wrap.removeEventListener('scroll', wrap._vsHandler);
+      let _raf = null;
+      wrap._vsHandler = () => {
+        if (_raf) cancelAnimationFrame(_raf);
+        _raf = requestAnimationFrame(() => _vsPaint(data, wrap, tb));
+      };
+      wrap.addEventListener('scroll', wrap._vsHandler, { passive: true });
+      _vsActive = true;
+    }
+    _vsPaint(data, wrap, tb);
+    if (pag) pag.innerHTML = `<span style="font-size:11px;color:var(--muted)">${data.length} Einträge · durchgehend scrollen</span>`;
+    return;
+  }
+
+  // ── Standard Pagination (small datasets) ─────────────────────────────────
+  _vsActive = false;
+  if (wrap) wrap.classList.remove('tbl-vscroll');
+
+  const start = _allLapsPage * _PAGE_SIZE;
+  const page  = data.slice(start, start + _PAGE_SIZE);
+  tb.innerHTML = page.map((e, i) => _lapRow(e, start + i)).join('');
 
   const pages = Math.ceil(data.length / _PAGE_SIZE);
-  const pag   = document.getElementById('all-pagination');
+  if (!pag) return;
   if (pages <= 1) { pag.innerHTML = ''; return; }
   let html = '';
   if (_allLapsPage > 0)
@@ -1584,6 +1660,39 @@ function renderAllLapsPage() {
     html += `<button class="btn btn-gray btn-sm" onclick="_allLapsPage++;renderAllLapsPage()">›</button>`;
   html += `<span style="font-size:11px;color:var(--muted)">Seite ${_allLapsPage+1}/${pages} · ${data.length} Einträge</span>`;
   pag.innerHTML = html;
+}
+
+function _lapRow(e, gi) {
+  const pc = ['pos-1','pos-2','pos-3'][gi] || '';
+  return `<tr style="height:${_VS_ROW_H}px">
+    <td class="${pc}">${gi+1}</td>
+    <td><strong>${esc(e.driver)}</strong></td>
+    <td style="font-size:11px;color:var(--muted)">${esc(e.car)}</td>
+    <td style="font-size:11px">${esc(e.track)}</td>
+    <td class="${gi===0?'best-t':''}" style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
+    <td style="color:${e.cuts>0?'var(--yellow)':'var(--muted)'};">${e.cuts}</td>
+    <td style="color:var(--muted);font-size:11px">${esc(e.ts||'')}</td>
+  </tr>`;
+}
+
+function _vsPaint(data, wrap, tb) {
+  const scrollTop = wrap.scrollTop;
+  const viewH     = wrap.clientHeight;
+  const total     = data.length;
+  const rowH      = _VS_ROW_H;
+  const buf       = 8;
+  const startIdx  = Math.max(0, Math.floor(scrollTop / rowH) - buf);
+  const endIdx    = Math.min(total, Math.ceil((scrollTop + viewH) / rowH) + buf);
+
+  let html = '';
+  if (startIdx > 0)
+    html += `<tr style="height:${startIdx * rowH}px"></tr>`;
+  for (let i = startIdx; i < endIdx; i++)
+    html += _lapRow(data[i], i);
+  if (endIdx < total)
+    html += `<tr style="height:${(total - endIdx) * rowH}px"></tr>`;
+
+  tb.innerHTML = html;
 }
 
 function _sortCol(col) {
@@ -1600,7 +1709,11 @@ function clearLaptimes() {
   if (!confirm(t('t_laptimes_del_confirm'))) return;
   apiFetch('/api/laptimes', {method:'DELETE'}).then(r=>r.json()).then(d=>{
     toast(d.ok?t('t_laptimes_deleted'):'✗ '+d.msg, d.ok?'ok':'err');
-    if (d.ok) { loadBestLaps(); loadAllLaps(); loadDriverStats(); refreshQuickStats(); }
+    if (d.ok) {
+      invalidateCache('/api/laptimes');
+      _invalidateTab('best'); _invalidateTab('all'); _invalidateTab('drivers');
+      loadBestLaps(); loadAllLaps(); loadDriverStats(); refreshQuickStats();
+    }
   });
 }
 
@@ -1883,9 +1996,32 @@ function loadChampStandings(cid) {
         <button class="btn btn-danger btn-sm" onclick="removeChampRound('${esc(cid)}','${esc(r.filename)}')">✕</button>
       </div>`).join('');
 
+    // Standings Balken-Chart (top 8)
+    const maxPts  = standing[0]?.points || 1;
+    const barColors = ['#f59e0b','#9ca3af','#b45309'];
+    const bars = standing.slice(0, 8).map((s, i) => {
+      const pct = maxPts > 0 ? Math.round(s.points / maxPts * 100) : 0;
+      const bg  = barColors[i] || 'var(--red)';
+      const medal = ['🥇','🥈','🥉'][i] || `P${i+1}`;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <span style="width:24px;text-align:right;font-size:12px;flex-shrink:0">${medal}</span>
+        <span style="font-size:12px;font-weight:600;width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${esc(s.driver)}">${esc(s.driver)}</span>
+        <div style="flex:1;background:var(--bg3);border-radius:4px;height:18px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${bg};border-radius:4px;transition:width .5s ease;min-width:${s.points>0?'24px':'0'};display:flex;align-items:center;padding:0 6px;box-sizing:border-box">
+            <span style="font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${s.points > 0 ? s.points : ''}</span>
+          </div>
+        </div>
+        <span style="width:32px;text-align:right;font-size:11px;color:var(--muted);flex-shrink:0">${s.points}</span>
+      </div>`;
+    }).join('');
+
     det.innerHTML = `
       <div style="font-size:16px;font-weight:700;margin-bottom:4px">🏆 ${esc(c.name)}</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${t('champ_points_schema')}: ${(c.points||[]).join(' · ')}</div>
+
+      ${standing.length && bars ? `
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Punkteverteilung</div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px">${bars}</div>` : ''}
 
       ${standing.length ? `
       <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">${t('champ_standings')}</div>
@@ -2582,19 +2718,22 @@ function navTo(id) {
   // Scroll content to top
   const _cnt = document.querySelector('.content');
   if (_cnt) _cnt.scrollTop = 0;
-  // Side effects
+  // Side effects (lazy: Daten-Tabs nur laden wenn stale)
   if (id === 'config')         { const t = localStorage.getItem('acweb_cfg_tab') || 'server'; cfgTab(t); }
   if (id === 'live')           { loadEvents(); if (live) { updateLaps(live); _renderChat(live.chat||[], "chat-box"); drawMap(live); } }
   if (id === 'server-monitor') updateServerMonitor(live);
   if (id === 'logs')           loadLogs();
-  if (id === 'players')        { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
-  if (id === 'integrations')   { loadDiscord(); loadChatNotify(); loadTelegram(); }
-  if (id === 'content')        loadInstalledContent();
-  if (id === 'records')        { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
-  if (id === 'analytics')      loadAnalyticsDrivers();
-  if (id === 'results')        loadResults();
-  if (id === 'championship')   loadChampionships();
+  if (id === 'players')        { if (_isStale('players')) { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); _markLoaded('players'); } }
+  if (id === 'integrations')   { if (_isStale('integrations')) { loadDiscord(); loadChatNotify(); loadTelegram(); _markLoaded('integrations'); } }
+  if (id === 'content')        { if (_isStale('content')) { loadInstalledContent(); _markLoaded('content'); } }
+  if (id === 'records')        { if (_isStale('records')) { loadRecordFilters(); _markLoaded('records'); } _recTab('best'); }
+  if (id === 'analytics')      { if (_isStale('analytics')) { document.getElementById('an-leaderboard-tbody').innerHTML=_skelRows(5,6); loadAnalyticsDrivers(); _markLoaded('analytics'); } }
+  if (id === 'results')        { if (_isStale('results'))  { loadResults(); _markLoaded('results'); } }
+  if (id === 'championship')   { if (_isStale('championship')) { loadChampionships(); _markLoaded('championship'); } }
   if (id === 'schedule')       { loadScheduledEvents(); _loadSchedPresets(); }
+
+  // Adaptives Polling: schnell bei Live-relevanten Panels, langsam sonst
+  _adjustPolling(id);
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('open');
@@ -2701,7 +2840,17 @@ refreshUptime();
 loadServerProfile();
 refreshQuickStats();
 
-setInterval(refreshLive, 3000);
+// ── Adaptives Polling ────────────────────────────────────────────────────
+const _POLL_LIVE_PANELS = new Set(['dashboard','live','server-monitor']);
+let _liveTimer = null;
+
+function _adjustPolling(panelId) {
+  if (_liveTimer) clearInterval(_liveTimer);
+  const fast = _POLL_LIVE_PANELS.has(panelId);
+  _liveTimer = setInterval(refreshLive, fast ? 3000 : 8000);
+}
+
+_adjustPolling('dashboard'); // initial
 setInterval(function _tickLapTimers() {
   const now = Date.now();
   for (const [id, b] of Object.entries(_lapBases)) {

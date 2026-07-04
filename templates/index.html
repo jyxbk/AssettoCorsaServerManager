@@ -392,15 +392,15 @@
         </div>
         <div class="dff">
           <label>Von</label>
-          <input type="date" class="inp" id="rec-filter-from" onchange="renderAllLapsPage()" style="width:128px">
+          <input type="date" class="inp" id="rec-filter-from" onchange="loadAllLaps()" style="width:128px">
         </div>
         <div class="dff">
           <label>Bis</label>
-          <input type="date" class="inp" id="rec-filter-to" onchange="renderAllLapsPage()" style="width:128px">
+          <input type="date" class="inp" id="rec-filter-to" onchange="loadAllLaps()" style="width:128px">
         </div>
         <div class="dff" style="flex:2;min-width:150px">
           <label>Suche</label>
-          <input type="search" class="inp" id="rec-filter-search" placeholder="Fahrer, Auto, Strecke…" oninput="renderAllLapsPage()">
+          <input type="search" class="inp" id="rec-filter-search" placeholder="Fahrer, Auto, Strecke…" oninput="_onSearchInput()">
         </div>
         <div class="rec-filter-actions">
           <span id="rec-count" style="font-size:11px;color:var(--muted)"></span>
@@ -408,7 +408,7 @@
           <button class="btn btn-danger btn-sm" onclick="clearLaptimes()" title="Alle Rundenzeiten löschen">🗑</button>
         </div>
       </div>
-      <div class="tbl-wrap">
+      <div class="tbl-wrap" id="all-tbl-wrap">
         <table>
           <thead><tr>
             <th>Pos.</th>
@@ -419,9 +419,7 @@
             <th>Cuts</th>
             <th class="sort-th" data-col="ts" onclick="_sortCol('ts')">Datum</th>
           </tr></thead>
-          <tbody id="all-tbody">
-            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
-          </tbody>
+          <tbody id="all-tbody"></tbody>
         </table>
       </div>
       <div id="all-pagination" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>

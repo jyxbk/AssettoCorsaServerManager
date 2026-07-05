@@ -99,10 +99,11 @@ def api_laptimes_export():
     writer = csv.writer(buf)
     writer.writerow(["Datum", "Fahrer", "GUID", "Auto", "Strecke", "Rundenzeit", "Rundenzeit_ms", "Cuts"])
     for e in entries:
-        ms   = e.get("laptime", 0)
-        mins = ms // 60000
-        secs = (ms % 60000) / 1000
-        fmt  = f"{mins}:{secs:06.3f}"
+        ms      = int(e.get("laptime", 0))
+        mins    = ms // 60000
+        secs    = (ms % 60000) // 1000
+        ms_part = ms % 1000
+        fmt     = f"{mins}:{secs:02d}.{ms_part:03d}"
         writer.writerow([
             e.get("ts", ""),
             _csv_safe(e.get("driver", "")),

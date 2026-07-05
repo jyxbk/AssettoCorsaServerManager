@@ -35,7 +35,7 @@ def db_conn():
 
 
 def init_db():
-    """Erstellt Schema und migriert vorhandene laptimes.json einmalig."""
+    """Erstellt Schema, führt Schema-Upgrades durch und migriert vorhandene laptimes.json."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _db_lock:
         conn = _get_conn()
@@ -57,13 +57,29 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_lt_ts      ON laptimes(ts);
                 CREATE INDEX IF NOT EXISTS idx_lt_laptime ON laptimes(laptime);
                 CREATE INDEX IF NOT EXISTS idx_lt_ts_date ON laptimes(SUBSTR(ts,1,10));
-                CREATE UNIQUE INDEX IF NOT EXISTS idx_lt_dedup
-                    ON laptimes(driver, laptime, track);
             """)
             conn.commit()
+            _upgrade_schema(conn)
             _migrate_json(conn)
         finally:
             conn.close()
+
+
+def _upgrade_schema(conn: sqlite3.Connection):
+    """Versionierte Schema-Upgrades — läuft jede einmalig via PRAGMA user_version."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+
+    if version < 1:
+        # Sprint 8: UNIQUE INDEX korrigiert — (driver, laptime, track) erlaubte keine
+        # identischen Zeiten zu unterschiedlichen Zeitstempeln (z.B. Gleichstände).
+        # Neuer Index: (driver, track, laptime, ts) — ts unterscheidet legitime Wiederholungen.
+        conn.execute("DROP INDEX IF EXISTS idx_lt_dedup")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_lt_dedup"
+            " ON laptimes(driver, track, laptime, ts)"
+        )
+        conn.execute("PRAGMA user_version = 1")
+        conn.commit()
 
 
 def _migrate_json(conn: sqlite3.Connection):

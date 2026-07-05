@@ -48,24 +48,32 @@ def load_laptimes_filtered(
     driver: str = "", track: str = "", car: str = "",
     q: str = "", from_dt: str = "", to_dt: str = "",
 ) -> list:
-    """SQL-seitige Filterung für maximale Performance bei großen Datensätzen."""
+    """SQL-seitige Filterung mit COLLATE NOCASE (kein LOWER() — behält Index-Kompatibilität)."""
     from helpers.db import db_conn as _db
     conds, params = [], []
     if driver:
-        conds.append("LOWER(driver) LIKE ?"); params.append(f"%{driver}%")
+        # LIKE … COLLATE NOCASE statt LOWER(col) LIKE → Index-freundlich
+        conds.append("driver LIKE ? COLLATE NOCASE"); params.append(f"%{driver}%")
     if track:
-        conds.append("LOWER(track) LIKE ?");  params.append(f"%{track}%")
+        conds.append("track LIKE ? COLLATE NOCASE");  params.append(f"%{track}%")
     if car:
-        conds.append("LOWER(car) LIKE ?");    params.append(f"%{car}%")
+        conds.append("car LIKE ? COLLATE NOCASE");    params.append(f"%{car}%")
     if q:
-        conds.append("(LOWER(driver) LIKE ? OR LOWER(car) LIKE ? OR LOWER(track) LIKE ?)")
+        conds.append(
+            "(driver LIKE ? COLLATE NOCASE"
+            " OR car    LIKE ? COLLATE NOCASE"
+            " OR track  LIKE ? COLLATE NOCASE)"
+        )
         params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
     if from_dt:
         conds.append("SUBSTR(ts,1,10) >= ?"); params.append(from_dt)
     if to_dt:
         conds.append("SUBSTR(ts,1,10) <= ?"); params.append(to_dt)
     where = ("WHERE " + " AND ".join(conds)) if conds else ""
-    sql = f"SELECT ts, driver, guid, car, skin, track, laptime, cuts FROM laptimes {where} ORDER BY laptime ASC"
+    sql = (
+        f"SELECT ts, driver, guid, car, skin, track, laptime, cuts"
+        f" FROM laptimes {where} ORDER BY laptime ASC"
+    )
     with _db() as conn:
         rows = conn.execute(sql, params).fetchall()
     return [dict(r) for r in rows]
@@ -271,11 +279,13 @@ def _split_sender():
     from helpers.system import get_split_events, server_json as _sjson, rcon_send as _rcon
     while True:
         time.sleep(0.5)
-        events = get_split_events()
-        if not events:
-            continue
+        # Config ZUERST prüfen — get_split_events() leert die Queue sofort,
+        # Ereignisse wären bei deaktivierter Config unwiederbringlich verloren.
         chat_cfg = _load_chat_notify_config()
         if not (chat_cfg.get("enabled") and chat_cfg.get("show_splits")):
+            continue
+        events = get_split_events()
+        if not events:
             continue
         # Car-ID → Fahrername
         js = _sjson()

@@ -78,6 +78,12 @@ def save_server_settings():
         "BLACKLIST_MODE", "LEGAL_TYRES", "ALLOWED_TYRES_OUT",
     }
     updates = {k: v for k, v in data.items() if k in allowed}
+    # SUN_ANGLE muss als Integer in server_cfg.ini stehen (AC parst keinen String)
+    if "SUN_ANGLE" in updates:
+        try:
+            updates["SUN_ANGLE"] = int(updates["SUN_ANGLE"])
+        except (ValueError, TypeError):
+            updates["SUN_ANGLE"] = 48  # AC-Default: Morgen ~09:00 Uhr
     ok, msg = update_server_cfg(updates)
     maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})

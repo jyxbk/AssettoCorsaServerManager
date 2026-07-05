@@ -101,8 +101,7 @@ function _onSearchInput() {
 }
 
 function autoRestart() {
-  const el = document.getElementById('auto-restart');
-  return el ? el.checked : false;  // Bug fix: Null-Check
+  return document.getElementById('auto-restart')?.checked === true;
 }
 
 // ─── NAV TRACKER + RESTART MODAL ───────────────────────────────────────────

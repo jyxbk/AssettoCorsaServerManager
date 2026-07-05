@@ -149,4 +149,5 @@ def _scheduler_loop():
 
 
 def start_scheduler():
-    threading.Thread(target=_scheduler_loop, daemon=True).start()
+    from helpers.threads import supervised
+    supervised(_scheduler_loop, name="scheduler", restart_delay=15.0)

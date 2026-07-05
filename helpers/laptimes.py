@@ -164,14 +164,14 @@ def load_driver_stats() -> list:
             ORDER BY total_laps DESC
         """).fetchall()
         track_rows = conn.execute("""
-            SELECT driver, track, COUNT(*) AS laps,
-                   MIN(laptime) AS best,
+            SELECT o.driver, o.track, COUNT(*) AS laps,
+                   MIN(o.laptime) AS best,
                    (SELECT car FROM laptimes i
                     WHERE i.driver = o.driver AND i.track = o.track
-                      AND i.laptime = MIN(o.laptime) LIMIT 1) AS car
+                    ORDER BY i.laptime LIMIT 1) AS car
             FROM laptimes o
-            WHERE driver != ''
-            GROUP BY driver, track
+            WHERE o.driver != ''
+            GROUP BY o.driver, o.track
         """).fetchall()
 
     by_driver: dict = {}
@@ -558,7 +558,9 @@ def _laptime_monitor():
 
 
 def start_lap_tracker():
-    """Startet Preload + Live-Monitor + Split-Sender als Background-Threads."""
-    threading.Thread(target=_preload_journal_history, daemon=True).start()
-    threading.Thread(target=_laptime_monitor, daemon=True).start()
-    threading.Thread(target=_split_sender, daemon=True).start()
+    """Startet Preload + Live-Monitor + Split-Sender als supervisierte Background-Threads."""
+    from helpers.threads import supervised
+    # Preload läuft einmalig — one_shot=True verhindert unnötigen Neustart nach Abschluss
+    supervised(_preload_journal_history, name="lap-preload",   one_shot=True)
+    supervised(_laptime_monitor,          name="lap-monitor",  restart_delay=5.0)
+    supervised(_split_sender,             name="split-sender", restart_delay=5.0)

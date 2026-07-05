@@ -10,6 +10,7 @@ Struktur:
     discord.py          ← Discord-Webhook-Monitor
     laptimes.py         ← Lap-Tracker, Journal-Parsing
     content.py          ← Cars/Tracks/ZIP/Presets/GUIDs
+    threads.py          ← Supervised Thread-Management
   routes/
     main.py             ← Index, Live-API, Bilder, Login, Logs
     settings.py         ← /save_* Endpunkte
@@ -18,10 +19,45 @@ Struktur:
     laptimes_routes.py  ← /api/laptimes/* Endpunkte
     entry_list.py       ← Entry List Editor API
 """
-from flask import Flask
+import logging
+import logging.config
+import os
+
+from flask import Flask, jsonify
 
 from constants import SECRET_KEY
 from helpers.auth import get_csrf_token
+
+# ── Logging-Konfiguration ─────────────────────────────────────────────────────
+_LOG_LEVEL = os.environ.get("ACWEB_LOG_LEVEL", "INFO").upper()
+
+logging.config.dictConfig({
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "level": _LOG_LEVEL,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": _LOG_LEVEL,
+    },
+    # Werkzeug-Access-Log auf WARNING reduzieren — Polling-Spam unterdrücken
+    "loggers": {
+        "werkzeug": {"level": "WARNING", "propagate": True},
+    },
+})
+
+_logger = logging.getLogger(__name__)
 
 # ── Blueprints ────────────────────────────────────────────────────────────────
 from routes.main            import bp as main_bp
@@ -58,13 +94,11 @@ app.register_blueprint(analytics_bp)
 # ── Security Headers ──────────────────────────────────────────────────────────
 @app.after_request
 def _security_headers(resp):
-    resp.headers["X-Frame-Options"]           = "DENY"
-    resp.headers["X-Content-Type-Options"]    = "nosniff"
-    resp.headers["X-XSS-Protection"]          = "1; mode=block"
-    resp.headers["Referrer-Policy"]           = "strict-origin-when-cross-origin"
-    resp.headers["Permissions-Policy"]        = "geolocation=(), microphone=(), camera=()"
-    # CSP: Eigene Ressourcen + Inline-Styles (Theme-System) + Inline-Scripts (Jinja2-Templates).
-    # unsafe-inline ist für ein Admin-only Dashboard akzeptabel; kein Nutzer-Content wird gerendert.
+    resp.headers["X-Frame-Options"]        = "DENY"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-XSS-Protection"]       = "1; mode=block"
+    resp.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
+    resp.headers["Permissions-Policy"]     = "geolocation=(), microphone=(), camera=()"
     resp.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
@@ -76,16 +110,28 @@ def _security_headers(resp):
     )
     return resp
 
+# ── Thread-Status-Endpunkt ────────────────────────────────────────────────────
+from helpers.auth import login_required
+
+@app.route("/api/system/threads")
+@login_required
+def api_thread_status():
+    """Gibt den Live-Status aller supervisierten Background-Threads zurück."""
+    from helpers.threads import thread_status
+    return jsonify({"ok": True, "threads": thread_status()})
+
 # ── Datenbank-Initialisierung (Schema + JSON-Migration) ──────────────────────
 from helpers.db import init_db
+_logger.info("Initialisiere Datenbank...")
 init_db()
 
-# ── Background threads ────────────────────────────────────────────────────────
+# ── Background-Threads (supervisiert) ────────────────────────────────────────
 from helpers.discord   import start_discord_monitor
 from helpers.laptimes  import start_lap_tracker
 from helpers.telegram  import start_telegram_monitor
 from helpers.scheduler import start_scheduler
 
+_logger.info("Starte Background-Threads...")
 start_discord_monitor()
 start_telegram_monitor()
 start_scheduler()
@@ -97,6 +143,9 @@ from helpers.system   import set_split_config
 _cn = _load_chat_notify_config()
 if _cn.get("show_splits") and _cn.get("split_points"):
     set_split_config(_cn["split_points"])
+    _logger.info("Split-Konfiguration geladen: %d Punkte", len(_cn["split_points"]))
+
+_logger.info("AC Server Dashboard bereit.")
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":

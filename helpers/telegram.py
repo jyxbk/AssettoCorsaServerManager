@@ -97,4 +97,5 @@ def _telegram_monitor():
 
 
 def start_telegram_monitor():
-    threading.Thread(target=_telegram_monitor, daemon=True).start()
+    from helpers.threads import supervised
+    supervised(_telegram_monitor, name="telegram-monitor", restart_delay=10.0)

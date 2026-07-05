@@ -237,4 +237,5 @@ def _discord_monitor():
 
 
 def start_discord_monitor():
-    threading.Thread(target=_discord_monitor, daemon=True).start()
+    from helpers.threads import supervised
+    supervised(_discord_monitor, name="discord-monitor", restart_delay=10.0)

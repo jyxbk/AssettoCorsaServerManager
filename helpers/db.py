@@ -1,11 +1,14 @@
 """SQLite-Datenbank-Layer: Schema, Verbindung, Migration von JSON."""
 import json
+import logging
 import sqlite3
 import threading
 from contextlib import contextmanager
 from pathlib import Path
 
 from constants import LAPTIMES_FILE
+
+logger = logging.getLogger(__name__)
 
 DB_PATH  = Path(str(LAPTIMES_FILE.parent / "data.db"))
 _db_lock = threading.Lock()
@@ -107,6 +110,6 @@ def _migrate_json(conn: sqlite3.Connection):
         )
         conn.commit()
         LAPTIMES_FILE.rename(str(LAPTIMES_FILE) + ".migrated")
-        print(f"[db] Migration abgeschlossen: {len(entries)} Einträge importiert.")
-    except Exception as exc:
-        print(f"[db] JSON-Migration fehlgeschlagen: {exc}")
+        logger.info("JSON-Migration abgeschlossen: %d Einträge importiert.", len(entries))
+    except Exception:
+        logger.exception("JSON-Migration fehlgeschlagen.")

@@ -101,6 +101,95 @@ def clear_laptimes():
         conn.execute("DELETE FROM laptimes")
 
 
+def load_best_per_driver_track() -> list:
+    """Beste Rundenzeit je (Fahrer, Strecke) — vollständig in SQL aggregiert."""
+    from helpers.db import db_conn as _db
+    sql = """
+        SELECT l.ts, l.driver, l.guid, l.car, l.skin, l.track, l.laptime, l.cuts
+        FROM laptimes l
+        INNER JOIN (
+            SELECT driver, track, MIN(laptime) AS min_lt
+            FROM laptimes
+            GROUP BY driver, track
+        ) m ON l.driver = m.driver AND l.track = m.track AND l.laptime = m.min_lt
+        ORDER BY l.track, l.laptime
+    """
+    with _db() as conn:
+        rows = conn.execute(sql).fetchall()
+    return [dict(r) for r in rows]
+
+
+def load_distinct_filter_values() -> dict:
+    """Gibt DISTINCT-Werte für driver/track/car aus SQL zurück — kein Python-Scan."""
+    from helpers.db import db_conn as _db
+    with _db() as conn:
+        drivers = [r[0] for r in conn.execute(
+            "SELECT DISTINCT driver FROM laptimes WHERE driver != '' ORDER BY driver COLLATE NOCASE"
+        ).fetchall()]
+        tracks = [r[0] for r in conn.execute(
+            "SELECT DISTINCT track FROM laptimes WHERE track != '' ORDER BY track COLLATE NOCASE"
+        ).fetchall()]
+        cars = [r[0] for r in conn.execute(
+            "SELECT DISTINCT car FROM laptimes WHERE car != '' ORDER BY car COLLATE NOCASE"
+        ).fetchall()]
+    return {"drivers": drivers, "tracks": tracks, "cars": cars}
+
+
+def load_today_laptimes() -> list:
+    """Heutige Rundenzeiten — date-Filterung in SQL via SUBSTR(ts,1,10)."""
+    import time
+    from helpers.db import db_conn as _db
+    today = time.strftime("%Y-%m-%d")
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT ts, driver, guid, car, skin, track, laptime, cuts"
+            " FROM laptimes WHERE SUBSTR(ts,1,10) = ? ORDER BY laptime",
+            (today,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def load_driver_stats() -> list:
+    """Fahrer-Statistiken vollständig in SQL aggregiert — kein Python-O(n)-Scan."""
+    from helpers.db import db_conn as _db
+    with _db() as conn:
+        summary_rows = conn.execute("""
+            SELECT driver, guid,
+                   COUNT(*) AS total_laps,
+                   SUM(CASE WHEN cuts = 0 THEN 1 ELSE 0 END) AS clean_laps,
+                   MIN(laptime) AS best_overall
+            FROM laptimes
+            WHERE driver != ''
+            GROUP BY driver
+            ORDER BY total_laps DESC
+        """).fetchall()
+        track_rows = conn.execute("""
+            SELECT driver, track, COUNT(*) AS laps,
+                   MIN(laptime) AS best,
+                   (SELECT car FROM laptimes i
+                    WHERE i.driver = o.driver AND i.track = o.track
+                      AND i.laptime = MIN(o.laptime) LIMIT 1) AS car
+            FROM laptimes o
+            WHERE driver != ''
+            GROUP BY driver, track
+        """).fetchall()
+
+    by_driver: dict = {}
+    for r in summary_rows:
+        by_driver[r["driver"]] = {
+            "driver": r["driver"], "guid": r["guid"],
+            "total_laps": r["total_laps"], "clean_laps": r["clean_laps"],
+            "best_overall": r["best_overall"], "tracks": {},
+        }
+    for r in track_rows:
+        d = r["driver"]
+        if d in by_driver:
+            by_driver[d]["tracks"][r["track"]] = {
+                "laps": r["laps"], "best": r["best"], "car": r["car"] or "",
+            }
+    return list(by_driver.values())
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def split_car_skin(car_skin: str) -> tuple[str, str]:

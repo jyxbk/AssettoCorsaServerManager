@@ -55,6 +55,27 @@ app.register_blueprint(championship_bp)
 app.register_blueprint(scheduler_bp)
 app.register_blueprint(analytics_bp)
 
+# ── Security Headers ──────────────────────────────────────────────────────────
+@app.after_request
+def _security_headers(resp):
+    resp.headers["X-Frame-Options"]           = "DENY"
+    resp.headers["X-Content-Type-Options"]    = "nosniff"
+    resp.headers["X-XSS-Protection"]          = "1; mode=block"
+    resp.headers["Referrer-Policy"]           = "strict-origin-when-cross-origin"
+    resp.headers["Permissions-Policy"]        = "geolocation=(), microphone=(), camera=()"
+    # CSP: Eigene Ressourcen + Inline-Styles (Theme-System) + Inline-Scripts (Jinja2-Templates).
+    # unsafe-inline ist für ein Admin-only Dashboard akzeptabel; kein Nutzer-Content wird gerendert.
+    resp.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "font-src 'self'; "
+        "frame-ancestors 'none';"
+    )
+    return resp
+
 # ── Datenbank-Initialisierung (Schema + JSON-Migration) ──────────────────────
 from helpers.db import init_db
 init_db()

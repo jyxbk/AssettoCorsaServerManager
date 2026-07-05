@@ -4,12 +4,15 @@ Bug fix #3: CSV-Export verwendet jetzt korrektes Quote-Escaping via csv-Modul.
 """
 import csv
 import io
-import time
 
 from flask import Blueprint, Response, jsonify, request
 
 from helpers.auth import csrf_protect, login_required
-from helpers.laptimes import clear_laptimes, load_laptimes, load_laptimes_filtered
+from helpers.laptimes import (
+    clear_laptimes, load_laptimes, load_laptimes_filtered,
+    load_best_per_driver_track, load_distinct_filter_values,
+    load_today_laptimes, load_driver_stats,
+)
 
 bp = Blueprint("laptimes", __name__)
 
@@ -47,14 +50,7 @@ def api_laptimes():
 @bp.route("/api/laptimes/best")
 @login_required
 def api_laptimes_best():
-    entries = load_laptimes()
-    best = {}
-    for e in entries:
-        key = (e.get("driver", ""), e.get("track", ""))
-        if key not in best or e.get("laptime", 99999999) < best[key].get("laptime", 99999999):
-            best[key] = e
-    result = sorted(best.values(), key=lambda e: (e.get("track", ""), e.get("laptime", 99999999)))
-    return jsonify({"ok": True, "entries": result})
+    return jsonify({"ok": True, "entries": load_best_per_driver_track()})
 
 
 # ── Filter options ────────────────────────────────────────────────────────────
@@ -62,11 +58,7 @@ def api_laptimes_best():
 @bp.route("/api/laptimes/drivers")
 @login_required
 def api_laptimes_drivers():
-    entries = load_laptimes()
-    drivers = sorted({e.get("driver", "") for e in entries if e.get("driver")})
-    tracks  = sorted({e.get("track",  "") for e in entries if e.get("track")})
-    cars    = sorted({e.get("car",    "") for e in entries if e.get("car")})
-    return jsonify({"drivers": drivers, "tracks": tracks, "cars": cars})
+    return jsonify(load_distinct_filter_values())
 
 
 # ── Clear all ─────────────────────────────────────────────────────────────────
@@ -127,31 +119,7 @@ def api_laptimes_export():
 @bp.route("/api/laptimes/stats")
 @login_required
 def api_laptimes_stats():
-    entries = load_laptimes()
-    drivers: dict = {}
-    for e in entries:
-        d = e.get("driver", "")
-        if not d:
-            continue
-        s = drivers.setdefault(d, {
-            "driver": d, "guid": e.get("guid", ""),
-            "total_laps": 0, "clean_laps": 0,
-            "best_overall": None, "tracks": {},
-        })
-        s["total_laps"] += 1
-        if e.get("cuts", 0) == 0:
-            s["clean_laps"] += 1
-        lt = e.get("laptime", 0)
-        if lt and (s["best_overall"] is None or lt < s["best_overall"]):
-            s["best_overall"] = lt
-        track_key = e.get("track", "unknown")
-        t = s["tracks"].setdefault(track_key, {"laps": 0, "best": None, "car": ""})
-        t["laps"] += 1
-        if lt and (t["best"] is None or lt < t["best"]):
-            t["best"] = lt
-            t["car"]  = e.get("car", "")
-    result = sorted(drivers.values(), key=lambda x: x["total_laps"], reverse=True)
-    return jsonify({"ok": True, "stats": result})
+    return jsonify({"ok": True, "stats": load_driver_stats()})
 
 
 # ── Today's quick stats ───────────────────────────────────────────────────────
@@ -159,8 +127,7 @@ def api_laptimes_stats():
 @bp.route("/api/laptimes/today")
 @login_required
 def api_laptimes_today():
-    today   = time.strftime("%Y-%m-%d")
-    entries = [e for e in load_laptimes() if e.get("ts", "").startswith(today)]
+    entries = load_today_laptimes()
     best    = min(entries, key=lambda e: e.get("laptime", 99999999), default=None)
     drivers = len({e.get("driver", "") for e in entries if e.get("driver")})
     return jsonify({

@@ -5,7 +5,7 @@ from helpers.auth import api_rate_limit, csrf_protect, login_required
 from helpers.config_io import read_server_cfg, remove_cfg_section, update_section_cfg, update_server_cfg
 from helpers.content import get_current_slots_per_car, regen_entry_list
 from helpers.laptimes import _load_chat_notify_config, _load_cut_actions_config, save_chat_notify_config, save_cut_actions_config
-from helpers.system import load_spline_points, maybe_restart
+from helpers.system import load_spline_points, maybe_restart, run_systemctl
 from helpers.telegram import _load_telegram_config, save_telegram_config, telegram_notify
 
 bp = Blueprint("settings", __name__)
@@ -78,12 +78,6 @@ def save_server_settings():
         "BLACKLIST_MODE", "LEGAL_TYRES", "ALLOWED_TYRES_OUT",
     }
     updates = {k: v for k, v in data.items() if k in allowed}
-    # SUN_ANGLE muss als Integer in server_cfg.ini stehen (AC parst keinen String)
-    if "SUN_ANGLE" in updates:
-        try:
-            updates["SUN_ANGLE"] = int(updates["SUN_ANGLE"])
-        except (ValueError, TypeError):
-            updates["SUN_ANGLE"] = 48  # AC-Default: Morgen ~09:00 Uhr
     ok, msg = update_server_cfg(updates)
     maybe_restart(data)
     return jsonify({"ok": ok, "msg": msg})
@@ -385,6 +379,54 @@ def set_voting_weather():
         return jsonify({"ok": False, "msg": str(e)}), 500
 
 
+# ── Ignore Configuration Errors (z.B. fehlende data.acd-Checksums) ───────────
+
+_IGNORE_CFG_KEYS = {
+    "MissingCarChecksums", "MissingTrackParams",
+    "WrongServerDetails", "UnsafeAdminWhitelist",
+}
+
+
+@bp.route("/api/ignore_config_errors", methods=["GET"])
+@login_required
+def get_ignore_config_errors():
+    content = _read_yaml()
+    data = {}
+    for key in _IGNORE_CFG_KEYS:
+        m = _re.search(rf'(?m)^[ \t]+{key}:\s*(true|false)\s*$', content)
+        data[key] = m.group(1) == "true" if m else False
+    return jsonify({"ok": True, "data": data})
+
+
+@bp.route("/api/ignore_config_errors", methods=["POST"])
+@login_required
+@csrf_protect
+def set_ignore_config_errors():
+    data  = request.json or {}
+    key   = data.get("key")
+    value = bool(data.get("value"))
+    if key not in _IGNORE_CFG_KEYS:
+        return jsonify({"ok": False, "msg": "Ungültiger Schlüssel"}), 400
+    if not EXTRA_CFG_FILE.exists():
+        return jsonify({"ok": False, "msg": "extra_cfg.yml nicht gefunden"}), 500
+    try:
+        content  = _read_yaml()
+        val_str  = "true" if value else "false"
+        new_content, n = _re.subn(
+            rf'(?m)^([ \t]+{key}:\s*)(true|false)\s*$',
+            rf'\g<1>{val_str}',
+            content,
+        )
+        if n == 0:
+            return jsonify({"ok": False, "msg": f"{key} nicht in extra_cfg.yml gefunden"}), 500
+        _write_yaml(new_content)
+        if data.get("restart"):
+            run_systemctl("restart")
+        return jsonify({"ok": True, "key": key, "value": value})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
 # ── Telegram ─────────────────────────────────────────────────────────────────
 
 @bp.route("/api/telegram", methods=["GET"])
@@ -500,3 +542,71 @@ def add_track_params():
     with open(TRACK_PARAMS_FILE, "a", encoding="utf-8") as f:
         f.write(entry)
     return jsonify({"ok": True, "msg": f"Added params for {track}"})
+
+# ── KI-Fahrer (AI traffic) ────────────────────────────────────────────────────
+
+@bp.route("/api/ai_config", methods=["GET"])
+@login_required
+def get_ai_config():
+    from helpers.config_io import read_ai_params, read_extra_cfg
+    from constants import AI_PARAM_KEYS, TRACKS_DIR
+
+    cfg = read_extra_cfg()
+    ai_params = read_ai_params()
+
+    # Aktuelle Strecke aus server_cfg.ini
+    from helpers.config_io import read_server_cfg
+    srv = read_server_cfg()
+    track = srv.get("TRACK", "")
+    layout = srv.get("TRACK_LAYOUT", "")
+
+    # AssettoServer sucht fast_lane.ai immer im Track-Root-Ordner
+    spline_root = TRACKS_DIR / track / "ai" / "fast_lane.ai" if track else None
+    spline_found = spline_root.exists() if spline_root else False
+
+    return jsonify({
+        "ok": True,
+        "EnableAi": cfg.get("EnableAi", "false"),
+        "spline_found": spline_found,
+        "spline_path": str(spline_root) if spline_root else "",
+        "track": track,
+        "layout": layout,
+        "params": {k: ai_params.get(k, "") for k in AI_PARAM_KEYS},
+    })
+
+
+@bp.route("/api/ai_config", methods=["POST"])
+@login_required
+@csrf_protect
+@api_rate_limit(max_calls=10, window=60)
+def save_ai_config():
+    from helpers.config_io import write_ai_params, write_extra_cfg
+    from constants import AI_PARAM_KEYS
+
+    data = request.json or {}
+
+    # EnableAi in extra_cfg.yml (Top-Level)
+    enable_val = data.get("EnableAi", "false")
+    ok, msg = write_extra_cfg({"EnableAi": enable_val})
+    if not ok:
+        return jsonify({"ok": False, "msg": msg})
+
+    # AiParams-Block schreiben
+    updates = {}
+    for key in AI_PARAM_KEYS:
+        if key in data:
+            val = data[key]
+            if key in ("HideAiCars", "TwoWayTraffic"):
+                updates[key] = str(val).lower() in ("true", "1", "yes")
+            else:
+                try:
+                    updates[key] = float(val) if "." in str(val) else int(val)
+                except (ValueError, TypeError):
+                    updates[key] = val
+
+    if updates:
+        ok2, msg2 = write_ai_params(updates)
+        if not ok2:
+            return jsonify({"ok": False, "msg": msg2})
+
+    return jsonify({"ok": True, "msg": "KI-Konfiguration gespeichert"})

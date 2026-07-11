@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
@@ -59,6 +59,7 @@
   </div>
 
   <div class="nav-item" data-nav="config" onclick="navTo('config')"><span class="nav-icon">⚙</span> <span>Konfiguration</span></div>
+  <div class="nav-item" data-nav="settings-ai" onclick="navTo('settings-ai')"><span class="nav-icon">🤖</span> <span data-i18n="nav_ai">KI-Fahrer</span></div>
 
   <div class="ng" id="ng-verwaltung">
     <div class="ng-hdr" id="ngh-verwaltung" onclick="toggleGroup('verwaltung')"><span class="ng-icon">⊞</span><span class="ng-label" data-i18n="nav_sec_admin">Verwaltung</span><span class="ng-chevron" id="ngc-verwaltung">›</span></div>
@@ -1212,6 +1213,54 @@
 </div><!-- /cfgp-advanced -->
 
 </div><!-- /p-config -->
+
+<!-- ══ KI-FAHRER ═══════════════════════════════════════════════════════════ -->
+<div class="panel" id="p-settings-ai">
+  <div id="ai-spline-banner" style="display:none;padding:8px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;font-weight:600"></div>
+  <div class="g2 gap">
+    <!-- Karte: Allgemein -->
+    <div class="card">
+      <div class="card-ttl" data-i18n="ai_general">Allgemein</div>
+      <table class="itbl">
+        <tr>
+          <td data-i18n="ai_enable">KI-Verkehr aktivieren</td>
+          <td><label class="tog"><input type="checkbox" id="ai-enable"><span class="tog-sl"></span></label></td>
+        </tr>
+        <tr><td colspan="2" style="font-size:11px;color:var(--muted);padding-bottom:8px" data-i18n="ai_enable_desc">Server startet nicht wenn aktiviert aber keine fast_lane.ai vorhanden</td></tr>
+        <tr>
+          <td data-i18n="ai_hide_cars">KI-Autos verstecken</td>
+          <td><label class="tog"><input type="checkbox" id="ai-hide-cars"><span class="tog-sl"></span></label></td>
+        </tr>
+        <tr>
+          <td data-i18n="ai_two_way">Gegenverkehr</td>
+          <td><label class="tog"><input type="checkbox" id="ai-two-way"><span class="tog-sl"></span></label></td>
+        </tr>
+        <tr><td data-i18n="ai_max_speed">Max. Geschwindigkeit (km/h)</td><td><input class="inp" id="ai-max-speed" type="number" min="0" max="400" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_per_player">KI-Autos pro Spieler</td><td><input class="inp" id="ai-per-player" type="number" min="0" max="50" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_max_total">Max. KI-Autos gesamt</td><td><input class="inp" id="ai-max-total" type="number" min="0" max="200" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_corner_speed">Kurvengeschw.-Faktor</td><td><input class="inp" id="ai-corner-speed" type="number" min="0" max="2" step="0.05" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_traffic_density">Verkehrsdichte</td><td><input class="inp" id="ai-traffic-density" type="number" min="0" max="5" step="0.1" style="width:90px"></td></tr>
+      </table>
+    </div>
+    <!-- Karte: Abstände & Spawn -->
+    <div class="card">
+      <div class="card-ttl" data-i18n="ai_distances">Abstände &amp; Spawn</div>
+      <table class="itbl">
+        <tr><td data-i18n="ai_min_safety">Min. Sicherheitsabstand (m)</td><td><input class="inp" id="ai-min-safety" type="number" min="0" max="500" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_max_safety">Max. Sicherheitsabstand (m)</td><td><input class="inp" id="ai-max-safety" type="number" min="0" max="500" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_player_radius">Spieler-Radius (m)</td><td><input class="inp" id="ai-player-radius" type="number" min="0" max="500" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_min_spawn_prot">Min. Spawn-Schutz (s)</td><td><input class="inp" id="ai-min-spawn" type="number" min="0" max="120" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_max_spawn_prot">Max. Spawn-Schutz (s)</td><td><input class="inp" id="ai-max-spawn" type="number" min="0" max="300" style="width:90px"></td></tr>
+        <tr><td data-i18n="ai_spline_offset">Spline-Höhenversatz (m)</td><td><input class="inp" id="ai-spline-offset" type="number" min="-5" max="5" step="0.01" style="width:90px"></td></tr>
+      </table>
+    </div>
+  </div>
+  <div style="margin-top:14px">
+    <button class="btn btn-blue" onclick="saveAiConfig()" data-i18n="ai_save">KI speichern</button>
+    <span id="ai-saved-msg" style="margin-left:10px;font-size:13px;color:var(--green);display:none" data-i18n="ai_saved">✓ Gespeichert</span>
+  </div>
+</div>
+
 
 <!-- ══ CONTENT ════════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-content">

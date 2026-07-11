@@ -61,4 +61,14 @@ EXTRA_CFG_KEYS = [
     "EnableWeatherFx", "MinimumCSPVersion", "EnableClientMessages",
     "EnableRealTime", "MandatoryClientSecurityLevel", "RconPort",
     "UDPPluginAddress", "UDPPluginLocalPort",
+    "EnableAi",
+]
+
+AI_PARAM_KEYS = [
+    "MinAiSafetyDistanceMeters", "MaxAiSafetyDistanceMeters",
+    "MinSpawnProtectionTimeSeconds", "MaxSpawnProtectionTimeSeconds",
+    "MaxSpeedKph", "CorneringSpeedFactor", "TrafficDensity",
+    "AiPerPlayerTargetCount", "MaxAiTargetCount",
+    "SplineHeightOffsetMeters", "PlayerRadiusMeters",
+    "HideAiCars", "TwoWayTraffic",
 ]

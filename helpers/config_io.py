@@ -318,3 +318,88 @@ def get_extra_cfg_description() -> str:
 
 def set_extra_cfg_description(description: str) -> tuple[bool, str]:
     return write_extra_cfg({"ServerDescription": description})
+
+
+# ── AI-Parameter (AiParams-Block in extra_cfg.yml) ────────────────────────────
+
+def read_ai_params() -> dict:
+    """Liest nur 2-Space-Indent-Keys aus dem AiParams-Block von extra_cfg.yml."""
+    from constants import AI_PARAM_KEYS
+    result = {}
+    if not EXTRA_CFG_FILE.exists():
+        return result
+    lines = EXTRA_CFG_FILE.read_text(encoding="utf-8").splitlines()
+    in_block = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "AiParams:":
+            in_block = True
+            continue
+        if in_block:
+            # 2-Space indent = direkte AiParams-Keys
+            if line.startswith("  ") and not line.startswith("    ") and ":" in stripped:
+                key, _, val = stripped.partition(":")
+                key = key.strip()
+                if key in AI_PARAM_KEYS:
+                    result[key] = _yaml_unquote(val.strip())
+            # Neue Top-Level-Zeile ohne Indent = Block endet
+            elif line and not line.startswith(" "):
+                break
+    return result
+
+
+def write_ai_params(updates: dict) -> tuple:
+    """Schreibt nur 2-Space-Indent-Keys im AiParams-Block (lässt 4-Space-Keys unberührt)."""
+    if not EXTRA_CFG_FILE.exists():
+        return False, "extra_cfg.yml not found"
+    with _yaml_lock:
+        lines = EXTRA_CFG_FILE.read_text(encoding="utf-8").splitlines()
+        new_lines = []
+        found_keys: set = set()
+        in_block = False
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.strip()
+            # Erkennt den AiParams-Block
+            if stripped == "AiParams:":
+                in_block = True
+                new_lines.append(line)
+                i += 1
+                continue
+            if in_block:
+                # Block-Ende: nicht-eingerückte Zeile (außer Leerzeilen)
+                if line and not line.startswith(" "):
+                    # Fehlende Keys am Ende des Blocks einfügen
+                    for key in updates:
+                        if key not in found_keys:
+                            new_lines.append(f"  {key}: {_yaml_format_value(updates[key])}")
+                            found_keys.add(key)
+                    in_block = False
+                    new_lines.append(line)
+                    i += 1
+                    continue
+                # 2-Space-Keys (direkte AiParams-Keys)
+                indent = len(line) - len(line.lstrip())
+                if indent == 2 and not stripped.startswith("-") and ":" in stripped:
+                    key = stripped.split(":")[0].strip()
+                    if key in updates:
+                        new_lines.append(f"  {key}: {_yaml_format_value(updates[key])}")
+                        found_keys.add(key)
+                        i += 1
+                        continue
+                # 4-Space-Keys (z.B. CarSpecificOverrides) unberührt lassen
+                new_lines.append(line)
+                i += 1
+                continue
+            new_lines.append(line)
+            i += 1
+
+        # Falls Block bis Dateiende läuft
+        if in_block:
+            for key in updates:
+                if key not in found_keys:
+                    new_lines.append(f"  {key}: {_yaml_format_value(updates[key])}")
+
+        EXTRA_CFG_FILE.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    return True, "AI params saved"

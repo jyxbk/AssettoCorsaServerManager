@@ -33,12 +33,6 @@
     <div id="h-weather" style="font-size:10px;color:var(--muted);margin-top:3px;display:none"></div>
   </div>
 
-  <!-- Server Control -->
-  <div class="sb-ctrl">
-    <button class="btn btn-green btn-sm" onclick="ctrl('start')">▶</button>
-    <button class="btn btn-gray btn-sm" onclick="ctrl('stop')">■</button>
-    <button class="btn btn-gray btn-sm" onclick="ctrl('restart')" data-i18n="btn_restart">↻ Neustart</button>
-  </div>
   <div class="sb-restart">
     <label><input type="checkbox" id="auto-restart" style="accent-color:var(--red)"> <span data-i18n="sb_auto_restart">Nach Speichern neu starten</span></label>
   </div>
@@ -58,8 +52,18 @@
     </div>
   </div>
 
-  <div class="nav-item" data-nav="config" onclick="navTo('config')"><span class="nav-icon">⚙</span> <span>Konfiguration</span></div>
-  <div class="nav-item" data-nav="settings-ai" onclick="navTo('settings-ai')"><span class="nav-icon">🤖</span> <span data-i18n="nav_ai">KI-Fahrer</span></div>
+  <div class="ng" id="ng-konfiguration">
+    <div class="ng-hdr" id="ngh-konfiguration" onclick="toggleGroup('konfiguration')"><span class="ng-icon">⚙</span><span class="ng-label">Konfiguration</span><span class="ng-chevron" id="ngc-konfiguration">›</span></div>
+    <div class="ng-items" id="ngi-konfiguration">
+      <div class="nav-item nav-sub" data-nav="settings-server" onclick="navTo('settings-server')"><span data-i18n="nav_server">Server</span></div>
+      <div class="nav-item nav-sub" data-nav="settings-track" onclick="navTo('settings-track')"><span data-i18n="nav_track">Strecke & Autos</span></div>
+      <div class="nav-item nav-sub" data-nav="settings-assists" onclick="navTo('settings-assists')"><span data-i18n="nav_assists">Fahrhilfen</span></div>
+      <div class="nav-item nav-sub" data-nav="settings-sessions" onclick="navTo('settings-sessions')"><span data-i18n="nav_sessions">Sessions</span></div>
+      <div class="nav-item nav-sub" data-nav="settings-weather" onclick="navTo('settings-weather')"><span data-i18n="nav_weather">Wetter</span></div>
+      <div class="nav-item nav-sub" data-nav="settings-profile" onclick="navTo('settings-profile')"><span data-i18n="nav_profile">Serverprofil</span></div>
+      <div class="nav-item nav-sub" data-nav="settings-ai" onclick="navTo('settings-ai')"><span data-i18n="nav_ai">KI-Fahrer</span></div>
+    </div>
+  </div>
 
   <div class="ng" id="ng-verwaltung">
     <div class="ng-hdr" id="ngh-verwaltung" onclick="toggleGroup('verwaltung')"><span class="ng-icon">⊞</span><span class="ng-label" data-i18n="nav_sec_admin">Verwaltung</span><span class="ng-chevron" id="ngc-verwaltung">›</span></div>
@@ -527,6 +531,22 @@
         </table>
       </div>
     </div>
+
+    <!-- Fahrerprofil-Charts -->
+    <div class="card" style="margin-top:14px">
+      <div class="sh"><div class="sh-t">Rundenzeiten-Verlauf</div></div>
+      <div style="position:relative;height:220px"><canvas id="an-chart-timeline"></canvas></div>
+    </div>
+    <div class="g2 gap" style="margin-top:14px">
+      <div class="card">
+        <div class="sh"><div class="sh-t">Bestzeit pro Auto</div></div>
+        <div style="position:relative;height:200px"><canvas id="an-chart-p-tracks"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="sh"><div class="sh-t">Fahrzeug-Nutzung</div></div>
+        <div style="position:relative;height:200px"><canvas id="an-chart-p-cars"></canvas></div>
+      </div>
+    </div>
   </div>
 
   <div class="card" style="margin-top:14px">
@@ -551,6 +571,28 @@
           <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Lade...</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Globale Aktivitäts-Charts -->
+  <div class="g2 gap" style="margin-top:14px">
+    <div class="card">
+      <div class="sh"><div class="sh-t">Aktivität (30 Tage)</div></div>
+      <div style="position:relative;height:200px"><canvas id="an-chart-activity"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="sh"><div class="sh-t">Top Fahrer</div></div>
+      <div style="position:relative;height:200px"><canvas id="an-chart-drivers"></canvas></div>
+    </div>
+  </div>
+  <div class="g2 gap" style="margin-top:14px">
+    <div class="card">
+      <div class="sh"><div class="sh-t">Top Strecken</div></div>
+      <div style="position:relative;height:200px"><canvas id="an-chart-tracks"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="sh"><div class="sh-t">Fahrzeug-Nutzung</div></div>
+      <div style="position:relative;height:200px"><canvas id="an-chart-cars"></canvas></div>
     </div>
   </div>
 </div>
@@ -676,10 +718,9 @@
 
 <!-- ══ KONFIGURATION (unified config panel) ══════════════════════════════ -->
 <div class="panel" id="p-config">
-  <div class="cfg-tabs">
+  <div class="cfg-tabs" style="display:none">
     <button class="cfg-tab active" data-tab="server"   onclick="cfgTab('server')">⚙ Server</button>
     <button class="cfg-tab" data-tab="track"    onclick="cfgTab('track')">🗺 Strecke & Autos</button>
-    <button class="cfg-tab" data-tab="entry"    onclick="cfgTab('entry')">📋 Entry List</button>
     <button class="cfg-tab" data-tab="sessions" onclick="cfgTab('sessions')">📅 Sessions</button>
     <button class="cfg-tab" data-tab="assists"  onclick="cfgTab('assists')">🛡 Regeln</button>
     <button class="cfg-tab" data-tab="weather"  onclick="cfgTab('weather')">🌤 Wetter</button>
@@ -851,69 +892,7 @@
   </div>
 </div>
 
-<div class="cfg-pane" id="cfgp-entry">
-  <div class="sec-hdr" style="display:flex;align-items:center;justify-content:space-between">
-    <h2>📋 Entry List</h2>
-    <span style="font-size:12px;color:var(--muted)">Konfiguriert, wer in welchem Auto startet</span>
-  </div>
-
-  <!-- Toolbar -->
-  <div class="el-toolbar">
-    <div class="el-stats">
-      <span class="el-stat-item">Slots: <strong id="el-slot-count">0</strong></span>
-      <span class="el-stat-sep"></span>
-      <span class="el-stat-item" id="el-maxclients-info"></span>
-    </div>
-    <div class="el-toolbar-actions">
-      <!-- Quick Add -->
-      <div class="el-quickadd">
-        <select class="sel el-qa-car" id="el-qa-car" style="min-width:160px"></select>
-        <select class="sel el-qa-skin" id="el-qa-skin" style="min-width:130px"></select>
-        <input class="inp num-inp" type="number" id="el-qa-count" value="1" min="1" max="20" style="width:54px" title="Anzahl Slots">
-        <button class="btn btn-gray btn-sm" onclick="elQuickAdd()">+ Hinzufügen</button>
-      </div>
-      <span class="el-toolbar-sep"></span>
-      <!-- Presets -->
-      <select class="sel" id="el-preset-sel" style="min-width:130px">
-        <option value="">Preset laden…</option>
-      </select>
-      <button class="btn btn-gray btn-sm" onclick="elLoadPreset()">Laden</button>
-      <button class="btn btn-gray btn-sm" onclick="elSavePreset()">Speichern als…</button>
-      <span class="el-toolbar-sep"></span>
-      <!-- Import / Export -->
-      <button class="btn btn-gray btn-sm" onclick="elImportClick()">⬆ Import</button>
-      <input type="file" id="el-import-file" accept=".ini" style="display:none" onchange="elImportFile(this)">
-      <a class="btn btn-gray btn-sm" id="el-export-btn" href="/api/entry_list/export">⬇ Export</a>
-      <!-- Save -->
-      <button class="btn btn-red" onclick="elSave()">💾 Speichern</button>
-    </div>
-  </div>
-
-  <!-- Validation Banner -->
-  <div class="el-banner" id="el-banner" style="display:none"></div>
-
-  <!-- Multi-Edit Bar -->
-  <div class="el-multiedit" id="el-multiedit" style="display:none">
-    <span id="el-sel-count">0 ausgewählt</span>
-    <span class="el-toolbar-sep"></span>
-    <label class="lbl" style="color:var(--muted)">Ballast:</label>
-    <input class="inp num-inp" type="number" id="el-me-ballast" min="0" max="150" placeholder="—" style="width:60px">
-    <label class="lbl" style="color:var(--muted)">Restrictor:</label>
-    <input class="inp num-inp" type="number" id="el-me-restrictor" min="0" max="400" placeholder="—" style="width:60px">
-    <button class="btn btn-gray btn-sm" onclick="elMultiApply()">Anwenden</button>
-    <span class="el-toolbar-sep"></span>
-    <button class="btn btn-gray btn-sm" onclick="elMultiDelete()">🗑 Löschen</button>
-    <button class="btn btn-gray btn-sm" onclick="elClearSelection()">✕ Abwählen</button>
-  </div>
-
-  <!-- Slot Grid -->
-  <div class="el-grid" id="el-grid">
-    <div class="el-empty" id="el-empty">
-      <div style="font-size:32px;margin-bottom:8px">📋</div>
-      <div>Keine Slots. Quick-Add verwenden oder <strong>Import</strong> klicken.</div>
-    </div>
-  </div>
-</div>
+<div class="cfg-pane" id="cfgp-entry"></div>
 
 <div class="cfg-pane" id="cfgp-sessions">
   <div class="sec-hdr"><h2>📅 <span data-i18n="nav_sessions">Sessions</span></h2></div>
@@ -1361,8 +1340,69 @@
   </div>
 </div>
 
-<!-- ENTRY LIST Editor: Inhalt in cfgp-entry (innerhalb p-config) verschoben -->
-<div class="panel" id="p-entry-list" style="display:none"></div>
+<div class="panel" id="p-entry-list">
+<div class="sec-hdr" style="display:flex;align-items:center;justify-content:space-between">
+    <h2>📋 Entry List</h2>
+    <span style="font-size:12px;color:var(--muted)">Konfiguriert, wer in welchem Auto startet</span>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="el-toolbar">
+    <div class="el-stats">
+      <span class="el-stat-item">Slots: <strong id="el-slot-count">0</strong></span>
+      <span class="el-stat-sep"></span>
+      <span class="el-stat-item" id="el-maxclients-info"></span>
+    </div>
+    <div class="el-toolbar-actions">
+      <!-- Quick Add -->
+      <div class="el-quickadd">
+        <select class="sel el-qa-car" id="el-qa-car" style="min-width:160px"></select>
+        <select class="sel el-qa-skin" id="el-qa-skin" style="min-width:130px"></select>
+        <input class="inp num-inp" type="number" id="el-qa-count" value="1" min="1" max="20" style="width:54px" title="Anzahl Slots">
+        <button class="btn btn-gray btn-sm" onclick="elQuickAdd()">+ Hinzufügen</button>
+      </div>
+      <span class="el-toolbar-sep"></span>
+      <!-- Presets -->
+      <select class="sel" id="el-preset-sel" style="min-width:130px">
+        <option value="">Preset laden…</option>
+      </select>
+      <button class="btn btn-gray btn-sm" onclick="elLoadPreset()">Laden</button>
+      <button class="btn btn-gray btn-sm" onclick="elSavePreset()">Speichern als…</button>
+      <span class="el-toolbar-sep"></span>
+      <!-- Import / Export -->
+      <button class="btn btn-gray btn-sm" onclick="elImportClick()">⬆ Import</button>
+      <input type="file" id="el-import-file" accept=".ini" style="display:none" onchange="elImportFile(this)">
+      <a class="btn btn-gray btn-sm" id="el-export-btn" href="/api/entry_list/export">⬇ Export</a>
+      <!-- Save -->
+      <button class="btn btn-red" onclick="elSave()">💾 Speichern</button>
+    </div>
+  </div>
+
+  <!-- Validation Banner -->
+  <div class="el-banner" id="el-banner" style="display:none"></div>
+
+  <!-- Multi-Edit Bar -->
+  <div class="el-multiedit" id="el-multiedit" style="display:none">
+    <span id="el-sel-count">0 ausgewählt</span>
+    <span class="el-toolbar-sep"></span>
+    <label class="lbl" style="color:var(--muted)">Ballast:</label>
+    <input class="inp num-inp" type="number" id="el-me-ballast" min="0" max="150" placeholder="—" style="width:60px">
+    <label class="lbl" style="color:var(--muted)">Restrictor:</label>
+    <input class="inp num-inp" type="number" id="el-me-restrictor" min="0" max="400" placeholder="—" style="width:60px">
+    <button class="btn btn-gray btn-sm" onclick="elMultiApply()">Anwenden</button>
+    <span class="el-toolbar-sep"></span>
+    <button class="btn btn-gray btn-sm" onclick="elMultiDelete()">🗑 Löschen</button>
+    <button class="btn btn-gray btn-sm" onclick="elClearSelection()">✕ Abwählen</button>
+  </div>
+
+  <!-- Slot Grid -->
+  <div class="el-grid" id="el-grid">
+    <div class="el-empty" id="el-empty">
+      <div style="font-size:32px;margin-bottom:8px">📋</div>
+      <div>Keine Slots. Quick-Add verwenden oder <strong>Import</strong> klicken.</div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ PLAYERS ════════════════════════════════════════════════════════════ -->
 <div class="panel" id="p-players">
@@ -1751,6 +1791,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="/static/js/lang.js"></script>
+<script src="/static/js/chart.umd.min.js"></script>
 <script>
 /* Server-Daten Injection — Jinja2-Variablen für dashboard.js */
 window.AC = {

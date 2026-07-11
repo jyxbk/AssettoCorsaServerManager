@@ -19,32 +19,17 @@ function t(key, ...args) {
 // ═══ FETCH HELPER (session-based, CSRF-protected) ════════════════════════════
 const _csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-function apiFetch(url, opts, timeoutMs = 10000) {
-  const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), timeoutMs);
-  const options = Object.assign({ credentials: 'same-origin', signal: controller.signal }, opts || {});
+function apiFetch(url, opts) {
+  const options = Object.assign({credentials: 'same-origin'}, opts || {});
   const method = (options.method || 'GET').toUpperCase();
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-    options.headers = Object.assign({ 'X-CSRF-Token': _csrfToken }, options.headers || {});
+    options.headers = Object.assign({'X-CSRF-Token': _csrfToken}, options.headers || {});
   }
   return fetch(url, options)
-    .then(r  => { clearTimeout(tid); if (r.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); } return r; })
-    .catch(e => { clearTimeout(tid); throw e; });
-}
-
-// ── Error Banner ─────────────────────────────────────────────────────────────
-let _liveFailCount = 0;
-const _LIVE_FAIL_MAX = 4;
-
-function _showErrorBanner(msg) {
-  const b = document.getElementById('_err-banner');
-  const m = document.getElementById('_err-msg');
-  if (b && m) { m.textContent = '⚠️ ' + msg; b.classList.add('show'); }
-}
-function _hideErrorBanner() {
-  const b = document.getElementById('_err-banner');
-  if (b) b.classList.remove('show');
-  _liveFailCount = 0;
+    .then(r => {
+      if (r.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); }
+      return r;
+    });
 }
 
 // ═══ STATE ════════════════════════════════════════════════════════════════
@@ -54,54 +39,9 @@ let _lapBases = {};
 let _prevLastLapTs = {};
 const COLORS = ['#e8150c','#3498db','#27ae60','#f39c12','#9b59b6','#e67e22','#1abc9c','#e91e63'];
 
-// ═══ PERFORMANCE: CACHE + LAZY LOADING ════════════════════════════════════
-const _apiCache  = new Map();
-const _CACHE_TTL = 45_000;  // 45s — balances Aktualität vs. Requests
-
-async function cachedFetch(url) {
-  const hit = _apiCache.get(url);
-  if (hit && Date.now() - hit.t < _CACHE_TTL) return hit.d;
-  const d = await apiFetch(url).then(r => r.json()).catch(() => null);
-  if (d) _apiCache.set(url, { d, t: Date.now() });
-  return d;
-}
-
-function invalidateCache(...prefixes) {
-  for (const k of _apiCache.keys())
-    if (prefixes.some(p => k.startsWith(p))) _apiCache.delete(k);
-}
-
-// Tab-Lazy-Loading: Timestamps pro Panel + Sub-Tab
-const _tabLoaded    = {};  // panel id → last load timestamp
-const _recTabLoaded = {};  // record sub-tab → last load timestamp
-const _TAB_TTL      = 60_000;
-
-function _isStale(id, store = _tabLoaded) {
-  return !store[id] || Date.now() - store[id] > _TAB_TTL;
-}
-function _markLoaded(id, store = _tabLoaded) {
-  store[id] = Date.now();
-}
-function _invalidateTab(id) {
-  delete _tabLoaded[id];
-  delete _recTabLoaded[id];
-}
-
-// Skeleton rows (animated placeholder)
-function _skelRows(n, cols) {
-  const cells = `<td><div class="skel"></div></td>`.repeat(cols);
-  return `<tr class="skel-row">${cells}</tr>`.repeat(n);
-}
-
-// Search debounce for Alle-Runden filter
-let _searchDebounce = null;
-function _onSearchInput() {
-  clearTimeout(_searchDebounce);
-  _searchDebounce = setTimeout(() => loadAllLaps(), 280);
-}
-
 function autoRestart() {
-  return document.getElementById('auto-restart')?.checked === true;
+  const el = document.getElementById('auto-restart');
+  return el ? el.checked : false;  // Bug fix: Null-Check
 }
 
 // ─── NAV TRACKER + RESTART MODAL ───────────────────────────────────────────
@@ -228,22 +168,12 @@ function refreshLive() {
       }
       if (d.spline_points?.length > 10) spPts = d.spline_points;
       _detectLiveEvents(d.drivers);
-      updateHeader(d); updateDash(d); updateDrivers(d); updateLaps(d);
+      updateHeader(d); updateDash(d); updateLaps(d);
       if (_currentNav === 'server-monitor') updateServerMonitor(d);
       _renderChat(d.chat||[], "dash-chat-box");
       _renderChat(d.chat||[], "chat-box");
       drawMap(d);
-      // Verbindung wiederhergestellt
-      if (_liveFailCount > 0) _hideErrorBanner();
-      _liveFailCount = 0;
-    }).catch(e => {
-      if (e?.name === 'AbortError' || (e !== 'Unauthorized' && typeof e !== 'string')) {
-        _liveFailCount++;
-        if (_liveFailCount >= _LIVE_FAIL_MAX)
-          _showErrorBanner('API nicht erreichbar – Verbindung unterbrochen');
-      }
-      if (e !== 'Unauthorized') console.warn("refreshLive:", e);
-    });
+    }).catch(e => { if (e !== 'Unauthorized') console.warn("refreshLive:", e); });
 }
 
 const _WEATHER_ICONS = {
@@ -376,8 +306,6 @@ function updateDash(d) {
   renderCards("d-drivers", d.drivers, false);
 }
 
-function updateDrivers(d) { renderCards("f-drivers", d.drivers, true); }
-
 function renderCards(id, drivers, showAct) {
   const el = document.getElementById(id);
   if (!drivers?.length) {
@@ -413,7 +341,7 @@ function renderCards(id, drivers, showAct) {
 
 function updateLaps(d) {
   const tb = document.getElementById("lap-tbody");
-  if (!d.drivers?.length) { tb.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:48px">Keine Daten</td></tr>`; return; }
+  if (!d.drivers?.length) { tb.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:48px">Keine Daten</td></tr>`; return; }
   // Drivers kommen vom Backend bereits nach Race-Position sortiert (total_progress desc)
   tb.innerHTML = d.drivers.map((r, i) => {
     const pos  = r.race_pos || (i + 1);
@@ -422,13 +350,17 @@ function updateLaps(d) {
     const gapCls = r.gap_ms > 0 ? "style='color:var(--muted);font-size:11px'" : "style='color:var(--green);font-size:11px'";
     return `<tr>
       <td class="${pc}">${medal}</td>
-      <td><strong>${esc(r.name)}</strong></td>
-      <td style="color:var(--muted)">${esc(r.model)}</td>
-      <td>${r.lapCount||0}</td>
+      <td class="lc-name"><strong>${esc(r.name)}</strong></td>
+      <td class="lc-car" style="color:var(--muted)">${esc(r.model)}</td>
+      <td class="lc-laps">${r.lapCount||0}</td>
       <td class="${pos===1&&r.bestLap?"best-t":""}">${fmt(r.bestLap)}</td>
-      <td>${fmt(r.lastLap)}</td>
-      <td style="color:var(--muted)" id="clt-${r.id}">${fmt(r.lapTime)}</td>
+      <td class="lc-last">${fmt(r.lastLap)}</td>
+      <td class="lc-cur" style="color:var(--muted)" id="clt-${r.id}">${fmt(r.lapTime)}</td>
       <td ${gapCls}>${r.gap_str||"—"}</td>
+      <td><div style="display:flex;gap:4px;justify-content:flex-end">
+        <button class="btn btn-danger btn-sm" style="padding:3px 7px" onclick="kick(${r.id},'${escJs(r.name)}')" title="Kick">⊘</button>
+        <button class="btn btn-warn btn-sm" style="padding:3px 7px" onclick="ban(${r.id},'${escJs(r.guid)}','${escJs(r.name)}')" title="Ban">⛔</button>
+      </div></td>
     </tr>`;
   }).join("");
 }
@@ -554,6 +486,8 @@ function refreshUptime() {
     const s = d.uptime || "—";
     document.getElementById("h-uptime").textContent = s !== "unknown" ? "⏱ "+s : "";
     document.getElementById("i-uptime").textContent = s;
+    const sm = document.getElementById("sm-uptime");
+    if (sm) sm.textContent = s;
   }).catch(()=>{});
 }
 
@@ -759,9 +693,6 @@ function updateLayouts() {
 // ═══ CAR CONFIG (skin/ballast/restrictor) ════════════════════════════════
 function toggleCar(el, event) {
   el.querySelector('input[type=checkbox]').click();
-  const cnt = document.querySelectorAll('#car-list input[type=checkbox]:checked').length;
-  const el2 = document.getElementById('car-sel-count');
-  if (el2) el2.textContent = cnt + ' ausgewählt';
 }
 
 function toggleCarCfg(btn, carId) {
@@ -906,11 +837,15 @@ async function loadServerProfile() {
     const d=await apiFetch("/api/server_profile").then(r=>r.json());
     document.getElementById("welcome-msg").value=d.welcome||"";
     updateWelcomePreview();
+    const desc = document.getElementById("server-desc");
+    desc.value = d.description||"";
+    document.getElementById("server-desc-chars").textContent = desc.value.length+' Zeichen';
   }catch(e){}
 }
 async function saveServerProfile(){
   const welcome=document.getElementById("welcome-msg").value;
-  const r=await apiFetch("/api/server_profile",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({welcome})});
+  const description=document.getElementById("server-desc").value;
+  const r=await apiFetch("/api/server_profile",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({welcome,description})});
   const d=await r.json();
   toast(d.ok?t('t_profile_saved'):'✗ '+d.msg,d.ok?'ok':'err');
 }
@@ -948,6 +883,22 @@ function savePreset(){const name=document.getElementById("preset-name").value.tr
 function applyPreset(name){if(!confirm(`Preset "${name}" laden und Server neu starten?`))return;toast("Lade Preset...","info");apiFetch(`/api/presets/${encodeURIComponent(name)}/load`,{method:"POST"}).then(r=>r.json()).then(d=>{toast(d.ok?"✓ "+d.msg:"✗ "+d.msg,d.ok?"ok":"err");if(d.ok)setTimeout(refreshLive,3000);});}
 function removePreset(name){if(!confirm(`Preset "${name}" löschen?`))return;apiFetch(`/api/presets/${encodeURIComponent(name)}`,{method:"DELETE"}).then(r=>r.json()).then(d=>{toast(d.ok?t('t_deleted'):"✗ "+d.msg,d.ok?"ok":"err");loadPresetList();});}
 
+function fixMissingCarChecksum(carId){
+  if(!confirm(`Für "${carId}" fehlt die gepackte data.acd. Ohne sie startet der Server für dieses Auto nicht.\n\nSoll die Server-Einstellung "Fehlende Checksums ignorieren" aktiviert werden, damit der Server wieder startet?\n\nHinweis: Für dieses eine Auto entfällt dann die Anti-Cheat-Prüfung, bis du data.acd sauber nachreichst.`)) return;
+  apiFetch("/api/ignore_config_errors",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({key:"MissingCarChecksums",value:true})})
+    .then(r=>r.json()).then(d=>{
+      if(!d.ok){toast("✗ "+d.msg,"err");return;}
+      if(confirm("✓ Einstellung gespeichert. Server jetzt neu starten, damit es wirkt?")){
+        apiFetch("/control/restart",{method:"POST"}).then(r=>r.json()).then(d2=>{
+          toast(d2.ok?"✓ Server neu gestartet":"✗ "+d2.msg, d2.ok?"ok":"err");
+          if(d2.ok) setTimeout(refreshLive,3000);
+        });
+      } else {
+        toast("Einstellung gespeichert – wirkt erst nach Serverneustart","ok");
+      }
+    });
+}
+
 // ═══ CHAT SEND ════════════════════════════════════════════════════════════
 function _sendChatMsg(inpEl) {
   const msg = inpEl.value.trim();
@@ -962,64 +913,7 @@ function sendChat() { _sendChatMsg(document.getElementById('dash-chat-inp') || d
 function sendChatFrom(id) { const el = document.getElementById(id); if (el) _sendChatMsg(el); }
 
 // ═══ LOGS + RCON ══════════════════════════════════════════════════════════
-// ── Logs ─────────────────────────────────────────────────────────────────────
-let _logType          = '';
-let _logFollowTimer   = null;
-let _logSearchDebounce = null;
-
-const _LOG_ICONS = { connect:'🟢', disconnect:'🔴', lap:'🏁', error:'⚠️', warn:'⚡', system:'·' };
-const _LOG_CLS   = { connect:'log-e-connect', disconnect:'log-e-disconnect', lap:'log-e-lap', error:'log-e-error', warn:'log-e-warn', system:'' };
-
-function _setLogType(type) {
-  _logType = type;
-  document.querySelectorAll('.log-chip').forEach(c => c.classList.toggle('active', c.dataset.type === type));
-  loadLogs();
-}
-
-function _onLogSearch() {
-  clearTimeout(_logSearchDebounce);
-  _logSearchDebounce = setTimeout(loadLogs, 280);
-}
-
-async function loadLogs() {
-  const q   = document.getElementById('log-search')?.value.trim() || '';
-  const params = new URLSearchParams({ n: 300 });
-  if (_logType) params.set('type', _logType);
-  if (q)        params.set('q',    q);
-
-  const container = document.getElementById('log-container');
-  const cnt       = document.getElementById('log-count');
-
-  const d = await apiFetch('/api/logs?' + params).then(r => r.json()).catch(() => null);
-
-  if (!d) {
-    if (container) container.innerHTML = '<div class="log-empty">Logs konnten nicht geladen werden.</div>';
-    return;
-  }
-  if (cnt) cnt.textContent = d.total ? `${d.total} Einträge` : '';
-
-  if (!d.entries.length) {
-    if (container) container.innerHTML = '<div class="log-empty">Keine Einträge gefunden.</div>';
-    return;
-  }
-
-  const follow = document.getElementById('log-follow')?.checked;
-  const prevScroll = container?.scrollTop;
-  const wasAtBottom = container && (container.scrollHeight - prevScroll - container.clientHeight < 60);
-
-  container.innerHTML = d.entries.map(e => {
-    const cls  = _LOG_CLS[e.type]  || '';
-    const icon = _LOG_ICONS[e.type] || '·';
-    const ts   = (e.ts || '').slice(11, 19) || (e.ts || '').slice(0, 10);
-    return `<div class="log-entry ${cls}">
-      <span class="log-ts">${esc(ts)}</span>
-      <span class="log-icon">${icon}</span>
-      <span class="log-msg">${esc(e.msg)}</span>
-    </div>`;
-  }).join('');
-
-  if (follow && wasAtBottom && container) container.scrollTop = container.scrollHeight;
-}
+function loadLogs(){apiFetch("/logs").then(r=>r.json()).then(d=>{const box=document.getElementById("logbox");box.innerHTML=d.logs.split("\n").map(l=>{const s=esc(l);if(/ERR|FAIL|error/i.test(l))return`<span style="color:#ff6b6b">${s}</span>`;if(/WRN|WARN/i.test(l))return`<span style="color:var(--yellow)">${s}</span>`;if(/INF\b|INFO/i.test(l))return`<span style="color:#74b9ff">${s}</span>`;return s;}).join("\n");box.scrollTop=box.scrollHeight;});}
 
 const _rconHistory = [];
 function sendRcon() {
@@ -1316,7 +1210,12 @@ function renderCarDetail(d){
   // Validation pane
   const valHtml = d.valid
     ? `<div class="issue-row issue-ok">✓ Alle Pflichtdateien vorhanden</div>`
-    : d.issues.map(i=>`<div class="issue-row issue-err">✗ ${esc(i)}</div>`).join('');
+    : d.issues.map(i=>{
+        const fixBtn = i.startsWith('data.acd fehlt')
+          ? `<button class="btn btn-gray btn-sm" style="margin-left:8px" onclick="fixMissingCarChecksum('${esc(d.id)}')">⚙ Server-Einstellung anpassen</button>`
+          : '';
+        return `<div class="issue-row issue-err">✗ ${esc(i)}${fixBtn}</div>`;
+      }).join('');
 
   document.getElementById('dm-panes').innerHTML =
     `<div class="dm-pane active">${specsHtml}${descHtml}${tagsHtml}</div>
@@ -1557,53 +1456,15 @@ async function loadRecordFilters() {
   fill('rec-filter-car',    d.cars,    'all_cars');
 }
 
-// ─── Records Sub-Tab (lazy loading per tab) ───────────────────────────────
-function _recTab(name) {
-  document.querySelectorAll('.rec-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.rec-pane').forEach(p => p.classList.remove('active'));
-  const tab  = document.querySelector(`.rec-tab[data-tab="${name}"]`);
-  const pane = document.getElementById('recp-' + name);
-  if (tab)  tab.classList.add('active');
-  if (pane) pane.classList.add('active');
-
-  if (!_isStale(name, _recTabLoaded)) return;
-  _markLoaded(name, _recTabLoaded);
-
-  if (name === 'best') {
-    document.getElementById('best-tbody').innerHTML = _skelRows(6, 7);
-    loadBestLaps();
-  }
-  if (name === 'all') {
-    document.getElementById('all-tbody').innerHTML = _skelRows(6, 7);
-    loadAllLaps();
-  }
-  if (name === 'drivers') {
-    document.getElementById('stats-tbody').innerHTML = _skelRows(6, 6);
-    loadDriverStats();
-  }
-}
-
-// ─── Best Laps ────────────────────────────────────────────────────────────
-let _bestLapsData = [], _sortBestState = { col: null, dir: 'asc' };
-
 async function loadBestLaps() {
+  const d = await apiFetch('/api/laptimes/best').then(r => r.json()).catch(() => null);
   const tb = document.getElementById('best-tbody');
-  if (tb && !_bestLapsData.length) tb.innerHTML = _skelRows(6, 7);
-  const d = await cachedFetch('/api/laptimes/best');
   if (!d || !d.entries.length) {
-    if (tb) tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
-    _bestLapsData = [];
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
     return;
   }
-  _bestLapsData = d.entries;
-  _renderBestLaps();
-}
-
-function _renderBestLaps() {
-  const tb = document.getElementById('best-tbody');
-  if (!_bestLapsData.length) { tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Keine Daten</td></tr>`; return; }
-  tb.innerHTML = _bestLapsData.map((e, i) => {
-    const pc    = ['pos-1','pos-2','pos-3'][i] || '';
+  tb.innerHTML = d.entries.map((e, i) => {
+    const pc = ['pos-1','pos-2','pos-3'][i] || '';
     const medal = ['🥇','🥈','🥉'][i] || `#${i+1}`;
     return `<tr>
       <td class="${pc}">${medal}</td>
@@ -1617,119 +1478,60 @@ function _renderBestLaps() {
   }).join('');
 }
 
-function _sortBest(col) {
-  if (_sortBestState.col === col) _sortBestState.dir = _sortBestState.dir === 'asc' ? 'desc' : 'asc';
-  else { _sortBestState.col = col; _sortBestState.dir = 'asc'; }
-  document.querySelectorAll('.sort-th[data-col-b]').forEach(th => th.classList.remove('asc', 'desc'));
-  const th = document.querySelector(`.sort-th[data-col-b="${col}"]`);
-  if (th) th.classList.add(_sortBestState.dir);
-  const dir = _sortBestState.dir === 'asc' ? 1 : -1;
-  _bestLapsData.sort((a, b) => {
-    const va = a[col], vb = b[col];
-    return typeof va === 'number' ? dir * (va - vb) : dir * String(va||'').localeCompare(String(vb||''));
-  });
-  _renderBestLaps();
-}
-
-// ─── All Laps ─────────────────────────────────────────────────────────────
+// Pagination state
 let _allLapsData = [], _allLapsPage = 0;
-const _PAGE_SIZE    = 50;
-const _VS_THRESHOLD = 200;  // rows above this → virtual scroller
-const _VS_ROW_H     = 35;   // px per row (matches table row CSS)
-const _sortState    = { col: null, dir: 'asc' };
-let   _vsActive     = false;
+const _PAGE_SIZE = 50;
 
 async function loadAllLaps(resetPage) {
   if (resetPage !== false) _allLapsPage = 0;
-  const driver = document.getElementById('rec-filter-driver')?.value || '';
-  const track  = document.getElementById('rec-filter-track')?.value  || '';
-  const car    = document.getElementById('rec-filter-car')?.value    || '';
-  const q      = document.getElementById('rec-filter-search')?.value || '';
-  const from   = document.getElementById('rec-filter-from')?.value   || '';
-  const to     = document.getElementById('rec-filter-to')?.value     || '';
-
+  const driver = document.getElementById('rec-filter-driver').value;
+  const track  = document.getElementById('rec-filter-track').value;
+  const car    = document.getElementById('rec-filter-car').value;
   const params = new URLSearchParams();
   if (driver) params.set('driver', driver);
   if (track)  params.set('track',  track);
   if (car)    params.set('car',    car);
-  if (q)      params.set('q',      q);
-  if (from)   params.set('from',   from);
-  if (to)     params.set('to',     to);
-
-  const tb = document.getElementById('all-tbody');
-  if (tb && !_allLapsData.length) tb.innerHTML = _skelRows(6, 7);
 
   const d = await apiFetch('/api/laptimes?' + params).then(r => r.json()).catch(() => null);
+  const tb = document.getElementById('all-tbody');
   const cnt = document.getElementById('rec-count');
   if (!d || !d.entries.length) {
-    if (tb) tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">${t('t_no_entries')}</td></tr>`;
-    if (cnt) cnt.textContent = '0 Einträge';
+    tb.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">${t('t_no_entries')}</td></tr>`;
+    cnt.textContent = t('t_entries',0);
     document.getElementById('all-pagination').innerHTML = '';
-    _allLapsData = [];
-    _vsActive = false;
-    document.getElementById('all-tbl-wrap')?.classList.remove('tbl-vscroll');
     return;
   }
   _allLapsData = d.entries;
-  const exportBtn = document.getElementById('rec-export-btn');
-  if (exportBtn) exportBtn.href = '/api/laptimes/export?' + params;
+  cnt.textContent = t('t_entries',d.total);
+  document.getElementById('rec-export-btn').href = '/api/laptimes/export?' + params;
   renderAllLapsPage();
 }
 
 function renderAllLapsPage() {
-  let data = _allLapsData;
-
-  if (_sortState.col) {
-    const col = _sortState.col, dir = _sortState.dir === 'asc' ? 1 : -1;
-    data = [...data].sort((a, b) => {
-      const va = a[col], vb = b[col];
-      return typeof va === 'number' ? dir * (va - vb) : dir * String(va||'').localeCompare(String(vb||''));
-    });
-  }
-
-  const cnt = document.getElementById('rec-count');
-  if (cnt) cnt.textContent = `${data.length} Einträge`;
-
-  const wrap = document.getElementById('all-tbl-wrap');
-  const tb   = document.getElementById('all-tbody');
-  const pag  = document.getElementById('all-pagination');
-
-  if (!data.length) {
-    if (tb) tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Keine Einträge gefunden</td></tr>`;
-    if (pag) pag.innerHTML = '';
-    if (wrap) wrap.classList.remove('tbl-vscroll');
-    _vsActive = false;
-    return;
-  }
-
-  // ── Virtual Scroller (large datasets) ────────────────────────────────────
-  if (data.length > _VS_THRESHOLD) {
-    if (!_vsActive && wrap) {
-      wrap.classList.add('tbl-vscroll');
-      wrap.removeEventListener('scroll', wrap._vsHandler);
-      let _raf = null;
-      wrap._vsHandler = () => {
-        if (_raf) cancelAnimationFrame(_raf);
-        _raf = requestAnimationFrame(() => _vsPaint(data, wrap, tb));
-      };
-      wrap.addEventListener('scroll', wrap._vsHandler, { passive: true });
-      _vsActive = true;
-    }
-    _vsPaint(data, wrap, tb);
-    if (pag) pag.innerHTML = `<span style="font-size:11px;color:var(--muted)">${data.length} Einträge · durchgehend scrollen</span>`;
-    return;
-  }
-
-  // ── Standard Pagination (small datasets) ─────────────────────────────────
-  _vsActive = false;
-  if (wrap) wrap.classList.remove('tbl-vscroll');
-
+  const data = _allLapsData;
   const start = _allLapsPage * _PAGE_SIZE;
   const page  = data.slice(start, start + _PAGE_SIZE);
-  tb.innerHTML = page.map((e, i) => _lapRow(e, start + i)).join('');
+  const tb    = document.getElementById('all-tbody');
 
+  tb.innerHTML = page.map((e, i) => {
+    const gi = start + i;
+    const pc = ['pos-1','pos-2','pos-3'][gi] || '';
+    const guidShort = e.guid ? e.guid.slice(-8) : '—';
+    return `<tr>
+      <td class="${pc}">${gi+1}</td>
+      <td><strong>${esc(e.driver)}</strong></td>
+      <td style="font-size:10px;color:var(--muted);font-family:monospace" title="${esc(e.guid)}">${guidShort}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(e.car)}</td>
+      <td style="font-size:11px">${esc(e.track)}</td>
+      <td class="${gi===0?'best-t':''}" style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
+      <td style="color:${e.cuts>0?'var(--yellow)':'var(--muted)'};">${e.cuts}</td>
+      <td style="color:var(--muted);font-size:11px">${esc(e.ts||'')}</td>
+    </tr>`;
+  }).join('');
+
+  // Pagination controls
   const pages = Math.ceil(data.length / _PAGE_SIZE);
-  if (!pag) return;
+  const pag   = document.getElementById('all-pagination');
   if (pages <= 1) { pag.innerHTML = ''; return; }
   let html = '';
   if (_allLapsPage > 0)
@@ -1739,87 +1541,32 @@ function renderAllLapsPage() {
     html += `<button class="btn ${p===_allLapsPage?'btn-red':'btn-gray'} btn-sm" onclick="_allLapsPage=${p};renderAllLapsPage()">${p+1}</button>`;
   if (_allLapsPage < pages-1)
     html += `<button class="btn btn-gray btn-sm" onclick="_allLapsPage++;renderAllLapsPage()">›</button>`;
-  html += `<span style="font-size:11px;color:var(--muted)">Seite ${_allLapsPage+1}/${pages} · ${data.length} Einträge</span>`;
+  html += `<span style="font-size:11px;color:var(--muted)">Seite ${_allLapsPage+1}/${pages}</span>`;
   pag.innerHTML = html;
-}
-
-function _lapRow(e, gi) {
-  const pc = ['pos-1','pos-2','pos-3'][gi] || '';
-  return `<tr style="height:${_VS_ROW_H}px">
-    <td class="${pc}">${gi+1}</td>
-    <td><strong>${esc(e.driver)}</strong></td>
-    <td style="font-size:11px;color:var(--muted)">${esc(e.car)}</td>
-    <td style="font-size:11px">${esc(e.track)}</td>
-    <td class="${gi===0?'best-t':''}" style="font-family:monospace;font-weight:700">${fmtMs(e.laptime)}</td>
-    <td style="color:${e.cuts>0?'var(--yellow)':'var(--muted)'};">${e.cuts}</td>
-    <td style="color:var(--muted);font-size:11px">${esc(e.ts||'')}</td>
-  </tr>`;
-}
-
-function _vsPaint(data, wrap, tb) {
-  const scrollTop = wrap.scrollTop;
-  const viewH     = wrap.clientHeight;
-  const total     = data.length;
-  const rowH      = _VS_ROW_H;
-  const buf       = 8;
-  const startIdx  = Math.max(0, Math.floor(scrollTop / rowH) - buf);
-  const endIdx    = Math.min(total, Math.ceil((scrollTop + viewH) / rowH) + buf);
-
-  let html = '';
-  if (startIdx > 0)
-    html += `<tr style="height:${startIdx * rowH}px"></tr>`;
-  for (let i = startIdx; i < endIdx; i++)
-    html += _lapRow(data[i], i);
-  if (endIdx < total)
-    html += `<tr style="height:${(total - endIdx) * rowH}px"></tr>`;
-
-  tb.innerHTML = html;
-}
-
-function _sortCol(col) {
-  if (_sortState.col === col) _sortState.dir = _sortState.dir === 'asc' ? 'desc' : 'asc';
-  else { _sortState.col = col; _sortState.dir = 'asc'; }
-  document.querySelectorAll('.sort-th[data-col]').forEach(th => th.classList.remove('asc', 'desc'));
-  const th = document.querySelector(`.sort-th[data-col="${col}"]`);
-  if (th) th.classList.add(_sortState.dir);
-  _allLapsPage = 0;
-  renderAllLapsPage();
 }
 
 function clearLaptimes() {
   if (!confirm(t('t_laptimes_del_confirm'))) return;
   apiFetch('/api/laptimes', {method:'DELETE'}).then(r=>r.json()).then(d=>{
     toast(d.ok?t('t_laptimes_deleted'):'✗ '+d.msg, d.ok?'ok':'err');
-    if (d.ok) {
-      invalidateCache('/api/laptimes');
-      _invalidateTab('best'); _invalidateTab('all'); _invalidateTab('drivers');
-      loadBestLaps(); loadAllLaps(); loadDriverStats(); refreshQuickStats();
-    }
+    if (d.ok) { loadBestLaps(); loadAllLaps(); loadDriverStats(); refreshQuickStats(); }
   });
 }
 
-let _statsData = [], _sortStatsState = { col: null, dir: 'asc' };
-
 async function loadDriverStats() {
   const d = await apiFetch('/api/laptimes/stats').then(r=>r.json()).catch(()=>null);
+  const tb = document.getElementById('stats-tbody');
   if (!d || !d.stats.length) {
-    document.getElementById('stats-tbody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Daten</td></tr>`;
-    _statsData = [];
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Daten</td></tr>`;
     return;
   }
-  _statsData = d.stats;
-  _filterStats();
-}
-
-function _renderStats(data) {
-  const tb = document.getElementById('stats-tbody');
-  if (!data.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Fahrer gefunden</td></tr>`; return; }
-  tb.innerHTML = data.map((s, i) => {
-    const pc       = ['pos-1','pos-2','pos-3'][i] || '';
-    const bestTrack= Object.entries(s.tracks||{}).sort((a,b)=>((a[1].best||99999999)-(b[1].best||99999999)))[0];
+  tb.innerHTML = d.stats.map((s, i) => {
+    const pc = ['pos-1','pos-2','pos-3'][i] || '';
+    // Find best track entry
+    const bestTrack = Object.entries(s.tracks).sort((a,b)=>((a[1].best||99999999)-(b[1].best||99999999)))[0];
     const cleanPct = s.total_laps ? Math.round(s.clean_laps/s.total_laps*100) : 0;
     return `<tr>
-      <td class="${pc}"><strong>${esc(s.driver)}</strong></td>
+      <td class="${pc}"><strong>${esc(s.driver)}</strong><div style="font-size:10px;color:var(--muted);font-family:monospace">${esc(s.guid.slice(-8)||'')}</div></td>
       <td style="font-weight:700">${s.total_laps}</td>
       <td><span style="color:${cleanPct>=80?'var(--green)':cleanPct>=50?'var(--yellow)':'var(--red)'}">${s.clean_laps}</span> <span style="color:var(--muted);font-size:11px">(${cleanPct}%)</span></td>
       <td class="best-t" style="font-family:monospace">${fmtMs(s.best_overall)}</td>
@@ -1829,92 +1576,98 @@ function _renderStats(data) {
   }).join('');
 }
 
-function _filterStats() {
-  const q = (document.getElementById('stats-search')?.value || '').toLowerCase();
-  let data = q ? _statsData.filter(s => s.driver.toLowerCase().includes(q)) : _statsData;
-  if (_sortStatsState.col) {
-    const col = _sortStatsState.col, dir = _sortStatsState.dir === 'asc' ? 1 : -1;
-    data = [...data].sort((a, b) => {
-      const va = a[col], vb = b[col];
-      return typeof va === 'number' ? dir * ((va||0)-(vb||0)) : dir * String(va||'').localeCompare(String(vb||''));
-    });
-  }
-  _renderStats(data);
-}
-
-function _sortStats(col) {
-  if (_sortStatsState.col === col) _sortStatsState.dir = _sortStatsState.dir === 'asc' ? 'desc' : 'asc';
-  else { _sortStatsState.col = col; _sortStatsState.dir = 'asc'; }
-  document.querySelectorAll('.sort-th[data-col-s]').forEach(th => th.classList.remove('asc', 'desc'));
-  const th = document.querySelector(`.sort-th[data-col-s="${col}"]`);
-  if (th) th.classList.add(_sortStatsState.dir);
-  _filterStats();
-}
-
 // ═══ ANALYTICS (Fahrerprofil) ═════════════════════════════════════════════
-let _leaderboardData = [], _sortLbState = { col: null, dir: 'asc' };
+let _lbRaw = [], _lbSortCol = 'total_laps', _lbSortDir = -1;
+
+function _renderLeaderboard(rows) {
+  const tb = document.getElementById('an-leaderboard-tbody');
+  if (!tb) return;
+  if (!rows.length) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+    return;
+  }
+  const scoreColor = v => v == null ? 'var(--muted)' : v >= 90 ? 'var(--green)' : v >= 70 ? 'var(--yellow)' : 'var(--red)';
+  tb.innerHTML = rows.map((s, i) => {
+    const pc     = ['pos-1','pos-2','pos-3'][i] || '';
+    const safety = s.safety_score;
+    const cons   = s.consistency;
+    return `<tr>
+      <td class="${pc}">${i+1}</td>
+      <td><strong>${esc(s.driver)}</strong></td>
+      <td>${s.total_laps}</td>
+      <td style="color:${scoreColor(safety)}">${safety == null ? '—' : safety + '%'}</td>
+      <td style="color:${scoreColor(cons)}">${cons == null ? '—' : cons + '%'}</td>
+      <td class="best-t" style="font-family:monospace">${s.best_overall ? fmtMs(s.best_overall) : '—'}</td>
+    </tr>`;
+  }).join('');
+  document.querySelectorAll('.sort-th[data-col-lb]').forEach(th => {
+    const arrow = th.dataset.colLb === _lbSortCol ? (_lbSortDir > 0 ? ' ▲' : ' ▼') : '';
+    th.textContent = th.textContent.replace(/ [▲▼]$/, '') + arrow;
+  });
+}
+
+function _sortLeaderboard(col) {
+  if (_lbSortCol === col) { _lbSortDir *= -1; }
+  else { _lbSortCol = col; _lbSortDir = col === 'driver' ? 1 : -1; }
+  const q = (document.getElementById('leaderboard-search') || {}).value || '';
+  const filtered = q ? _lbRaw.filter(s => s.driver.toLowerCase().includes(q.toLowerCase())) : _lbRaw;
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a[col] ?? null, vb = b[col] ?? null;
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    if (col === 'driver') return _lbSortDir * String(va).localeCompare(String(vb));
+    const delta = col === 'best_overall' ? (vb - va) : (va - vb);
+    return _lbSortDir * delta;
+  });
+  _renderLeaderboard(sorted);
+}
+
+function _filterLeaderboard() {
+  const q = (document.getElementById('leaderboard-search') || {}).value || '';
+  const filtered = q ? _lbRaw.filter(s => s.driver.toLowerCase().includes(q.toLowerCase())) : _lbRaw;
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a[_lbSortCol] ?? null, vb = b[_lbSortCol] ?? null;
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    if (_lbSortCol === 'driver') return _lbSortDir * String(va).localeCompare(String(vb));
+    const delta = _lbSortCol === 'best_overall' ? (vb - va) : (va - vb);
+    return _lbSortDir * delta;
+  });
+  _renderLeaderboard(sorted);
+}
 
 async function loadAnalyticsDrivers() {
   const d   = await apiFetch('/api/analytics/drivers').then(r => r.json()).catch(() => null);
   const sel = document.getElementById('an-driver-select');
   if (!d || !d.drivers.length) {
-    document.getElementById('an-leaderboard-tbody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
-    _leaderboardData = [];
+    _lbRaw = [];
+    _renderLeaderboard([]);
     return;
   }
   const cur = sel.value;
   sel.innerHTML = `<option value="">${t('an_select_driver')}</option>` +
     d.drivers.map(s => `<option value="${esc(s.driver)}">${esc(s.driver)}</option>`).join('');
   if (cur) sel.value = cur;
-  _leaderboardData = d.drivers;
-  _filterLeaderboard();
+  _lbRaw = d.drivers;
+  _sortLeaderboard(_lbSortCol);
 }
 
-function _renderLeaderboard(data) {
-  const scoreColor = v => v == null ? 'var(--muted)' : v >= 90 ? 'var(--green)' : v >= 70 ? 'var(--yellow)' : 'var(--red)';
-  const tb = document.getElementById('an-leaderboard-tbody');
-  if (!data.length) { tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Keine Fahrer gefunden</td></tr>`; return; }
-  tb.innerHTML = data.map((s, i) => {
-    const pc   = ['pos-1','pos-2','pos-3'][i] || '';
-    return `<tr>
-      <td class="${pc}">${i+1}</td>
-      <td><strong>${esc(s.driver)}</strong></td>
-      <td>${s.total_laps}</td>
-      <td style="color:${scoreColor(s.safety_score)}">${s.safety_score == null ? '—' : s.safety_score + '%'}</td>
-      <td style="color:${scoreColor(s.consistency)}">${s.consistency == null ? '—' : s.consistency + '%'}</td>
-      <td class="best-t" style="font-family:monospace">${s.best_overall ? fmtMs(s.best_overall) : '—'}</td>
-    </tr>`;
-  }).join('');
-}
+const _AN_PALETTE = ['#e8150c','#ff6b35','#ffd700','#27ae60','#3498db','#9b59b6','#e67e22','#1abc9c','#e91e63','#00bcd4'];
+let _anCharts = {}, _profileCharts = {};
 
-function _filterLeaderboard() {
-  const q = (document.getElementById('leaderboard-search')?.value || '').toLowerCase();
-  let data = q ? _leaderboardData.filter(s => s.driver.toLowerCase().includes(q)) : _leaderboardData;
-  if (_sortLbState.col) {
-    const col = _sortLbState.col, dir = _sortLbState.dir === 'asc' ? 1 : -1;
-    data = [...data].sort((a, b) => {
-      const va = a[col], vb = b[col];
-      return typeof va === 'number' ? dir * ((va||0)-(vb||0)) : dir * String(va||'').localeCompare(String(vb||''));
-    });
-  }
-  _renderLeaderboard(data);
-}
-
-function _sortLeaderboard(col) {
-  if (_sortLbState.col === col) _sortLbState.dir = _sortLbState.dir === 'asc' ? 'desc' : 'asc';
-  else { _sortLbState.col = col; _sortLbState.dir = 'asc'; }
-  document.querySelectorAll('.sort-th[data-col-lb]').forEach(th => th.classList.remove('asc', 'desc'));
-  const th = document.querySelector(`.sort-th[data-col-lb="${col}"]`);
-  if (th) th.classList.add(_sortLbState.dir);
-  _filterLeaderboard();
-}
+function _anDestroy(obj) { Object.values(obj).forEach(c => { try { c.destroy(); } catch(e){} }); }
 
 async function loadDriverProfile() {
   const name = document.getElementById('an-driver-select').value;
   const wrap = document.getElementById('an-profile-wrap');
   if (!name) { wrap.style.display = 'none'; return; }
 
-  const d = await apiFetch('/api/analytics/driver?name=' + encodeURIComponent(name)).then(r => r.json()).catch(() => null);
+  const [d, lr] = await Promise.all([
+    apiFetch('/api/analytics/driver?name=' + encodeURIComponent(name)).then(r => r.json()).catch(() => null),
+    apiFetch('/api/laptimes?driver=' + encodeURIComponent(name)).then(r => r.json()).catch(() => null),
+  ]);
   if (!d || !d.ok) { wrap.style.display = 'none'; return; }
   const p = d.profile;
   wrap.style.display = '';
@@ -1946,6 +1699,119 @@ async function loadDriverProfile() {
       <td style="color:${e.cuts > 0 ? 'var(--yellow)' : 'var(--muted)'}">${e.cuts}</td>
       <td>${e.avg_speed_kmh != null ? e.avg_speed_kmh + ' km/h' : '—'}</td>
     </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">${t('best_no_data')}</td></tr>`;
+
+  if (typeof Chart === 'undefined') return;
+  _anDestroy(_profileCharts); _profileCharts = {};
+
+  const cs = getComputedStyle(document.documentElement);
+  const red = cs.getPropertyValue('--red').trim() || '#e8150c';
+  const tc  = cs.getPropertyValue('--muted').trim() || '#777';
+  const gc  = cs.getPropertyValue('--border').trim() || 'rgba(255,255,255,0.08)';
+  const bg2 = cs.getPropertyValue('--bg2').trim() || '#141414';
+  const grn = cs.getPropertyValue('--green').trim() || '#27ae60';
+  const allLaps = (lr && lr.entries) ? lr.entries.filter(e => e.driver === name) : [];
+
+  // Timeline
+  (function() {
+    const ctx = document.getElementById('an-chart-timeline');
+    if (!ctx || !allLaps.length) return;
+    _profileCharts.timeline = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: allLaps.map(e => (e.ts||'').slice(0,16)),
+        datasets: [
+          { label: 'Alle', data: allLaps.map(e => e.laptime/1000), borderColor: red+'66', backgroundColor: 'transparent', pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: allLaps.map(e => e.cuts>0 ? '#dc3545' : grn), tension: 0, borderWidth: 1.5 },
+          { label: 'Sauber', data: allLaps.map(e => e.cuts===0 ? e.laptime/1000 : null), borderColor: grn, backgroundColor: 'transparent', pointRadius: 0, tension: 0.3, borderWidth: 2, spanGaps: false },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: tc, boxWidth: 14, font: { size: 11 } } },
+          tooltip: { callbacks: { label: ctx => { const v = ctx.raw; if (v==null) return null; const m=Math.floor(v/60),s=(v%60).toFixed(3).padStart(6,'0'); return ctx.dataset.label+': '+m+':'+s+(ctx.datasetIndex===0&&allLaps[ctx.dataIndex]?.cuts>0?' ✂':''); } } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 45, font: { size: 10 }, color: tc } },
+          y: { ticks: { color: tc, callback: v => { const m=Math.floor(v/60); return m+':'+(v%60).toFixed(0).padStart(2,'0'); } }, grid: { color: gc } },
+        },
+      },
+    });
+  })();
+
+  // Best per car
+  (function() {
+    const carBest = {};
+    allLaps.forEach(e => { if (e.laptime && e.car && (!carBest[e.car] || e.laptime < carBest[e.car])) carBest[e.car] = e.laptime; });
+    const sorted = Object.entries(carBest).sort((a,b) => a[1]-b[1]);
+    const ctx = document.getElementById('an-chart-p-tracks');
+    if (!ctx || !sorted.length) return;
+    _profileCharts.tracks = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: sorted.map(x=>x[0]), datasets: [{ label: 'Bestzeit', data: sorted.map(x=>x[1]/1000), backgroundColor: _AN_PALETTE.slice(0,sorted.length).map(c=>c+'bb'), borderRadius: 4 }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const v=ctx.raw; const m=Math.floor(v/60),s=(v%60).toFixed(3).padStart(6,'0'); return ' '+m+':'+s; } } } }, scales: { x: { beginAtZero: true, ticks: { color: tc, callback: v => { const m=Math.floor(v/60); return m+':'+String(Math.floor(v%60)).padStart(2,'0'); } }, grid: { color: gc } }, y: { ticks: { color: tc, font: { size: 11 } } } } },
+    });
+  })();
+
+  // Cars donut
+  (function() {
+    const counts = {};
+    allLaps.forEach(e => { if (e.car) counts[e.car] = (counts[e.car]||0)+1; });
+    const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+    const ctx = document.getElementById('an-chart-p-cars');
+    if (!ctx || !sorted.length) return;
+    _profileCharts.cars = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: sorted.map(x=>x[0]), datasets: [{ data: sorted.map(x=>x[1]), backgroundColor: _AN_PALETTE.slice(0,sorted.length), borderColor: bg2, borderWidth: 3, hoverOffset: 6 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 }, padding: 10, color: tc } }, tooltip: { callbacks: { label: ctx => ' '+ctx.label+': '+ctx.parsed+' Runden' } } } },
+    });
+  })();
+}
+
+async function loadAnalyticsCharts(force) {
+  if (typeof Chart === 'undefined') return;
+  const data = await apiFetch('/api/laptimes').then(r=>r.json()).catch(()=>null);
+  if (!data || !data.entries) return;
+  const laps = data.entries;
+  if (force) { _anDestroy(_anCharts); _anCharts = {}; }
+
+  const cs = getComputedStyle(document.documentElement);
+  const red = cs.getPropertyValue('--red').trim() || '#e8150c';
+  const tc  = cs.getPropertyValue('--muted').trim() || '#777';
+  const gc  = cs.getPropertyValue('--border').trim() || 'rgba(255,255,255,0.08)';
+  const bg2 = cs.getPropertyValue('--bg2').trim() || '#141414';
+
+  (function() {
+    if (_anCharts.activity) return;
+    const today=new Date(), labels=[], counts={};
+    for (let i=29;i>=0;i--) { const d=new Date(today); d.setDate(d.getDate()-i); const key=d.toISOString().slice(0,10); labels.push(key.slice(5).replace('-','.')); counts[key]=0; }
+    laps.forEach(e => { const day=(e.ts||'').slice(0,10); if (day in counts) counts[day]++; });
+    const vals=Object.values(counts);
+    const ctx=document.getElementById('an-chart-activity'); if (!ctx) return;
+    _anCharts.activity = new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label:'Runden', data:vals, backgroundColor:vals.map(v=>v>0?red+'bb':'rgba(128,128,128,0.1)'), borderRadius:4 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ grid:{ display:false }, ticks:{ maxRotation:45, font:{ size:10 }, color:tc } }, y:{ beginAtZero:true, ticks:{ precision:0, color:tc }, grid:{ color:gc } } } } });
+  })();
+  (function() {
+    if (_anCharts.tracks) return;
+    const counts={}; laps.forEach(e => { if (e.track) counts[e.track]=(counts[e.track]||0)+1; });
+    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const ctx=document.getElementById('an-chart-tracks'); if (!ctx) return;
+    _anCharts.tracks = new Chart(ctx, { type:'bar', data:{ labels:sorted.map(x=>x[0]), datasets:[{ label:'Runden', data:sorted.map(x=>x[1]), backgroundColor:_AN_PALETTE.slice(0,sorted.length).map(c=>c+'bb'), borderRadius:4 }] }, options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0, color:tc }, grid:{ color:gc } }, y:{ ticks:{ color:tc, font:{ size:11 } } } } } });
+  })();
+  (function() {
+    if (_anCharts.cars) return;
+    const counts={}; laps.forEach(e => { if (e.car) counts[e.car]=(counts[e.car]||0)+1; });
+    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const ctx=document.getElementById('an-chart-cars'); if (!ctx) return;
+    _anCharts.cars = new Chart(ctx, { type:'doughnut', data:{ labels:sorted.map(x=>x[0]), datasets:[{ data:sorted.map(x=>x[1]), backgroundColor:_AN_PALETTE.slice(0,sorted.length), borderColor:bg2, borderWidth:3, hoverOffset:6 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ boxWidth:12, font:{ size:11 }, padding:10, color:tc } } } } });
+  })();
+  (function() {
+    if (_anCharts.drivers) return;
+    const counts={}; laps.forEach(e => { if (e.driver) counts[e.driver]=(counts[e.driver]||0)+1; });
+    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    const max=sorted.length?sorted[0][1]:1;
+    const ctx=document.getElementById('an-chart-drivers'); if (!ctx) return;
+    _anCharts.drivers = new Chart(ctx, { type:'bar', data:{ labels:sorted.map(x=>x[0]), datasets:[{ label:'Runden', data:sorted.map(x=>x[1]), backgroundColor:sorted.map(x=>{ const p=x[1]/max; return p>=0.8?red:p>=0.5?'#ff6b35':'rgba(128,128,128,0.15)'; }), borderRadius:4 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ grid:{ display:false }, ticks:{ font:{ size:11 }, color:tc } }, y:{ beginAtZero:true, ticks:{ precision:0, color:tc }, grid:{ color:gc } } } } });
+  })();
 }
 
 // ═══ DISCORD ══════════════════════════════════════════════════════════════
@@ -2077,32 +1943,9 @@ function loadChampStandings(cid) {
         <button class="btn btn-danger btn-sm" onclick="removeChampRound('${esc(cid)}','${esc(r.filename)}')">✕</button>
       </div>`).join('');
 
-    // Standings Balken-Chart (top 8)
-    const maxPts  = standing[0]?.points || 1;
-    const barColors = ['#f59e0b','#9ca3af','#b45309'];
-    const bars = standing.slice(0, 8).map((s, i) => {
-      const pct = maxPts > 0 ? Math.round(s.points / maxPts * 100) : 0;
-      const bg  = barColors[i] || 'var(--red)';
-      const medal = ['🥇','🥈','🥉'][i] || `P${i+1}`;
-      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-        <span style="width:24px;text-align:right;font-size:12px;flex-shrink:0">${medal}</span>
-        <span style="font-size:12px;font-weight:600;width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${esc(s.driver)}">${esc(s.driver)}</span>
-        <div style="flex:1;background:var(--bg3);border-radius:4px;height:18px;overflow:hidden">
-          <div style="width:${pct}%;height:100%;background:${bg};border-radius:4px;transition:width .5s ease;min-width:${s.points>0?'24px':'0'};display:flex;align-items:center;padding:0 6px;box-sizing:border-box">
-            <span style="font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${s.points > 0 ? s.points : ''}</span>
-          </div>
-        </div>
-        <span style="width:32px;text-align:right;font-size:11px;color:var(--muted);flex-shrink:0">${s.points}</span>
-      </div>`;
-    }).join('');
-
     det.innerHTML = `
       <div style="font-size:16px;font-weight:700;margin-bottom:4px">🏆 ${esc(c.name)}</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${t('champ_points_schema')}: ${(c.points||[]).join(' · ')}</div>
-
-      ${standing.length && bars ? `
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Punkteverteilung</div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px">${bars}</div>` : ''}
 
       ${standing.length ? `
       <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">${t('champ_standings')}</div>
@@ -2215,72 +2058,40 @@ function resetScheduledEvent(id) {
 }
 
 // ═══ RESULTS ══════════════════════════════════════════════════════════════
-const _TYPE_COLOR = { RACE: 'var(--red)', QUALIFY: '#f59e0b', PRACTICE: '#22c55e' };
-const _TYPE_LABEL = { RACE: 'Race', QUALIFY: 'Qualifying', PRACTICE: 'Practice' };
-const _TYPE_KEY   = { RACE: 'R', QUALIFY: 'Q', PRACTICE: 'P' };
-
-let _resultsData = [];
+const _TYPE_COLOR = { RACE: 'var(--red)', QUALIFY: '#3498db', PRACTICE: '#27ae60' };
+const _TYPE_LABEL = { RACE: '🏆 Race', QUALIFY: '⏱ Quali', PRACTICE: '🔄 Practice' };
 
 function loadResults() {
   document.getElementById('results-list').innerHTML =
-    `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">Lade Ergebnisse…</div>`;
+    `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_loading')}</div>`;
   apiFetch('/api/results').then(r=>r.json()).then(d=>{
+    const el = document.getElementById('results-list');
     if (!d.ok || !d.results.length) {
-      _resultsData = [];
-      document.getElementById('results-list').innerHTML =
-        `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_empty')}</div>`;
+      el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_empty')}</div>`;
       return;
     }
-    _resultsData = d.results;
-    _renderResultsList(_resultsData);
+    el.innerHTML = d.results.map(r => {
+      const typeCol = _TYPE_COLOR[r.type] || 'var(--muted)';
+      const typeLbl = _TYPE_LABEL[r.type] || r.type;
+      const track   = r.config ? `${r.track} / ${r.config}` : r.track;
+      const date    = r.date ? r.date.slice(0, 16) : '—';
+      return `<div class="result-card" onclick="showResult('${esc(r.filename)}')" style="cursor:pointer;padding:10px 12px;border:1px solid var(--border);border-radius:8px;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--red)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:700;color:${typeCol};text-transform:uppercase">${typeLbl}</span>
+          <span style="font-size:10px;color:var(--muted)">${date}</span>
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:2px">${esc(track)||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);display:flex;gap:12px">
+          <span>🏎 ${r.driver_count} Fahrer</span>
+          <span>📋 ${r.lap_count} Runden</span>
+          ${r.winner && r.winner !== '?' ? `<span>🥇 ${esc(r.winner)}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
   }).catch(()=>{
     document.getElementById('results-list').innerHTML =
       `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('res_error')}</div>`;
   });
-}
-
-function _renderResultsList(items) {
-  const el = document.getElementById('results-list');
-  if (!items.length) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">Keine Ergebnisse gefunden</div>`;
-    return;
-  }
-  el.innerHTML = items.map(r => {
-    const typeKey = _TYPE_KEY[r.type] || '';
-    const typeLbl = _TYPE_LABEL[r.type] || r.type;
-    const track   = r.config ? `${r.track} / ${r.config}` : r.track;
-    const date    = r.date ? r.date.slice(0, 16) : '—';
-    return `<div class="result-item" tabindex="0" onclick="_selectResult(this,'${esc(r.filename)}')" onkeydown="if(event.key==='Enter')_selectResult(this,'${esc(r.filename)}')">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
-        <span class="rtype ${typeKey}">${typeLbl}</span>
-        <span style="font-size:10px;color:var(--muted)">${date}</span>
-      </div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:3px">${esc(track)||'—'}</div>
-      <div style="font-size:11px;color:var(--muted);display:flex;gap:12px">
-        <span>🏎 ${r.driver_count} Fahrer</span>
-        <span>📋 ${r.lap_count} Runden</span>
-        ${r.winner && r.winner !== '?' ? `<span>🥇 ${esc(r.winner)}</span>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function filterResults() {
-  const q    = (document.getElementById('res-search')?.value || '').toLowerCase();
-  const type = document.getElementById('res-filter-type')?.value || '';
-  let items  = _resultsData;
-  if (type) items = items.filter(r => _TYPE_KEY[r.type] === type);
-  if (q)    items = items.filter(r =>
-    (r.track||'').toLowerCase().includes(q) ||
-    (r.winner||'').toLowerCase().includes(q)
-  );
-  _renderResultsList(items);
-}
-
-function _selectResult(el, filename) {
-  document.querySelectorAll('.result-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  showResult(filename);
 }
 
 function showResult(filename) {
@@ -2288,28 +2099,16 @@ function showResult(filename) {
   det.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">${t('loading')}</div>`;
   apiFetch(`/api/results/${encodeURIComponent(filename)}`).then(r=>r.json()).then(d=>{
     if (!d.ok) { det.innerHTML = `<div style="color:var(--muted);padding:32px">${t('res_error')}</div>`; return; }
-    const r       = d.result;
-    const typeKey = _TYPE_KEY[r.type] || '';
-    const typeLbl = _TYPE_LABEL[r.type] || r.type;
-    const track   = r.config ? `${r.track} / ${r.config}` : r.track;
-    const date    = r.date ? r.date.slice(0, 16) : '—';
+    const r        = d.result;
+    const typeCol  = _TYPE_COLOR[r.type] || 'var(--muted)';
+    const typeLbl  = _TYPE_LABEL[r.type] || r.type;
+    const track    = r.config ? `${r.track} / ${r.config}` : r.track;
+    const date     = r.date ? r.date.slice(0, 16) : '—';
 
-    // Podium (top 3 Finisher)
-    const top3 = (r.result || []).slice(0, 3);
-    const podium = top3.length >= 2 ? `
-      <div class="podium-row">
-        ${top3.map((e, i) => `<div class="podium-card p${i+1}">
-          <div class="podium-medal">${['🥇','🥈','🥉'][i]}</div>
-          <div class="podium-name" title="${esc(e.DriverName||'?')}">${esc(e.DriverName||'?')}</div>
-          <div class="podium-car">${esc(e.CarModel||'?')}</div>
-          <div class="podium-time">${e.best_fmt||'—'}</div>
-        </div>`).join('')}
-      </div>` : '';
-
-    // Finish order table (P4+)
+    // Finish positions table
     const rows = (r.result || []).map(e => {
-      const medal  = ['🥇','🥈','🥉'][e.position-1] || `P${e.position}`;
-      const posCls = ['pos-1','pos-2','pos-3'][e.position-1] || '';
+      const medal = ['🥇','🥈','🥉'][e.position-1] || `P${e.position}`;
+      const posCls= ['pos-1','pos-2','pos-3'][e.position-1] || '';
       return `<tr>
         <td class="${posCls}">${medal}</td>
         <td><strong>${esc(e.DriverName||'?')}</strong></td>
@@ -2321,42 +2120,42 @@ function showResult(filename) {
       </tr>`;
     }).join('');
 
-    // Fastest laps
+    // Lap-Zeiten pro Fahrer (beste 10)
     const bests = Object.entries(r.driver_bests || {})
-      .sort((a,b) => a[1]-b[1]).slice(0,10)
+      .sort((a,b) => a[1]-b[1])
+      .slice(0,10)
       .map(([name, ms], i) => {
+        const medal = ['🥇','🥈','🥉'][i] || '';
         const mins = Math.floor(ms/60000), secs = (ms%60000)/1000;
         return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
-          <span>${['🥇','🥈','🥉'][i]||''} ${esc(name)}</span>
+          <span>${medal} ${esc(name)}</span>
           <span class="best-t">${mins}:${secs.toFixed(3).padStart(6,'0')}</span>
         </div>`;
       }).join('');
 
     det.innerHTML = `
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div>
-          <span class="rtype ${typeKey}" style="margin-bottom:6px;display:inline-block">${typeLbl}</span>
-          <div style="font-size:16px;font-weight:700">${esc(track)||'—'}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${date}${r.collision_count?` · 💥 ${r.collision_count} Kollisionen`:''}</div>
+          <span style="font-size:11px;font-weight:700;color:${typeCol};text-transform:uppercase">${typeLbl}</span>
+          <div style="font-size:16px;font-weight:700;margin-top:2px">${esc(track)||'—'}</div>
+          <div style="font-size:11px;color:var(--muted)">${date}${r.collision_count?' &nbsp;·&nbsp; 💥 '+r.collision_count+' Kollisionen':''}</div>
         </div>
       </div>
 
-      ${podium}
-
       ${r.result?.length ? `
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Ergebnis</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">${t('res_finish_order')}</div>
       <div class="tbl-wrap" style="margin-bottom:16px">
         <table>
           <thead><tr>
-            <th>Pos.</th><th>Fahrer</th><th>Auto</th>
-            <th>Bestzeit</th><th>Gesamtzeit</th><th>Gap</th><th>Ballast</th>
+            <th>${t('col_pos')}</th><th>${t('col_driver')}</th><th>${t('col_vehicle')}</th>
+            <th>${t('col_best')}</th><th>${t('res_total_time')}</th><th>Gap</th><th>Ballast</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>` : ''}
 
       ${bests ? `
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Schnellste Runden</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">${t('res_fastest_laps')}</div>
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px">${bests}</div>
       ` : ''}
     `;
@@ -2660,12 +2459,46 @@ function nationName(code3) {
   return _AC_NATION_NAME[(code3 || '').toUpperCase()] || code3 || '—';
 }
 
-function _smSetBar(id, pct) {
-  const el = document.getElementById(id);
-  if (el) el.style.width = Math.min(pct, 100) + '%';
-}
 function _smFmtNet(kbps) {
   return kbps >= 1024 ? (kbps / 1024).toFixed(1) + ' MB/s' : kbps.toFixed(1) + ' KB/s';
+}
+
+// ── Verlaufsgraphen (Sparklines) ─────────────────────────────────────────────
+const SM_HISTORY_LEN = 60; // 60 × 3s Poll-Intervall = 3 Minuten Verlauf
+const _smHistory = { cpu: [], ram: [], tx: [], rx: [] };
+
+function _smPush(key, val) {
+  const arr = _smHistory[key];
+  arr.push(val || 0);
+  if (arr.length > SM_HISTORY_LEN) arr.shift();
+}
+
+function _smDrawGraph(canvasId, data, color, fixedMax) {
+  const c = document.getElementById(canvasId);
+  if (!c || !data.length) return;
+  const ctx = c.getContext('2d');
+  const w = c.width, h = c.height;
+  ctx.clearRect(0, 0, w, h);
+  if (data.length < 2) return;
+  const max = fixedMax || Math.max(...data, 1);
+  const stepX = w / (SM_HISTORY_LEN - 1);
+  const toY = v => h - 2 - (Math.min(v, max) / max) * (h - 4);
+  ctx.beginPath();
+  ctx.moveTo(0, toY(data[0]));
+  data.forEach((v, i) => ctx.lineTo(i * stepX, toY(v)));
+  ctx.lineTo((data.length - 1) * stepX, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fillStyle = color + '26';
+  ctx.fill();
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = i * stepX, y = toY(v);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
 }
 
 function updateServerMonitor(d) {
@@ -2673,14 +2506,20 @@ function updateServerMonitor(d) {
   const sys = d.system || {};
   const el = id => document.getElementById(id);
   if (el('sm-cpu')) el('sm-cpu').textContent = (sys.cpu ?? '—') + (sys.cpu !== undefined ? '%' : '');
-  _smSetBar('sm-cpu-bar', sys.cpu ?? 0);
   if (el('sm-ram')) el('sm-ram').textContent = (sys.mem_percent ?? '—') + (sys.mem_percent !== undefined ? '%' : '');
   if (el('sm-ram-sub')) el('sm-ram-sub').textContent = sys.mem_used_mb ? `${sys.mem_used_mb} / ${sys.mem_total_mb} MB` : '';
-  _smSetBar('sm-ram-bar', sys.mem_percent ?? 0);
   if (el('sm-tx')) el('sm-tx').textContent = sys.net_tx_kbps !== undefined ? _smFmtNet(sys.net_tx_kbps) : '—';
   if (el('sm-rx')) el('sm-rx').textContent = sys.net_rx_kbps !== undefined ? _smFmtNet(sys.net_rx_kbps) : '—';
-  if (el('sm-uptime')) el('sm-uptime').textContent = (d.uptime || {}).string || '—';
   if (el('sm-ip')) el('sm-ip').textContent = (d.info || {}).ip || '—';
+
+  _smPush('cpu', sys.cpu);
+  _smPush('ram', sys.mem_percent);
+  _smPush('tx', sys.net_tx_kbps);
+  _smPush('rx', sys.net_rx_kbps);
+  _smDrawGraph('sm-cpu-graph', _smHistory.cpu, '#e8150c', 100);
+  _smDrawGraph('sm-ram-graph', _smHistory.ram, '#e8150c', 100);
+  _smDrawGraph('sm-tx-graph', _smHistory.tx, '#2980b9');
+  _smDrawGraph('sm-rx-graph', _smHistory.rx, '#27ae60');
 
   const wrap = el('sm-nation-wrap');
   if (!wrap) return;
@@ -2713,12 +2552,12 @@ const _NAV_GROUP_MAP = {
   records:'daten', analytics:'daten', results:'daten', championship:'daten',
   players:'verwaltung', content:'verwaltung', 'entry-list':'verwaltung', integrations:'verwaltung',
   'server-monitor':'system', logs:'system',
+  config:'konfiguration',
 };
 const _CFG_TAB_MAP = {
   'settings-server':'server', 'settings-track':'track', 'settings-assists':'assists',
   'settings-sessions':'sessions', 'settings-weather':'weather',
   'settings-profile':'profile', 'advanced':'advanced', 'settings-overview':null,
-  'entry-list':'entry',
 };
 
 function toggleGroup(name) {
@@ -2736,30 +2575,19 @@ function toggleGroup(name) {
 
 function cfgTab(name) {
   document.querySelectorAll('.cfg-pane').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.cfg-tab').forEach(t => t.classList.remove('active'));
   const pane = document.getElementById('cfgp-' + name);
   if (pane) pane.classList.add('active');
-  const tab = document.querySelector(`.cfg-tab[data-tab="${name}"]`);
-  if (tab) tab.classList.add('active');
   localStorage.setItem('acweb_cfg_tab', name);
   if (name === 'profile')   loadServerProfile();
-  if (name === 'advanced')  { loadExtraCfg(); loadPluginStatus(); loadVotingWeather(); loadWeatherLog(); }
+  if (name === 'advanced')  loadExtraCfg();
   if (name === 'assists')   loadCutActions();
   if (name === 'sessions')  { loadScheduledEvents(); _loadSchedPresets(); }
-  if (name === 'weather')   { updateWeatherIcon('w0'); updateWeatherIcon('w1'); }
-  if (name === 'entry')     loadEntryList();
-}
-
-function updateWeatherIcon(slot) {
-  const sel = document.getElementById(slot + '-graphics');
-  const ico = document.getElementById(slot + '-icon');
-  if (!sel || !ico) return;
-  ico.textContent = _WEATHER_ICONS[sel.value] || '🌡';
+  if (name === 'weather')   { loadPluginStatus(); loadVotingWeather(); loadWeatherLog(); }
 }
 
 // Restore accordion state on page load
 (function _initNavGroups() {
-  const saved = JSON.parse(localStorage.getItem('acweb_nav_open') || '["live"]');
+  const saved = JSON.parse(localStorage.getItem('acweb_nav_open') || '["live","daten","konfiguration"]');
   saved.forEach(name => {
     const items   = document.getElementById('ngi-' + name);
     const chevron = document.getElementById('ngc-' + name);
@@ -2769,6 +2597,11 @@ function updateWeatherIcon(slot) {
 })();
 
 function navTo(id) {
+  // Live-Vollbild verlassen, wenn zu einer anderen Seite als Live navigiert wird
+  if (id !== 'live' && !_LIVE_REDIRECT.has(id)) {
+    const liveEl = document.getElementById('p-live');
+    if (liveEl && liveEl.classList.contains('live-fullscreen')) _exitLiveFullscreen();
+  }
   // Redirect drivers/laps/events → unified live panel (Sprint 2)
   if (_LIVE_REDIRECT.has(id)) { navTo('live'); return; }
 
@@ -2778,9 +2611,13 @@ function navTo(id) {
     if (!tab) { navTo('dashboard'); return; }
     navTo('config');
     cfgTab(tab);
+    // Sidebar-Sub-Item statt des generischen "config"-Eintrags hervorheben
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll(`.nav-item[data-nav="${id}"]`).forEach(n => n.classList.add('active'));
     return;
   }
   _currentNav = id;
+  localStorage.setItem('acweb_current_nav', id);
   document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   const target = document.getElementById('p-' + id);
   if (target) { target.classList.add('active'); }
@@ -2799,28 +2636,23 @@ function navTo(id) {
   // Scroll content to top
   const _cnt = document.querySelector('.content');
   if (_cnt) _cnt.scrollTop = 0;
-  // Side effects (lazy: Daten-Tabs nur laden wenn stale)
+  // "Nach Speichern neu starten" ist nur auf der Konfigurations-Seite relevant (dort sind die Save-Buttons)
+  const restartBox = document.querySelector('.sb-restart');
+  if (restartBox) restartBox.style.display = id === 'config' ? 'flex' : 'none';
+  // Side effects
   if (id === 'config')         { const t = localStorage.getItem('acweb_cfg_tab') || 'server'; cfgTab(t); }
   if (id === 'live')           { loadEvents(); if (live) { updateLaps(live); _renderChat(live.chat||[], "chat-box"); drawMap(live); } }
   if (id === 'server-monitor') updateServerMonitor(live);
-  if (id === 'logs') {
-    loadLogs();
-    if (_logFollowTimer) clearInterval(_logFollowTimer);
-    _logFollowTimer = setInterval(() => { if (document.getElementById('log-follow')?.checked) loadLogs(); }, 4000);
-  } else if (_logFollowTimer) {
-    clearInterval(_logFollowTimer); _logFollowTimer = null;
-  }
-  if (id === 'players')        { if (_isStale('players')) { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); _markLoaded('players'); } }
-  if (id === 'integrations')   { if (_isStale('integrations')) { loadDiscord(); loadChatNotify(); loadTelegram(); _markLoaded('integrations'); } }
-  if (id === 'content')        { if (_isStale('content')) { loadInstalledContent(); _markLoaded('content'); } }
-  if (id === 'records')        { if (_isStale('records')) { loadRecordFilters(); _markLoaded('records'); } _recTab('best'); }
-  if (id === 'analytics')      { if (_isStale('analytics')) { document.getElementById('an-leaderboard-tbody').innerHTML=_skelRows(5,6); loadAnalyticsDrivers(); _markLoaded('analytics'); } }
-  if (id === 'results')        { if (_isStale('results'))  { loadResults(); _markLoaded('results'); } }
-  if (id === 'championship')   { if (_isStale('championship')) { loadChampionships(); _markLoaded('championship'); } }
+  if (id === 'logs')           loadLogs();
+  if (id === 'players')        { loadGuidList('whitelist'); loadGuidList('admins'); loadGuidList('blacklist'); }
+  if (id === 'integrations')   { loadDiscord(); loadChatNotify(); loadTelegram(); }
+  if (id === 'content')        loadInstalledContent();
+  if (id === 'records')        { loadRecordFilters(); loadBestLaps(); loadAllLaps(); loadDriverStats(); }
+  if (id === 'analytics')      { loadAnalyticsDrivers(); setTimeout(() => loadAnalyticsCharts(), 50); }
+  if (id === 'results')        loadResults();
+  if (id === 'championship')   loadChampionships();
   if (id === 'schedule')       { loadScheduledEvents(); _loadSchedPresets(); }
-
-  // Adaptives Polling: schnell bei Live-relevanten Panels, langsam sonst
-  _adjustPolling(id);
+  if (id === 'settings-ai')    loadAiConfig();
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('open');
@@ -2830,6 +2662,45 @@ function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sb-overlay').classList.toggle('open');
 }
+
+// ═══ LIVE TAB FULLSCREEN (Querbildschirm-Modus) ═══════════════════════════
+function toggleLiveFullscreen() {
+  const el = document.getElementById('p-live');
+  const entering = !el.classList.contains('live-fullscreen');
+  if (entering) {
+    el.classList.add('live-fullscreen');
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (req) { try { Promise.resolve(req.call(el)).catch(() => {}); } catch (e) {} }
+    if (screen.orientation && screen.orientation.lock) {
+      try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+    }
+  } else {
+    _exitLiveFullscreen();
+  }
+}
+
+function _exitLiveFullscreen() {
+  const el = document.getElementById('p-live');
+  el.classList.remove('live-fullscreen');
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) { try { Promise.resolve(exit.call(document)).catch(() => {}); } catch (e) {} }
+  }
+  if (screen.orientation && screen.orientation.unlock) {
+    try { screen.orientation.unlock(); } catch (e) {}
+  }
+}
+
+// Browser-eigenes Vollbild-Verlassen (ESC / Zurück-Geste) mit unserem State abgleichen
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev => {
+  document.addEventListener(ev, () => {
+    const inNativeFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const el = document.getElementById('p-live');
+    if (!inNativeFs && el && el.classList.contains('live-fullscreen')) {
+      _exitLiveFullscreen();
+    }
+  });
+});
 
 // ═══ COMBINED SAVE FUNCTIONS ══════════════════════════════════════════════
 function saveAllServerSettings() {
@@ -2913,10 +2784,10 @@ function saveWeatherPage() {
 
 // ═══ INIT ═════════════════════════════════════════════════════════════════
 applyLang();
-// Nach Seiten-Reload (z.B. Content-Import): zuletzt aktive Seite wiederherstellen
+// Nach Seiten-Reload (z.B. Content-Import, oder normales F5): zuletzt aktive Seite wiederherstellen
 const _savedNav = sessionStorage.getItem('_restoreNav');
 if (_savedNav) { sessionStorage.removeItem('_restoreNav'); navTo(_savedNav); }
-else navTo('dashboard');
+else navTo(localStorage.getItem('acweb_current_nav') || 'dashboard');
 updateLayouts();
 loadTrackPreview();
 refreshLive();
@@ -2927,17 +2798,7 @@ refreshUptime();
 loadServerProfile();
 refreshQuickStats();
 
-// ── Adaptives Polling ────────────────────────────────────────────────────
-const _POLL_LIVE_PANELS = new Set(['dashboard','live','server-monitor']);
-let _liveTimer = null;
-
-function _adjustPolling(panelId) {
-  if (_liveTimer) clearInterval(_liveTimer);
-  const fast = _POLL_LIVE_PANELS.has(panelId);
-  _liveTimer = setInterval(refreshLive, fast ? 3000 : 8000);
-}
-
-_adjustPolling('dashboard'); // initial
+setInterval(refreshLive, 3000);
 setInterval(function _tickLapTimers() {
   const now = Date.now();
   for (const [id, b] of Object.entries(_lapBases)) {
@@ -3409,3 +3270,92 @@ function elSavePreset() {
     if (qaCar) qaCar.addEventListener('change', elQACarChange);
   });
 })();
+
+
+// ═══ KI-FAHRER KONFIGURATION ════════════════════════════════════════════════
+
+function loadAiConfig() {
+  fetch('/api/ai_config', {headers: {'X-CSRFToken': window._csrf || ''}})
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) return;
+
+      // Spline-Banner
+      const banner = document.getElementById('ai-spline-banner');
+      if (banner) {
+        if (d.spline_found) {
+          banner.style.display = 'block';
+          banner.style.background = 'var(--green, #1a6b30)';
+          banner.style.color = '#fff';
+          banner.textContent = t('ai_spline_ok');
+        } else {
+          banner.style.display = 'block';
+          banner.style.background = 'var(--red, #6b1a1a)';
+          banner.style.color = '#fff';
+          banner.textContent = t('ai_spline_missing') + (d.spline_path ? ' (' + d.spline_path + ')' : '');
+        }
+      }
+
+      const enable = String(d.EnableAi).toLowerCase() === 'true';
+      const el = id => document.getElementById(id);
+      if (el('ai-enable')) el('ai-enable').checked = enable;
+
+      const p = d.params || {};
+      if (el('ai-hide-cars'))      el('ai-hide-cars').checked      = String(p.HideAiCars).toLowerCase() === 'true';
+      if (el('ai-two-way'))        el('ai-two-way').checked        = String(p.TwoWayTraffic).toLowerCase() === 'true';
+      if (el('ai-max-speed'))      el('ai-max-speed').value        = p.MaxSpeedKph ?? '';
+      if (el('ai-per-player'))     el('ai-per-player').value       = p.AiPerPlayerTargetCount ?? '';
+      if (el('ai-max-total'))      el('ai-max-total').value        = p.MaxAiTargetCount ?? '';
+      if (el('ai-corner-speed'))   el('ai-corner-speed').value     = p.CorneringSpeedFactor ?? '';
+      if (el('ai-traffic-density')) el('ai-traffic-density').value = p.TrafficDensity ?? '';
+      if (el('ai-min-safety'))     el('ai-min-safety').value       = p.MinAiSafetyDistanceMeters ?? '';
+      if (el('ai-max-safety'))     el('ai-max-safety').value       = p.MaxAiSafetyDistanceMeters ?? '';
+      if (el('ai-player-radius'))  el('ai-player-radius').value    = p.PlayerRadiusMeters ?? '';
+      if (el('ai-min-spawn'))      el('ai-min-spawn').value        = p.MinSpawnProtectionTimeSeconds ?? '';
+      if (el('ai-max-spawn'))      el('ai-max-spawn').value        = p.MaxSpawnProtectionTimeSeconds ?? '';
+      if (el('ai-spline-offset'))  el('ai-spline-offset').value    = p.SplineHeightOffsetMeters ?? '';
+    })
+    .catch(e => console.error('loadAiConfig:', e));
+}
+
+function saveAiConfig() {
+  const el = id => document.getElementById(id);
+  const num = (id, fallback) => {
+    const v = parseFloat(el(id)?.value);
+    return isNaN(v) ? fallback : v;
+  };
+
+  const payload = {
+    EnableAi: el('ai-enable')?.checked ? 'true' : 'false',
+    HideAiCars:                    el('ai-hide-cars')?.checked ?? false,
+    TwoWayTraffic:                 el('ai-two-way')?.checked ?? false,
+    MaxSpeedKph:                   num('ai-max-speed', 80),
+    AiPerPlayerTargetCount:        num('ai-per-player', 2),
+    MaxAiTargetCount:              num('ai-max-total', 20),
+    CorneringSpeedFactor:          num('ai-corner-speed', 1.0),
+    TrafficDensity:                num('ai-traffic-density', 1.0),
+    MinAiSafetyDistanceMeters:     num('ai-min-safety', 20),
+    MaxAiSafetyDistanceMeters:     num('ai-max-safety', 70),
+    PlayerRadiusMeters:            num('ai-player-radius', 200),
+    MinSpawnProtectionTimeSeconds: num('ai-min-spawn', 8),
+    MaxSpawnProtectionTimeSeconds: num('ai-max-spawn', 20),
+    SplineHeightOffsetMeters:      num('ai-spline-offset', 0),
+  };
+
+  fetch('/api/ai_config', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': window._csrf || ''},
+    body: JSON.stringify(payload),
+  })
+    .then(r => r.json())
+    .then(d => {
+      const msg = document.getElementById('ai-saved-msg');
+      if (msg) {
+        msg.textContent = d.ok ? t('ai_saved') : '✗ ' + (d.msg || 'Fehler');
+        msg.style.color = d.ok ? 'var(--green)' : 'var(--red)';
+        msg.style.display = 'inline';
+        setTimeout(() => { msg.style.display = 'none'; }, 3000);
+      }
+    })
+    .catch(e => console.error('saveAiConfig:', e));
+}

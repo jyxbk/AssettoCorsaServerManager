@@ -31,6 +31,9 @@ def create_app():
     app.register_blueprint(results_bp)
     app.register_blueprint(scheduler_bp)
 
+    from helpers.auth import get_csrf_token
+    app.jinja_env.globals["csrf_token"] = get_csrf_token
+
     return app
 
 

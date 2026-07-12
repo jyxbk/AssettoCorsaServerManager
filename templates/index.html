@@ -1443,55 +1443,8 @@
   </div>
 </div>
 
-<!-- ══ SCHEDULE ════════════════════════════════════════════════════════════ -->
-<div class="panel" id="p-schedule">
-  <div class="g2 gap">
-
-    <!-- LEFT: Event erstellen -->
-    <div>
-      <div class="card gap">
-        <div class="card-ttl" data-i18n="sched_create">Neues geplantes Event</div>
-        <div class="fg">
-          <label class="lbl" data-i18n="lbl_name">Name</label>
-          <input class="inp" id="sched-name" placeholder="Samstag Liga Rennen">
-        </div>
-        <div class="fg">
-          <label class="lbl" data-i18n="sched_datetime">Datum &amp; Uhrzeit</label>
-          <input class="inp" type="datetime-local" id="sched-dt">
-        </div>
-        <div class="fg">
-          <label class="lbl" data-i18n="sched_action">Aktion</label>
-          <select class="sel" id="sched-action" onchange="toggleSchedPreset()">
-            <option value="apply_preset" data-i18n="sched_action_preset">Preset laden &amp; Server neu starten</option>
-            <option value="restart" data-i18n="sched_action_restart">Nur Server neu starten</option>
-          </select>
-        </div>
-        <div class="fg" id="sched-preset-row">
-          <label class="lbl" data-i18n="sched_preset">Preset</label>
-          <select class="sel" id="sched-preset">
-            <option value="" data-i18n="loading">Lade…</option>
-          </select>
-        </div>
-        <button class="btn btn-red" onclick="createScheduledEvent()" data-i18n="sched_create_btn">📅 Planen</button>
-      </div>
-    </div>
-
-    <!-- RIGHT: Event-Liste -->
-    <div>
-      <div class="card">
-        <div class="sh">
-          <div class="sh-t" data-i18n="sched_events">Geplante Events</div>
-          <button class="btn btn-gray btn-sm" onclick="loadScheduledEvents()">↻</button>
-        </div>
-        <div id="sched-list" style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-          <div style="color:var(--muted);font-size:13px;text-align:center;padding:32px" data-i18n="sched_empty">Keine geplanten Events</div>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)" data-i18n="sched_hint">Der Scheduler prüft alle 30 Sekunden ob ein Event fällig ist.</div>
-      </div>
-    </div>
-
-  </div>
-</div>
+<!-- p-schedule: Inhalt wurde in cfgp-sessions (innerhalb p-config) verschoben — doppelte IDs vermieden -->
+<div class="panel" id="p-schedule" style="display:none"></div>
 
 <!-- p-advanced: Inhalt wurde in cfgp-advanced (innerhalb p-config) verschoben -->
 <div class="panel" id="p-advanced" style="display:none"></div>

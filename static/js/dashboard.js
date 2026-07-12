@@ -126,6 +126,19 @@ function toast(msg, type="ok") {
   clearTimeout(el._t); el._t = setTimeout(() => el.style.display = "none", 3500);
 }
 
+// ═══ ERROR BANNER ═════════════════════════════════════════════════════════
+function _showErrorBanner(msg) {
+  const b = document.getElementById('_err-banner');
+  const m = document.getElementById('_err-msg');
+  if (!b) return;
+  if (m) m.textContent = msg || '';
+  b.style.display = 'flex';
+}
+function _hideErrorBanner() {
+  const b = document.getElementById('_err-banner');
+  if (b) b.style.display = 'none';
+}
+
 // ═══ SERVER CONTROL ═══════════════════════════════════════════════════════
 let _ctrlLocked = false;
 function ctrl(action) {
@@ -2552,13 +2565,14 @@ const _NAV_GROUP_MAP = {
   records:'daten', analytics:'daten', results:'daten', championship:'daten',
   players:'verwaltung', content:'verwaltung', 'entry-list':'verwaltung', integrations:'verwaltung',
   'server-monitor':'system', logs:'system',
-  config:'konfiguration',
+  config:'konfiguration', 'settings-ai':'konfiguration',
 };
 const _CFG_TAB_MAP = {
   'settings-server':'server', 'settings-track':'track', 'settings-assists':'assists',
   'settings-sessions':'sessions', 'settings-weather':'weather',
   'settings-profile':'profile', 'advanced':'advanced', 'settings-overview':null,
 };
+
 
 function toggleGroup(name) {
   const items   = document.getElementById('ngi-' + name);
@@ -2795,7 +2809,6 @@ loadEvents();
 loadMapImage();
 loadPresetList();
 refreshUptime();
-loadServerProfile();
 refreshQuickStats();
 
 setInterval(refreshLive, 3000);
